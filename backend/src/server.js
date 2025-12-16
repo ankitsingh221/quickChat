@@ -4,13 +4,17 @@ dotenv.config();
 import { connectDB } from "./lib/db.js";
 import authRoute from "./routes/authRoute.js";
 import cookieParser from "cookie-parser";
+import { globalLimiter } from "./middleware/rateLimiter.js"; // Only global limiter here
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
-app.use(express.json({ limit: "10mb" })); 
+app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
+
+
+app.use(globalLimiter);
 
 // Routes
 app.use("/api/auth", authRoute);
