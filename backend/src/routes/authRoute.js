@@ -1,16 +1,22 @@
 import express from "express";
+import {
+  signup,
+  login,
+  logout,
+  getMe,
+  updateProfile,
+} from "../controllers/authController.js";
+import protect from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/test", (req, res) => {
-  res.status(200).json({
-    message: "Auth route working"
-  });
-});
+// Public routes
+router.post("/signup", signup);
+router.post("/login", login);
 
 
-router.get("/login", (req, res) => {
-   res.send("login route");
-});
+router.post("/logout", protect, logout);
+router.get("/me", protect, getMe);
+router.put("/update-profile", protect, updateProfile);
 
 export default router;
