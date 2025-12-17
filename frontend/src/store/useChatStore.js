@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
+import { useAuthStore } from "./useAuthStore";
 
 export const useChatStore = create((set, get) => ({
   allContacts: [],
@@ -94,23 +95,47 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  sendMessage: async (userId, payload) => {
-    if (!userId) return;
+sendMessage: async (messageData) => {
+  const { selectedUser , messages } = get();
+  const {authUser} = useAuthStore.getState();
 
-    try {
-      const res = await axiosInstance.post(`/messages/send/${userId}`, payload);
+  const tempId = `temp-${Date.now()}`;
 
-      if (res.data?.data) {
-        set((state) => ({
-          messages: [...state.messages, res.data.data],
-        }));
-      }
+  
+  if (!selectedUser || !selectedUser._id) {
+    toast.error("No user selected.");
+    return;
+  }
+  
+  const optmisticMessage = {
+    _id: tempId,
+    senderId : authUser._id,
+    receiverId: selectedUser._id,
+     text: messageData.text,
+      image: messageData.image,
+      createdAt: new Date().toISOString(),
+      isOptimistic: true, 
+  }
+    set({messages : [...messages, optmisticMessage]})
+  
+  try {
+    const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
 
-    } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || "Failed to send message");
+    if (res.data?.data) {
+      set((state) => ({
+        messages: state.messages.map((msg) =>
+          msg._id === tempId ? res.data.data : msg
+        ),
+      }));
     }
-  },
+  } catch (error) {
+    console.error(error);
+     set({ messages: messages }); // 
+    const errorMessage = error.response?.data?.message || "Failed to send message";
+    toast.error(errorMessage);
+  }
+},
+
 
 
 }));
