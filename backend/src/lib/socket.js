@@ -16,25 +16,21 @@ const io = new Server(server, {
 
 const userSocketMap = new Map();
 
-
 io.use(socketAuthMiddleware);
 
-
 io.on("connection", (socket) => {
-  const user = socket.user; 
+  const user = socket.user;
   const userId = user._id.toString();
 
   console.log("User connected:", user.fullName);
 
- 
   userSocketMap.set(userId, socket.id);
 
-  
   socket.join(userId);
 
-  
+  // io.emit is used to  broadcast to all connected clients
   io.emit("getOnlineUsers", Array.from(userSocketMap.keys()));
-
+  // with socket.on we listen for events from the clients
   socket.on("disconnect", () => {
     console.log("User disconnected:", user.fullName);
 
@@ -43,7 +39,6 @@ io.on("connection", (socket) => {
     io.emit("getOnlineUsers", Array.from(userSocketMap.keys()));
   });
 });
-
 
 export const getReceiverSocketId = (userId) => {
   return userSocketMap.get(userId.toString());

@@ -1,8 +1,11 @@
 function UsersLoadingSkeleton() {
   return (
     <div className="space-y-2">
-      {[...Array(7)].map((item) => (
-        <div key={item} className="bg-slate-800/30 p-4 rounded-lg animate-pulse">
+      {Array.from({ length: 7 }).map((_, index) => (
+        <div
+          key={index}
+          className="bg-slate-800/30 p-4 rounded-lg animate-pulse"
+        >
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-slate-700 rounded-full"></div>
             <div className="flex-1">
@@ -15,4 +18,5 @@ function UsersLoadingSkeleton() {
     </div>
   );
 }
+
 export default UsersLoadingSkeleton;

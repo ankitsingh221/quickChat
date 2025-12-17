@@ -8,8 +8,9 @@ import cookieParser from "cookie-parser";
 import { globalLimiter } from "./middleware/rateLimiter.js";
 import cors from "cors"; 
 import { ENV } from "./lib/env.js";
+import { app, server } from "./lib/socket.js";
 
-const app = express();
+
 const port = process.env.PORT || 3000;
 
 // Middleware
@@ -32,7 +33,7 @@ app.use("/api/messages", messageRoute);
 // Connect to DB first
 connectDB()
   .then(() => {
-    app.listen(port, () => {
+    server.listen(port, () => {
       console.log(`Server is running on port: ${port}`);
     });
   })
