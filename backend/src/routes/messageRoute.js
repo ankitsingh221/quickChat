@@ -5,7 +5,7 @@ import {
   getMessagesByUserId,
   sendMessageToUser,
 } from "../controllers/messageController.js";
-import { protectRoute } from "../middleware/auth.middleware.js";
+import { protectRoute } from "../middleware/authMiddleware.js";
 
 
 const router = express.Router();

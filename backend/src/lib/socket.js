@@ -29,10 +29,10 @@ io.on("connection", (socket) => {
  
   userSocketMap.set(userId, socket.id);
 
-  // Join personal room (future-proof)
+  
   socket.join(userId);
 
-  // Send online users list to everyone
+  
   io.emit("getOnlineUsers", Array.from(userSocketMap.keys()));
 
   socket.on("disconnect", () => {

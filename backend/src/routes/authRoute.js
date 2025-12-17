@@ -6,7 +6,7 @@ import {
   getMe,
   updateProfile,
 } from "../controllers/authController.js";
-import protect from "../middleware/authMiddleware.js";
+import protectRoute from "../middleware/authMiddleware.js";
 import { authLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
@@ -16,8 +16,8 @@ router.post("/signup", authLimiter, signup);
 router.post("/login", authLimiter, login);
 
 // Protected routes
-router.post("/logout", protect, logout);
-router.get("/me", protect, getMe);
-router.put("/update-profile", protect, updateProfile);
+router.post("/logout", protectRoute, logout);
+router.get("/me", protectRoute, getMe);
+router.put("/update-profile", protectRoute, updateProfile);
 
 export default router;

@@ -3,7 +3,7 @@ import User from "../models/user.js";
 import { ENV } from "../lib/env.js";
 
 
-const protect = async (req, res, next) => {
+const protectRoute = async (req, res, next) => {
   try {
     const token = req.cookies?.jwt;
 
@@ -29,4 +29,4 @@ const protect = async (req, res, next) => {
   }
 };
 
-export default protect;
+export default protectRoute;
