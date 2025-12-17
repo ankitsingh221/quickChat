@@ -17,8 +17,8 @@ router.get("/contacts", getAllContacts);
 
 router.get("/conversations", getChatPartners); 
 
-router.get("/messages/:userId", getMessagesByUserId);
+router.get("/:id", getMessagesByUserId);
 
-router.post("/messages/:userId", sendMessageToUser);
+router.post("/send/:id", sendMessageToUser);
 
 export default router;
