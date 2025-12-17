@@ -5,13 +5,21 @@ import { connectDB } from "./lib/db.js";
 import authRoute from "./routes/authRoute.js";
 import messageRoute from "./routes/messageRoute.js";
 import cookieParser from "cookie-parser";
-import { globalLimiter } from "./middleware/rateLimiter.js"; 
+import { globalLimiter } from "./middleware/rateLimiter.js";
+import cors from "cors"; 
+import { ENV } from "./lib/env.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json({ limit: "10mb" }));
+ 
+app.use(cors({
+  origin: ENV.CLIENT_URL,
+  credentials: true,
+}));
+
 app.use(cookieParser());
 
 

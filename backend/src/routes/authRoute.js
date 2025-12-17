@@ -17,7 +17,7 @@ router.post("/login", authLimiter, login);
 
 // Protected routes
 router.post("/logout", protectRoute, logout);
-router.get("/me", protectRoute, getMe);
 router.put("/update-profile", protectRoute, updateProfile);
+router.get("/check", protectRoute, getMe);
 
 export default router;
