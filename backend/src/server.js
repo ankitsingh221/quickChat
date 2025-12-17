@@ -21,9 +21,10 @@ app.use(cors({
   credentials: true,
 }));
 
+
 app.use(cookieParser());
 
-
+// Rate Limiter
 app.use(globalLimiter);
 
 // Routes

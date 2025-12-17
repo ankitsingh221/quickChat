@@ -30,6 +30,7 @@ io.on("connection", (socket) => {
 
   // io.emit is used to  broadcast to all connected clients
   io.emit("getOnlineUsers", Array.from(userSocketMap.keys()));
+  
   // with socket.on we listen for events from the clients
   socket.on("disconnect", () => {
     console.log("User disconnected:", user.fullName);
