@@ -1,39 +1,55 @@
-import React, { useRef, useState } from 'react'
-import useKeyboardSound from "../hooks/useKeyboardSound"
-import { useChatStore } from '../store/useChatStore';
-import toast from 'react-hot-toast'
-import { XIcon, ImageIcon, SendIcon } from 'lucide-react';
+import React, { useRef, useState } from "react";
+import { XIcon, ImageIcon, SendIcon } from "lucide-react";
+import { useChatStore } from "../store/useChatStore";
+import { useAuthStore } from "../store/useAuthStore";
+import useKeyboardSound from "../hooks/useKeyboardSound";
 
-const MessageInput = () => {
-   const { playRandomKeyStrokeSound } = useKeyboardSound();
+const MessageInput = ({ replyTo, setReplyTo }) => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
-
   const fileInputRef = useRef(null);
 
-  const { sendMessage, isSoundEnabled } = useChatStore();
+  const { sendMessage, isSoundEnabled, selectedUser } = useChatStore();
+  const { authUser } = useAuthStore();
+  const { playRandomKeyStrokeSound, playMessageSentSound } = useKeyboardSound();
 
   const handleSendMessage = (e) => {
     e.preventDefault();
+
     if (!text.trim() && !imagePreview) return;
-    if (isSoundEnabled) playRandomKeyStrokeSound();
+
+    
+    if (isSoundEnabled && playMessageSentSound) {
+      playMessageSentSound();
+    } else if (isSoundEnabled) {
+      playRandomKeyStrokeSound();
+    }
 
     sendMessage({
       text: text.trim(),
       image: imagePreview,
+      replyTo: replyTo
+        ? {
+            _id: replyTo._id,
+            text: replyTo.text,
+            image: replyTo.image,
+            senderId: replyTo.senderId,
+          }
+        : null,
     });
+
     setText("");
-    setImagePreview("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    setImagePreview(null);
+    setReplyTo(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-     if(!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
-      return;
-    }
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
 
     const reader = new FileReader();
     reader.onloadend = () => setImagePreview(reader.result);
@@ -45,21 +61,55 @@ const MessageInput = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleTyping = (e) => {
+    setText(e.target.value);
+    if (isSoundEnabled) playRandomKeyStrokeSound();
+  };
 
   return (
-     <div className="p-4 border-t border-slate-700/50">
+    <form
+      onSubmit={handleSendMessage}
+      className="p-4 border-t border-slate-700/50"
+    >
+      {/* Reply Preview */}
+      {replyTo && (
+        <div className="max-w-3xl mx-auto mb-2 p-2 rounded bg-slate-800 border-l-4 border-cyan-500 flex justify-between items-start">
+          <div className="flex-1 text-sm">
+            <p className="text-xs font-semibold text-cyan-400">
+              Replying to{" "}
+              {replyTo.senderId?.toString() === authUser?._id?.toString()
+                ? "yourself"
+                : selectedUser?.fullName || "User"}
+            </p>
+
+            {replyTo.text && (
+              <p className="truncate text-slate-300">{replyTo.text}</p>
+            )}
+
+            {replyTo.image && !replyTo.text && (
+              <p className="italic text-slate-400">📷 Photo</p>
+            )}
+          </div>
+
+          <button type="button" onClick={() => setReplyTo(null)}>
+            <XIcon className="w-4 h-4 text-slate-400 hover:text-white" />
+          </button>
+        </div>
+      )}
+
+      {/* Image Preview */}
       {imagePreview && (
-        <div className="max-w-3xl mx-auto mb-3 flex items-center">
-          <div className="relative">
+        <div className="max-w-3xl mx-auto mb-3">
+          <div className="relative inline-block">
             <img
               src={imagePreview}
               alt="Preview"
               className="w-20 h-20 object-cover rounded-lg border border-slate-700"
             />
             <button
+              type="button"
               onClick={removeImage}
               className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-slate-200 hover:bg-slate-700"
-              type="button"
             >
               <XIcon className="w-4 h-4" />
             </button>
@@ -67,16 +117,19 @@ const MessageInput = () => {
         </div>
       )}
 
-      <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto flex space-x-4">
-        <input
-          type="text"
+      <div className="max-w-3xl mx-auto flex items-end space-x-4">
+        <textarea
           value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            isSoundEnabled && playRandomKeyStrokeSound();
+          onChange={handleTyping}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSendMessage(e);
+            }
           }}
-          className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-lg py-2 px-4"
+          rows={1}
           placeholder="Type your message..."
+          className="flex-1 resize-none bg-slate-800/50 border border-slate-700/50 rounded-lg py-2 px-4 focus:outline-none"
         />
 
         <input
@@ -90,12 +143,13 @@ const MessageInput = () => {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className={`bg-slate-800/50 text-slate-400 hover:text-slate-200 rounded-lg px-4 transition-colors ${
+          className={`bg-slate-800/50 rounded-lg px-4 text-slate-400 hover:text-slate-200 transition-colors ${
             imagePreview ? "text-cyan-500" : ""
           }`}
         >
           <ImageIcon className="w-5 h-5" />
         </button>
+
         <button
           type="submit"
           disabled={!text.trim() && !imagePreview}
@@ -103,9 +157,9 @@ const MessageInput = () => {
         >
           <SendIcon className="w-5 h-5" />
         </button>
-      </form>
-    </div>
-  )
-}
+      </div>
+    </form>
+  );
+};
 
-export default MessageInput
+export default MessageInput;

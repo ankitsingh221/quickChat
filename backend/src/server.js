@@ -31,6 +31,7 @@ app.use(globalLimiter);
 app.use("/api/auth", authRoute);
 app.use("/api/messages", messageRoute);
 
+
 // Connect to DB first
 connectDB()
   .then(() => {

@@ -1,13 +1,20 @@
 import { useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
-import UsersLoadingSkeleton from "./UsersLoadingSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
-
+import UsersLoadingSkeleton from "./UsersLoadingSkeleton";
+import UserCard from "./UserCard";
 
 function ContactList() {
-  const { getAllContacts, allContacts, setSelectedUser, isUsersLoading } = useChatStore();
-  const {onlineUsers} = useAuthStore();
- 
+  const {
+    getAllContacts,
+    allContacts,
+    setSelectedUser,
+    selectedUser,
+    isUsersLoading,
+    searchQuery,
+  } = useChatStore();
+
+  const { onlineUsers } = useAuthStore();
 
   useEffect(() => {
     getAllContacts();
@@ -15,25 +22,37 @@ function ContactList() {
 
   if (isUsersLoading) return <UsersLoadingSkeleton />;
 
+  const filteredContacts = allContacts
+    .filter((contact) =>
+      contact.fullName.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) =>
+      a.fullName.localeCompare(b.fullName, undefined, {
+        sensitivity: "base",
+      })
+    );
+
+  if (filteredContacts.length === 0) {
+    return (
+      <p className="text-center text-base-content/50 mt-6">
+        No contacts found
+      </p>
+    );
+  }
+
   return (
-    <>
-      {allContacts.map((contact) => (
-        <div
+    <div className="space-y-2">
+      {filteredContacts.map((contact) => (
+        <UserCard
           key={contact._id}
-          className="bg-cyan-500/10 p-4 rounded-lg cursor-pointer hover:bg-cyan-500/20 transition-colors"
+          user={contact}
+          isOnline={onlineUsers.includes(contact._id)}
+          isActive={selectedUser?._id === contact._id}
           onClick={() => setSelectedUser(contact)}
-        >
-          <div className="flex items-center gap-3">
-            <div className={` avatar ${onlineUsers.includes(contact._id) ? "online" : "offline"}`}>
-              <div className="size-12 rounded-full">
-                <img src={contact.profilePic || "/avatar.png"} />
-              </div>
-            </div>
-            <h4 className="text-slate-200 font-medium">{contact.fullName}</h4>
-          </div>
-        </div>
+        />
       ))}
-    </>
+    </div>
   );
 }
+
 export default ContactList;

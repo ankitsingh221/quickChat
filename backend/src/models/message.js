@@ -1,5 +1,21 @@
 import mongoose from "mongoose";
 
+const reactionSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    emoji: {
+      type: String,
+      required: true,
+    },
+  },
+  { _id: false }
+);
+
+// Main Message schema
 const messageSchema = new mongoose.Schema(
   {
     senderId: {
@@ -17,15 +33,37 @@ const messageSchema = new mongoose.Schema(
       trim: true,
       maxlength: 2000,
     },
-    image: {
-      type: String,
+    image: String,
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    isEdited: {
+      type: Boolean,
+      default: false,
+    },
+    deletedFor: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    seen: {
+      type: Boolean,
+      default: false,
+    },
+    reactions: [reactionSchema],
+    replyTo: {
+      _id: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
+      text: String,
+      image: String,
+      senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     },
   },
   { timestamps: true }
 );
 
 messageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
+messageSchema.index({ deletedFor: 1 });
 
-const Message = mongoose.model("Message", messageSchema);
-
-export default Message;
+export default mongoose.model("Message", messageSchema);
