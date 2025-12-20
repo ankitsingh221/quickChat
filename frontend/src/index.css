@@ -34,20 +34,3 @@
   hover:text-cyan-500 text-sm transition-colors;
 }
 
-/* Add to your index.css */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #3f4452; /* Matches your screenshot thumb color */
-  border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #4b5264;
-}
