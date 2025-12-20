@@ -11,7 +11,7 @@ import { authLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 
-// Public routes with stricter auth limiter
+
 router.post("/signup", authLimiter, signup);
 router.post("/login", authLimiter, login);
 

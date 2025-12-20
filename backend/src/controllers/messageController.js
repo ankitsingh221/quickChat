@@ -170,7 +170,7 @@ export const getChatPartners = async (req, res) => {
   }
 };
 
-// Edit message
+
 export const editMessage = async (req, res) => {
   try {
     const { id } = req.params;
@@ -198,7 +198,6 @@ export const editMessage = async (req, res) => {
   }
 };
 
-// Delete for me
 export const deleteForMe = async (req, res) => {
   try {
     const { messageId } = req.params;
@@ -224,7 +223,7 @@ export const deleteForMe = async (req, res) => {
   }
 };
 
-// Delete for everyone
+
 export const deleteForEveryone = async (req, res) => {
   try {
     const { id } = req.params;
@@ -347,14 +346,12 @@ export const markMessagesAsRead = async (req, res) => {
     const { id: userToChatId } = req.params;
     const myId = req.user._id;
 
-    // 1. Update DB
     await Message.updateMany(
       { senderId: userToChatId, receiverId: myId, seen: false },
       { $set: { seen: true } }
     );
 
-    // 2. Notify the SENDER that their messages were read
-    // We use emitToUser to ensure all their open tabs get the update
+   
     emitToUser(userToChatId, "messagesRead", {
       readBy: myId.toString(),
     });
