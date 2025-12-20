@@ -7,7 +7,7 @@ import { socketAuthMiddleware } from "../middleware/socketAuthMiddleware.js";
 const app = express();
 const server = http.createServer(app);
 
-// Socket.IO setup with CORS
+
 const io = new Server(server, {
   cors: {
     origin: [ENV.CLIENT_URL],
@@ -15,8 +15,8 @@ const io = new Server(server, {
   },
 });
 
-// Map to track multiple sockets per user (for multiple devices/tabs)
-const userSocketMap = new Map(); // userId => Set of socketIds
+
+const userSocketMap = new Map(); 
 
 // Middleware for authentication
 io.use(socketAuthMiddleware);
@@ -51,16 +51,14 @@ io.on("connection", (socket) => {
     io.emit("getOnlineUsers", Array.from(userSocketMap.keys()));
   });
 
-  // You can add more socket.on handlers here for:
-  // sendMessage, editMessage, deleteMessage, addReaction, removeReaction
+
 });
 
-// Get all socket IDs for a user
+
 export const getReceiverSocketIds = (userId) => {
   return userSocketMap.get(userId.toString()) || new Set();
 };
 
-// Emit to all sockets of a user
 export const emitToUser = (userId, event, payload) => {
   const socketIds = userSocketMap.get(userId.toString());
   if (socketIds) {
