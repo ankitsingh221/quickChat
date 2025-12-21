@@ -26,6 +26,7 @@ function SignupPage() {
                 {/* HEADING TEXT */}
                 <div className="text-center mb-8">
                   <MessageCircleIcon className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                   <h2 className="text-3xl  font-bold text-blue-400" > Welcome To QuickChat</h2>
                   <h2 className="text-2xl font-bold text-slate-200 mb-2">Create Account</h2>
                   <p className="text-slate-400">Sign up for a new account</p>
                 </div>
