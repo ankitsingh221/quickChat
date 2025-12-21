@@ -14,6 +14,24 @@ export const useChatStore = create((set, get) => ({
   isSoundEnabled: JSON.parse(localStorage.getItem("isSoundEnabled")) === true,
   searchQuery: "",
   setSearchQuery: (query) => set({ searchQuery: query }),
+  searchTerm: "",
+  searchIndex:0,
+  isSearchIconOpen: false,
+
+  setSearchTerm: (term) =>set({searchTerm: term, searchIndex:0}),
+  setIsSearchIconOpen: (isOpen) =>set({isSearchIconOpen:isOpen}),
+
+  getFilteredMessages: () => {
+    return get().messages; 
+  },
+  clearSearch: () => set({ searchTerm: "", searchIndex: 0,isSearchIconOpen:false }),
+
+  nextSearchResult: (matchCount) => {
+    set((state) => ({ searchIndex: (state.searchIndex + 1) % matchCount }));
+  },
+  prevSearchResult: (matchCount) => {
+    set((state) => ({ searchIndex: (state.searchIndex - 1 + matchCount) % matchCount }));
+  },
 
   toggleSound: () => {
     const newVal = !get().isSoundEnabled;
@@ -226,6 +244,7 @@ export const useChatStore = create((set, get) => ({
       console.error("Error marking messages as read:", error);
     }
   },
+
   deleteForMe: async (messageId) => {
     const { messages, chats } = get();
     try {

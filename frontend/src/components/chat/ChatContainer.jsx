@@ -10,6 +10,7 @@ import ImageLightbox from "./ImageLightbox";
 import useKeyboardSound from "../../hooks/useKeyboardSound";
 import useReadReceipts from "../../hooks/useReadReceipts";
 import useMessageActions from "../../hooks/useMessageActions";
+import MessageSearch from "./MessageSearch";
 
 const ChatContainer = () => {
   const { authUser } = useAuthStore();
@@ -28,17 +29,20 @@ const ChatContainer = () => {
     toggleReaction,
     isSoundEnabled,
     markMessagesAsRead,
+    getFilteredMessages, // Added from your store
+    searchTerm, 
+    clearSearch         // Added from your store
   } = useChatStore();
+
+  // IMPORTANT: Use the filtered results for rendering
+  const filteredMessages = getFilteredMessages();
 
   const prevMessagesLengthRef = useRef(messages.length);
   const messageEndRef = useRef(null);
-
   const [selectedImg, setSelectedImg] = useState(null);
 
-  // Custom hook for read receipts
   useReadReceipts(selectedUser, messages, markMessagesAsRead, getMessagesByUserId, subscribeToMessages, unsubscribeFromMessages);
 
-  // Custom hook for message actions (edit, delete, reply, reactions)
   const messageActions = useMessageActions({
     editMessage,
     deleteForMe,
@@ -48,9 +52,12 @@ const ChatContainer = () => {
     playRandomKeyStrokeSound,
   });
 
-  // Auto-scroll and sound effects
   useEffect(() => {
-    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Only auto-scroll if we aren't currently searching (optional UX preference)
+    if (!searchTerm) {
+        messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    
     if (messages.length > prevMessagesLengthRef.current) {
       const latestMessage = messages[messages.length - 1];
       const isIncomingMessage = latestMessage.senderId.toString() !== authUser._id.toString();
@@ -64,20 +71,35 @@ const ChatContainer = () => {
       }
     }
     prevMessagesLengthRef.current = messages.length;
-  }, [messages, authUser._id, isSoundEnabled, playMessageReceivedSound, playRandomKeyStrokeSound]);
+
+  }, [messages, authUser._id, isSoundEnabled, playMessageReceivedSound, playRandomKeyStrokeSound, searchTerm]);
+ 
+useEffect(() => {
+  
+  clearSearch();
+
+  return () => clearSearch();
+}, [selectedUser?._id, clearSearch]);
 
   return (
     <>
-      <ChatHeader />
+      <ChatHeader>
+        {/* Make sure your ChatHeader component renders {children} */}
+        <MessageSearch />
+      </ChatHeader>
 
       <div
         className="flex-1 p-4 md:p-6 overflow-y-auto bg-slate-900 relative custom-scrollbar"
         onClick={messageActions.closeAllMenus}
       >
-        {!isMessagesLoading && messages.length ? (
+        {/* 1. Check if messages are loading */}
+        {isMessagesLoading ? (
+          <MessagesLoadingSkeleton />
+        ) : filteredMessages.length > 0 ? (
+          /* 2. If we have filtered results, show them */
           <div className="max-w-3xl mx-auto space-y-6">
             <MessageList
-              messages={messages}
+              messages={filteredMessages} // Changed from 'messages' to 'filteredMessages'
               authUser={authUser}
               selectedUser={selectedUser}
               messageActions={messageActions}
@@ -85,9 +107,13 @@ const ChatContainer = () => {
             />
             <div ref={messageEndRef} />
           </div>
-        ) : isMessagesLoading ? (
-          <MessagesLoadingSkeleton />
+        ) : searchTerm ? (
+          /* 3. If searching and no results found */
+          <div className="flex flex-col items-center justify-center h-full opacity-50">
+            <p className="text-slate-400">No messages found matching "{searchTerm}"</p>
+          </div>
         ) : (
+          /* 4. If no chat history at all */
           <NoChatHistoryPlaceholder name={selectedUser?.fullName} />
         )}
       </div>

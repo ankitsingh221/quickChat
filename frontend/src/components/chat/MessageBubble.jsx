@@ -1,4 +1,5 @@
 import React from "react";
+import { useChatStore } from "../../store/useChatStore"; // Adjust path as needed
 
 const MessageBubble = ({
   msg,
@@ -12,48 +13,97 @@ const MessageBubble = ({
   setEditingId,
   setSelectedImg,
 }) => {
+  // Pull searchTerm from the store to use for highlighting
+  const { searchTerm } = useChatStore();
+
+  /**
+   * Helper function to highlight text matching the searchTerm
+   */
+  const highlightText = (text, highlight) => {
+    if (!highlight || !highlight.trim()) return text;
+
+    // Split text by the search term (case-insensitive) while keeping the delimiter
+    const parts = text.split(new RegExp(`(${highlight})`, "gi"));
+
+    return (
+      <span>
+        {parts.map((part, i) =>
+          part.toLowerCase() === highlight.toLowerCase() ? (
+            <mark
+              key={i}
+              className="bg-yellow-400 text-black px-0.5 rounded-sm font-medium"
+            >
+              {part}
+            </mark>
+          ) : (
+            part
+          )
+        )}
+      </span>
+    );
+  };
+
   return (
     <div
-      className={`chat-bubble w-fit max-w-full px-4 py-2 shadow-md transition-all ${
-        isMe ? "bg-cyan-600 text-white" : "bg-slate-800 text-slate-200"
+    id={`msg-${msg._id}`}
+      className={`relative w-fit max-w-full px-4 py-2 shadow-lg transition-all duration-300 ${
+        isMe
+          ? "bg-cyan-600 text-white rounded-2xl rounded-br-none shadow-cyan-900/20"
+          : "bg-slate-800 text-slate-100 rounded-2xl rounded-bl-none shadow-black/40"
       }`}
       style={{ minWidth: "fit-content" }}
     >
+      {/* TAIL LOGIC */}
+      <div
+        className={`absolute bottom-0 w-3 h-3 ${isMe ? "-right-1 bg-cyan-600" : "-left-1 bg-slate-800"}`}
+        style={{
+          clipPath: isMe
+            ? "polygon(0 0, 0% 100%, 100% 100%)"
+            : "polygon(100% 0, 0% 100%, 100% 100%)",
+        }}
+      ></div>
+
       {msg.isDeleted ? (
-        <p className="italic opacity-60 text-sm">This message was deleted</p>
+        <p className="italic opacity-60 text-sm flex items-center gap-2">
+          <span className="text-xs">🚫</span> This message was deleted
+        </p>
       ) : (
         <>
           {/* Reply Reference */}
           {msg.replyTo && (
             <div
-              className={`mb-2 px-2.5 py-1.5 rounded-lg border-l-4 text-xs backdrop-blur cursor-pointer min-w-[100px] ${
-                isMe ? "border-white/70 bg-black/20" : "border-cyan-500 bg-slate-700/50"
+              className={`mb-2 px-3 py-2 rounded-lg border-l-4 text-[13px] backdrop-blur-md cursor-pointer min-w-[120px] transition-colors ${
+                isMe
+                  ? "border-white/50 bg-black/20 hover:bg-black/30"
+                  : "border-cyan-500 bg-slate-900/50 hover:bg-slate-900/80"
               }`}
             >
-              <p className={`font-semibold ${isMe ? "text-white" : "text-cyan-400"}`}>
+              <p className={`font-bold text-[11px] uppercase tracking-wide ${isMe ? "text-cyan-100" : "text-cyan-400"}`}>
                 {msg.replyTo.senderId?.toString() === authUser._id?.toString()
                   ? "You"
                   : selectedUser?.fullName}
               </p>
-              <p className="truncate opacity-80 mt-0.5">{msg.replyTo.text}</p>
+              {/* Highlight text inside the reply preview as well */}
+              <p className="truncate opacity-90 mt-0.5 italic">
+                {msg.replyTo.image ? "📷 Photo" : highlightText(msg.replyTo.text, searchTerm)}
+              </p>
             </div>
           )}
 
-          {/* Editing or Content */}
+          {/* Editing State */}
           {editingId === msg._id ? (
-            <div className="flex flex-col gap-2 min-w-[200px]">
-              <input
-                className="w-full p-1 rounded text-black text-sm outline-none"
+            <div className="flex flex-col gap-2 min-w-[220px]">
+              <textarea
+                className="w-full p-2 rounded-lg bg-white/10 text-white text-sm outline-none border border-white/20"
                 value={editText}
                 onChange={handleEditTextChange}
                 autoFocus
+                rows={2}
               />
               <div className="flex justify-end gap-2">
-                <button className="text-xs opacity-80" onClick={() => setEditingId(null)}>
-                  Cancel
-                </button>
+                <button className="text-xs font-medium" onClick={() => setEditingId(null)}>Cancel</button>
                 <button
-                  className="px-2 py-0.5 bg-green-500 rounded text-white text-xs"
+                  className="px-3 py-1 bg-white text-cyan-700 font-bold rounded-md text-xs"
                   onClick={() => submitEdit(msg._id)}
                 >
                   Save
@@ -62,27 +112,32 @@ const MessageBubble = ({
             </div>
           ) : (
             <div className="flex flex-col">
-              {/* Image */}
+              {/* Image Content */}
               {msg.image && (
-                <div className="mb-2 relative overflow-hidden rounded-lg">
+                <div className="mb-2 mt-1 relative overflow-hidden rounded-xl">
                   <img
                     src={msg.image}
                     alt="Sent"
                     onClick={() => setSelectedImg(msg.image)}
-                    className="max-w-[240px] md:max-w-[300px] max-h-[300px] w-auto h-auto object-cover cursor-zoom-in hover:scale-105 transition-transform duration-300"
+                    className="max-w-[260px] md:max-w-[320px] max-h-[350px] object-cover cursor-zoom-in"
                   />
                 </div>
               )}
 
+              {/* Text Content with Highlighting */}
               {msg.text && (
                 <p className="whitespace-pre-wrap break-words leading-relaxed text-[15px]">
-                  {msg.text}
+                  {highlightText(msg.text, searchTerm)}
                 </p>
               )}
             </div>
           )}
-          {msg.isEdited && (
-            <span className="text-[10px] opacity-60 block text-right mt-1">edited</span>
+
+          {/* Edited Tag */}
+          {msg.isEdited && !msg.isDeleted && (
+            <span className="text-[9px] font-bold uppercase opacity-50 block text-right mt-1">
+              Edited
+            </span>
           )}
         </>
       )}
