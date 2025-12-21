@@ -125,17 +125,14 @@ export const getChatPartners = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
 
-    
     const messages = await Message.find({
       $or: [{ senderId: loggedInUserId }, { receiverId: loggedInUserId }],
       deletedFor: { $ne: loggedInUserId },
     })
-      .sort({ createdAt: -1 }) 
+      .sort({ createdAt: -1 })
       .lean();
 
-   
     const chatMap = new Map();
-
     messages.forEach((msg) => {
       const partnerId =
         msg.senderId.toString() === loggedInUserId.toString()
@@ -148,17 +145,27 @@ export const getChatPartners = async (req, res) => {
     });
 
     const partnerIds = Array.from(chatMap.keys());
-
- 
     const users = await User.find({ _id: { $in: partnerIds } }, "-password");
 
-   
-    const usersWithLastMessage = users.map((user) => ({
-      ...user.toObject(),
-      lastMessage: chatMap.get(user._id.toString()),
-    }));
+    
+    const usersWithLastMessage = await Promise.all(
+      users.map(async (user) => {
+       
+        const unreadCount = await Message.countDocuments({
+          senderId: user._id,
+          receiverId: loggedInUserId,
+          seen: false,
+        });
 
- 
+        return {
+          ...user.toObject(),
+          lastMessage: chatMap.get(user._id.toString()),
+          unreadCount, 
+        };
+      })
+    );
+
+    //  Sort by last message date
     usersWithLastMessage.sort(
       (a, b) => b.lastMessage.createdAt - a.lastMessage.createdAt
     );
@@ -346,13 +353,26 @@ export const markMessagesAsRead = async (req, res) => {
     const { id: userToChatId } = req.params;
     const myId = req.user._id;
 
+    const messagesToMark = await Message.find({
+      senderId: userToChatId,
+      receiverId: myId,
+      seen: false
+    }).select('_id');
+
+    if (messagesToMark.length === 0) {
+      return res.status(200).json({ message: "No unread messages" });
+    }
+
+    const messageIds = messagesToMark.map(m => m._id.toString());
+
+   
     await Message.updateMany(
       { senderId: userToChatId, receiverId: myId, seen: false },
       { $set: { seen: true } }
     );
 
-   
     emitToUser(userToChatId, "messagesRead", {
+      messageIds: messageIds,
       readBy: myId.toString(),
     });
 

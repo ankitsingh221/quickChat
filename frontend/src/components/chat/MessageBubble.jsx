@@ -13,16 +13,13 @@ const MessageBubble = ({
   setEditingId,
   setSelectedImg,
 }) => {
-  // Pull searchTerm from the store to use for highlighting
+ 
   const { searchTerm } = useChatStore();
 
-  /**
-   * Helper function to highlight text matching the searchTerm
-   */
+ 
   const highlightText = (text, highlight) => {
     if (!highlight || !highlight.trim()) return text;
 
-    // Split text by the search term (case-insensitive) while keeping the delimiter
     const parts = text.split(new RegExp(`(${highlight})`, "gi"));
 
     return (
@@ -139,6 +136,7 @@ const MessageBubble = ({
               Edited
             </span>
           )}
+          
         </>
       )}
     </div>

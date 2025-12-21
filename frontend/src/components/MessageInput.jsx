@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { XIcon, ImageIcon, SendIcon } from "lucide-react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
@@ -8,17 +8,31 @@ const MessageInput = ({ replyTo, setReplyTo }) => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   const { sendMessage, isSoundEnabled, selectedUser } = useChatStore();
-  const { authUser } = useAuthStore();
+  const { authUser, socket } = useAuthStore(); 
   const { playRandomKeyStrokeSound, playMessageSentSound } = useKeyboardSound();
+
+  // Stop typing indicator if component unmounts or user changes
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (socket && selectedUser) {
+        socket.emit("stopTyping", { receiverId: selectedUser._id });
+      }
+    };
+  }, [selectedUser?._id, socket,selectedUser]);
 
   const handleSendMessage = (e) => {
     e.preventDefault();
 
     if (!text.trim() && !imagePreview) return;
 
-    
+    // Stop typing indicator immediately on send
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    socket.emit("stopTyping", { receiverId: selectedUser._id });
+
     if (isSoundEnabled && playMessageSentSound) {
       playMessageSentSound();
     } else if (isSoundEnabled) {
@@ -64,13 +78,24 @@ const MessageInput = ({ replyTo, setReplyTo }) => {
   const handleTyping = (e) => {
     setText(e.target.value);
     if (isSoundEnabled) playRandomKeyStrokeSound();
+
+   
+    if (!socket || !selectedUser) return;
+
+    // 1. Emit typing event
+    socket.emit("typing", { receiverId: selectedUser._id });
+
+    // 2. Clear existing stop-typing timeout
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    // 3. Set a new timeout to stop the indicator after 2 seconds of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      socket.emit("stopTyping", { receiverId: selectedUser._id });
+    }, 2000);
   };
 
   return (
-    <form
-      onSubmit={handleSendMessage}
-      className="p-4 border-t border-slate-700/50"
-    >
+    <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-700/50">
       {/* Reply Preview */}
       {replyTo && (
         <div className="max-w-3xl mx-auto mb-2 p-2 rounded bg-slate-800 border-l-4 border-cyan-500 flex justify-between items-start">
@@ -81,16 +106,9 @@ const MessageInput = ({ replyTo, setReplyTo }) => {
                 ? "yourself"
                 : selectedUser?.fullName || "User"}
             </p>
-
-            {replyTo.text && (
-              <p className="truncate text-slate-300">{replyTo.text}</p>
-            )}
-
-            {replyTo.image && !replyTo.text && (
-              <p className="italic text-slate-400">📷 Photo</p>
-            )}
+            {replyTo.text && <p className="truncate text-slate-300">{replyTo.text}</p>}
+            {replyTo.image && !replyTo.text && <p className="italic text-slate-400">📷 Photo</p>}
           </div>
-
           <button type="button" onClick={() => setReplyTo(null)}>
             <XIcon className="w-4 h-4 text-slate-400 hover:text-white" />
           </button>
@@ -101,11 +119,7 @@ const MessageInput = ({ replyTo, setReplyTo }) => {
       {imagePreview && (
         <div className="max-w-3xl mx-auto mb-3">
           <div className="relative inline-block">
-            <img
-              src={imagePreview}
-              alt="Preview"
-              className="w-20 h-20 object-cover rounded-lg border border-slate-700"
-            />
+            <img src={imagePreview} alt="Preview" className="w-20 h-20 object-cover rounded-lg border border-slate-700" />
             <button
               type="button"
               onClick={removeImage}
@@ -132,18 +146,12 @@ const MessageInput = ({ replyTo, setReplyTo }) => {
           className="flex-1 resize-none bg-slate-800/50 border border-slate-700/50 rounded-lg py-2 px-4 focus:outline-none"
         />
 
-        <input
-          type="file"
-          accept="image/*"
-          ref={fileInputRef}
-          onChange={handleImageChange}
-          className="hidden"
-        />
+        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
 
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className={`bg-slate-800/50 rounded-lg px-4 text-slate-400 hover:text-slate-200 transition-colors ${
+          className={`bg-slate-800/50 rounded-lg px-4 py-2 text-slate-400 hover:text-slate-200 transition-colors ${
             imagePreview ? "text-cyan-500" : ""
           }`}
         >

@@ -13,6 +13,7 @@ function ChatList() {
     setSelectedUser,
     selectedUser,
     searchQuery,
+    typingUsers,
   } = useChatStore();
 
   const { onlineUsers } = useAuthStore();
@@ -23,12 +24,10 @@ function ChatList() {
 
   if (isUserLoading) return <UsersLoadingSkeleton />;
 
- 
   const filteredChats = chats
     .filter((chat) =>
       chat.fullName.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    
     .sort((a, b) => {
       const aTime = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
       const bTime = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
@@ -45,6 +44,7 @@ function ChatList() {
           user={chat}
           isOnline={onlineUsers.includes(chat._id)}
           isActive={selectedUser?._id === chat._id}
+          isTyping={!!typingUsers[chat._id]} 
           onClick={() => setSelectedUser(chat)}
         />
       ))}

@@ -4,35 +4,37 @@ const useReadReceipts = (
   selectedUser,
   messages,
   markMessagesAsRead,
-  getMessagesByUserId,
-  subscribeToMessages,
-  unsubscribeFromMessages
+  getMessagesByUserId
 ) => {
   const isMarkingAsRead = useRef(false);
 
-  // EFFECT 1: Fetch messages and subscribe
+  
   useEffect(() => {
     if (selectedUser?._id) {
       getMessagesByUserId(selectedUser._id);
-      subscribeToMessages();
       isMarkingAsRead.current = false;
     }
-    return () => unsubscribeFromMessages();
-  }, [selectedUser?._id, getMessagesByUserId, subscribeToMessages, unsubscribeFromMessages]);
+  }, [selectedUser?._id, getMessagesByUserId]);
 
-  // EFFECT 2: The "Smart" Read Receipt Logic
+  
   useEffect(() => {
     if (!selectedUser?._id || messages.length === 0) return;
 
     const handleMarkAsRead = () => {
-      const lastMsg = messages[messages.length - 1];
+      
       const isWindowFocused = document.hasFocus();
+      const isPageVisible = !document.hidden;
+
+      
+      const unreadMessages = messages.filter(
+        (msg) => msg.senderId === selectedUser._id && !msg.seen
+      );
 
       if (
-        lastMsg.senderId === selectedUser._id &&
-        !lastMsg.seen &&
+        unreadMessages.length > 0 &&
         !isMarkingAsRead.current &&
-        isWindowFocused
+        isWindowFocused &&
+        isPageVisible
       ) {
         isMarkingAsRead.current = true;
 
@@ -45,9 +47,15 @@ const useReadReceipts = (
     };
 
     handleMarkAsRead();
-    window.addEventListener("focus", handleMarkAsRead);
 
-    return () => window.removeEventListener("focus", handleMarkAsRead);
+   
+    window.addEventListener("focus", handleMarkAsRead);
+    document.addEventListener("visibilitychange", handleMarkAsRead);
+
+    return () => {
+      window.removeEventListener("focus", handleMarkAsRead);
+      document.removeEventListener("visibilitychange", handleMarkAsRead);
+    };
   }, [messages, selectedUser?._id, markMessagesAsRead]);
 };
 

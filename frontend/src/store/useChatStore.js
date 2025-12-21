@@ -15,22 +15,33 @@ export const useChatStore = create((set, get) => ({
   searchQuery: "",
   setSearchQuery: (query) => set({ searchQuery: query }),
   searchTerm: "",
-  searchIndex:0,
+  searchIndex: 0,
   isSearchIconOpen: false,
+  typingUsers: {},
+  unreadCounts: {},
 
-  setSearchTerm: (term) =>set({searchTerm: term, searchIndex:0}),
-  setIsSearchIconOpen: (isOpen) =>set({isSearchIconOpen:isOpen}),
+  setTypingStatus: (userId, isTyping) => {
+    set((state) => ({
+      typingUsers: { ...state.typingUsers, [userId]: isTyping },
+    }));
+  },
+
+  setSearchTerm: (term) => set({ searchTerm: term, searchIndex: 0 }),
+  setIsSearchIconOpen: (isOpen) => set({ isSearchIconOpen: isOpen }),
 
   getFilteredMessages: () => {
-    return get().messages; 
+    return get().messages;
   },
-  clearSearch: () => set({ searchTerm: "", searchIndex: 0,isSearchIconOpen:false }),
+  clearSearch: () =>
+    set({ searchTerm: "", searchIndex: 0, isSearchIconOpen: false }),
 
   nextSearchResult: (matchCount) => {
     set((state) => ({ searchIndex: (state.searchIndex + 1) % matchCount }));
   },
   prevSearchResult: (matchCount) => {
-    set((state) => ({ searchIndex: (state.searchIndex - 1 + matchCount) % matchCount }));
+    set((state) => ({
+      searchIndex: (state.searchIndex - 1 + matchCount) % matchCount,
+    }));
   },
 
   toggleSound: () => {
@@ -86,8 +97,16 @@ export const useChatStore = create((set, get) => ({
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/conversations");
+
       let chats = Array.isArray(res.data?.users) ? res.data.users : [];
 
+      // ✅ Build initial unread counts from backend response
+      const initialUnreadCounts = {};
+      chats.forEach((chat) => {
+        initialUnreadCounts[chat._id] = chat.unreadCount || 0;
+      });
+
+      // ✅ Sort by last message time (most recent first)
       chats.sort((a, b) => {
         const aTime = a.lastMessage?.createdAt
           ? new Date(a.lastMessage.createdAt).getTime()
@@ -98,10 +117,13 @@ export const useChatStore = create((set, get) => ({
         return bTime - aTime;
       });
 
-      set({ chats });
+      set({
+        chats,
+        unreadCounts: initialUnreadCounts,
+      });
     } catch (error) {
       console.error(error);
-      set({ chats: [] });
+      set({ chats: [], unreadCounts: {} });
       toast.error(error.response?.data?.message || "Failed to load chats");
     } finally {
       set({ isUsersLoading: false });
@@ -230,13 +252,18 @@ export const useChatStore = create((set, get) => ({
 
     const messages = get().messages;
     const hasUnread = messages.some((m) => m.senderId === userId && !m.seen);
-    if (!hasUnread) return;
+    const hasSidebarUnread = (get().unreadCounts[userId] || 0) > 0;
+    if (!hasUnread && !hasSidebarUnread) return;
 
     try {
       set((state) => ({
         messages: state.messages.map((m) =>
           m.senderId === userId ? { ...m, seen: true } : m
         ),
+        unreadCounts: {
+          ...state.unreadCounts,
+          [userId]: 0,
+        },
       }));
 
       await axiosInstance.put(`/messages/read/${userId}`);
@@ -255,7 +282,7 @@ export const useChatStore = create((set, get) => ({
 
       const updatedChats = chats.map((chat) => {
         if (chat.lastMessage?._id === messageId) {
-          // Find the new lastMessage for this chat
+          
           const chatMessages = updatedMessages.filter(
             (m) => m.senderId === chat._id || m.receiverId === chat._id
           );
@@ -364,18 +391,38 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  updateUnreadCount: (userId, count) => {
+    set((state) => ({
+      unreadCounts: {
+        ...state.unreadCounts,
+        [userId]: count,
+      },
+      chats: state.chats.map((chat) =>
+        chat._id === userId ? { ...chat, unreadCount: count } : chat
+      ),
+    }));
+  },
+
   subscribeToMessages: () => {
     const { socket } = useAuthStore.getState();
     if (!socket) return;
-
+    socket.off("newMessage");
+    socket.off("messagesRead");
+    socket.off("message:edited");
+    socket.off("message:deleted");
+    socket.off("message:deletedForMe");
+    socket.off("message:reactionUpdated");
+    socket.off("chat:cleared");
+    socket.off("userTyping");
+    socket.off("userStopTyping");
     socket.on("newMessage", (msg) => {
-      const { selectedUser, messages } = get();
-      const isCurrentChat =
-        selectedUser?._id === msg.senderId ||
-        selectedUser?._id === msg.receiverId;
+      const { selectedUser, messages, authUser } = get();
+      const isMessageFromSelectedUser = selectedUser?._id === msg.senderId;
+      const isMessageForCurrentChat =
+        isMessageFromSelectedUser || selectedUser?._id === msg.receiverId;
 
-      if (!messages.some((m) => m._id === msg._id)) {
-        if (isCurrentChat) {
+      if (isMessageForCurrentChat) {
+        if (!messages.some((m) => m._id === msg._id)) {
           set({
             messages: [
               ...messages,
@@ -387,21 +434,42 @@ export const useChatStore = create((set, get) => ({
             ],
           });
         }
+
+        if (isMessageFromSelectedUser) {
+          const isPageVisible = !document.hidden;
+
+          if (isPageVisible) {
+            get().markMessagesAsRead(selectedUser._id);
+            get().updateUnreadCount(msg.senderId, 0);
+          } else {
+            const currentCount = get().unreadCounts[msg.senderId] || 0;
+            get().updateUnreadCount(msg.senderId, currentCount + 1);
+          }
+        }
+      } else {
+        if (msg.senderId !== authUser?._id) {
+          const currentCount = get().unreadCounts[msg.senderId] || 0;
+          get().updateUnreadCount(msg.senderId, currentCount + 1);
+        }
       }
 
       get().updateChatWithNewMessage(msg);
     });
 
-    socket.on("messagesRead", ({ readBy }) => {
+    socket.on("messagesRead", ({ messageIds, readBy }) => {
       const { selectedUser } = get();
 
-      if (selectedUser?._id === readBy) {
-        set((state) => ({
-          messages: state.messages.map((m) =>
-            m.seen === false ? { ...m, seen: true } : m
-          ),
-        }));
-      }
+      if (!selectedUser) return;
+
+     
+      if (selectedUser._id.toString() !== readBy.toString()) return;
+
+    
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          messageIds.includes(m._id.toString()) ? { ...m, seen: true } : m
+        ),
+      }));
     });
     socket.on("message:edited", (msg) => {
       set((state) => ({
@@ -447,6 +515,14 @@ export const useChatStore = create((set, get) => ({
         ),
       }));
     });
+
+    socket.on("userTyping", ({ userId }) => {
+      get().setTypingStatus(userId, true);
+    });
+
+    socket.on("userStopTyping", ({ userId }) => {
+      get().setTypingStatus(userId, false);
+    });
   },
 
   unsubscribeFromMessages: () => {
@@ -460,5 +536,7 @@ export const useChatStore = create((set, get) => ({
     socket.off("message:deletedForMe");
     socket.off("message:reactionUpdated");
     socket.off("chat:cleared");
+    socket.off("userTyping");
+    socket.off("userStopTyping");
   },
 }));

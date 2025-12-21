@@ -21,27 +21,25 @@ const ChatContainer = () => {
     messages,
     isMessagesLoading,
     getMessagesByUserId,
-    subscribeToMessages,
-    unsubscribeFromMessages,
     editMessage,
     deleteForMe,
     deleteForEveryone,
     toggleReaction,
     isSoundEnabled,
     markMessagesAsRead,
-    getFilteredMessages, // Added from your store
+    getFilteredMessages,
     searchTerm, 
-    clearSearch         // Added from your store
+    clearSearch,
+    updateUnreadCount 
   } = useChatStore();
 
-  // IMPORTANT: Use the filtered results for rendering
   const filteredMessages = getFilteredMessages();
 
   const prevMessagesLengthRef = useRef(messages.length);
   const messageEndRef = useRef(null);
   const [selectedImg, setSelectedImg] = useState(null);
 
-  useReadReceipts(selectedUser, messages, markMessagesAsRead, getMessagesByUserId, subscribeToMessages, unsubscribeFromMessages);
+  useReadReceipts(selectedUser, messages, markMessagesAsRead, getMessagesByUserId);
 
   const messageActions = useMessageActions({
     editMessage,
@@ -52,10 +50,51 @@ const ChatContainer = () => {
     playRandomKeyStrokeSound,
   });
 
+  
   useEffect(() => {
-    // Only auto-scroll if we aren't currently searching (optional UX preference)
+    if (!selectedUser) return;
+
+    const handleVisibilityChange = () => {
+      // When user returns to the tab page becomes visible
+      if (!document.hidden) {
+        const hasUnreadMessages = messages.some(
+          msg => msg.senderId.toString() === selectedUser._id.toString() && !msg.seen
+        );
+
+        if (hasUnreadMessages) {
+          markMessagesAsRead(selectedUser._id);
+          
+         
+          
+          if (updateUnreadCount) {
+            updateUnreadCount(selectedUser._id, 0);
+          } else {
+            useChatStore.setState((state) => ({
+              unreadCounts: {
+                ...state.unreadCounts,
+                [selectedUser._id]: 0,
+              },
+              chats: state.chats.map(chat => 
+                chat._id === selectedUser._id 
+                  ? { ...chat, unreadCount: 0 }
+                  : chat
+              )
+            }));
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [selectedUser, messages, markMessagesAsRead, updateUnreadCount]);
+
+  useEffect(() => {
     if (!searchTerm) {
-        messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
     
     if (messages.length > prevMessagesLengthRef.current) {
@@ -71,20 +110,16 @@ const ChatContainer = () => {
       }
     }
     prevMessagesLengthRef.current = messages.length;
-
   }, [messages, authUser._id, isSoundEnabled, playMessageReceivedSound, playRandomKeyStrokeSound, searchTerm]);
  
-useEffect(() => {
-  
-  clearSearch();
-
-  return () => clearSearch();
-}, [selectedUser?._id, clearSearch]);
+  useEffect(() => {
+    clearSearch();
+    return () => clearSearch();
+  }, [selectedUser?._id, clearSearch]);
 
   return (
     <>
       <ChatHeader>
-        {/* Make sure your ChatHeader component renders {children} */}
         <MessageSearch />
       </ChatHeader>
 
@@ -92,14 +127,12 @@ useEffect(() => {
         className="flex-1 p-4 md:p-6 overflow-y-auto bg-slate-900 relative custom-scrollbar"
         onClick={messageActions.closeAllMenus}
       >
-        {/* 1. Check if messages are loading */}
         {isMessagesLoading ? (
           <MessagesLoadingSkeleton />
         ) : filteredMessages.length > 0 ? (
-          /* 2. If we have filtered results, show them */
           <div className="max-w-3xl mx-auto space-y-6">
             <MessageList
-              messages={filteredMessages} // Changed from 'messages' to 'filteredMessages'
+              messages={filteredMessages}
               authUser={authUser}
               selectedUser={selectedUser}
               messageActions={messageActions}
@@ -108,12 +141,10 @@ useEffect(() => {
             <div ref={messageEndRef} />
           </div>
         ) : searchTerm ? (
-          /* 3. If searching and no results found */
           <div className="flex flex-col items-center justify-center h-full opacity-50">
             <p className="text-slate-400">No messages found matching "{searchTerm}"</p>
           </div>
         ) : (
-          /* 4. If no chat history at all */
           <NoChatHistoryPlaceholder name={selectedUser?.fullName} />
         )}
       </div>
