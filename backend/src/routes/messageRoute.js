@@ -9,7 +9,8 @@ import {
   deleteForEveryone,
   clearChat,
   toggleReaction,
-  markMessagesAsRead
+  markMessagesAsRead,
+  deleteBulkMessages
 } from "../controllers/messageController.js";
 import protectRoute from "../middleware/authMiddleware.js";
 
@@ -33,6 +34,7 @@ router.patch("/edit/:id", editMessage);
 
 router.delete("/delete/forMe/:messageId", deleteForMe);
 router.delete("/delete/forEveryone/:id", deleteForEveryone);
+router.post("/delete-bulk", deleteBulkMessages)
 
 router.delete("/clear/:id", protectRoute, clearChat);
 

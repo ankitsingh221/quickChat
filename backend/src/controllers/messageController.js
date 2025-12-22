@@ -6,7 +6,6 @@ import mongoose from "mongoose";
 
 const FIVE_MIN = 5 * 60 * 1000;
 
-
 export const getAllContacts = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
@@ -21,14 +20,15 @@ export const getAllContacts = async (req, res) => {
   }
 };
 
-
 export const getMessagesByUserId = async (req, res) => {
   try {
     const myId = req.user._id;
     const { id: userToChatId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(userToChatId)) {
-      return res.status(400).json({ success: false, message: "Invalid user ID" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid user ID" });
     }
 
     const messages = await Message.find({
@@ -39,7 +39,7 @@ export const getMessagesByUserId = async (req, res) => {
       deletedFor: { $ne: myId },
     })
       .sort({ createdAt: 1 })
-      .populate("reactions.userId", "fullName profilePic") 
+      .populate("reactions.userId", "fullName profilePic")
       .lean();
 
     res.status(200).json({ success: true, messages });
@@ -49,12 +49,11 @@ export const getMessagesByUserId = async (req, res) => {
   }
 };
 
-
 export const sendMessageToUser = async (req, res) => {
   try {
     const senderId = req.user._id;
     const { id: receiverId } = req.params;
-    const { text, image, replyTo } = req.body; 
+    const { text, image, replyTo } = req.body;
     if (!text && !image)
       return res
         .status(400)
@@ -83,14 +82,12 @@ export const sendMessageToUser = async (req, res) => {
       imageUrl = uploadResult.secure_url;
     }
 
-    
     const messageData = {
       senderId,
       receiverId,
       text,
       image: imageUrl,
     };
-
 
     if (replyTo) {
       messageData.replyTo = {
@@ -103,7 +100,6 @@ export const sendMessageToUser = async (req, res) => {
 
     const newMessage = await Message.create(messageData);
 
-   
     const receiverSockets = getReceiverSocketIds(receiverId);
     receiverSockets.forEach((socketId) =>
       io.to(socketId).emit("newMessage", newMessage)
@@ -146,10 +142,8 @@ export const getChatPartners = async (req, res) => {
     const partnerIds = Array.from(chatMap.keys());
     const users = await User.find({ _id: { $in: partnerIds } }, "-password");
 
-    
     const usersWithLastMessage = await Promise.all(
       users.map(async (user) => {
-       
         const unreadCount = await Message.countDocuments({
           senderId: user._id,
           receiverId: loggedInUserId,
@@ -159,7 +153,7 @@ export const getChatPartners = async (req, res) => {
         return {
           ...user.toObject(),
           lastMessage: chatMap.get(user._id.toString()),
-          unreadCount, 
+          unreadCount,
         };
       })
     );
@@ -175,7 +169,6 @@ export const getChatPartners = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 
 export const editMessage = async (req, res) => {
   try {
@@ -216,7 +209,6 @@ export const deleteForMe = async (req, res) => {
       { new: true }
     );
 
-    
     const sockets = getReceiverSocketIds(req.user._id);
     sockets.forEach((socketId) =>
       io.to(socketId).emit("message:deletedForMe", { messageId })
@@ -228,7 +220,6 @@ export const deleteForMe = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 
 export const deleteForEveryone = async (req, res) => {
   try {
@@ -260,38 +251,37 @@ export const deleteForEveryone = async (req, res) => {
 
 export const clearChat = async (req, res) => {
   try {
-    const userId = req.user._id; 
+    const userId = req.user._id;
     const { id: otherUserId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(otherUserId)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid user ID" 
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
       });
     }
 
-    
     await Message.updateMany(
       {
         $or: [
           { senderId: userId, receiverId: otherUserId },
-          { senderId: otherUserId, receiverId: userId }
-        ]
+          { senderId: otherUserId, receiverId: userId },
+        ],
       },
       {
-        $addToSet: { deletedFor: userId }
+        $addToSet: { deletedFor: userId },
       }
     );
 
-    res.status(200).json({ 
-      success: true, 
-      message: "Chat cleared successfully" 
+    res.status(200).json({
+      success: true,
+      message: "Chat cleared successfully",
     });
   } catch (error) {
     console.error("Clear chat error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Server error" 
+    res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };
@@ -303,11 +293,16 @@ export const toggleReaction = async (req, res) => {
     const userId = req.user._id;
 
     if (!mongoose.Types.ObjectId.isValid(messageId)) {
-      return res.status(400).json({ success: false, message: "Invalid message ID" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid message ID" });
     }
 
     const message = await Message.findById(messageId);
-    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
+    if (!message)
+      return res
+        .status(404)
+        .json({ success: false, message: "Message not found" });
 
     // 1. Find if user already reacted
     const existingReactionIndex = message.reactions.findIndex(
@@ -329,7 +324,6 @@ export const toggleReaction = async (req, res) => {
       message.reactions.push({ userId, emoji });
     }
 
-   
     await message.save();
 
     // 3. Re-fetch and Populate to send full user objects (fullName, profilePic) to frontend
@@ -350,7 +344,9 @@ export const toggleReaction = async (req, res) => {
       });
     });
 
-    res.status(200).json({ success: true, reactions: populatedMessage.reactions });
+    res
+      .status(200)
+      .json({ success: true, reactions: populatedMessage.reactions });
   } catch (error) {
     console.error("toggleReaction error:", error);
     res.status(500).json({ success: false, message: "Server error" });
@@ -365,16 +361,15 @@ export const markMessagesAsRead = async (req, res) => {
     const messagesToMark = await Message.find({
       senderId: userToChatId,
       receiverId: myId,
-      seen: false
-    }).select('_id');
+      seen: false,
+    }).select("_id");
 
     if (messagesToMark.length === 0) {
       return res.status(200).json({ message: "No unread messages" });
     }
 
-    const messageIds = messagesToMark.map(m => m._id.toString());
+    const messageIds = messagesToMark.map((m) => m._id.toString());
 
-   
     await Message.updateMany(
       { senderId: userToChatId, receiverId: myId, seen: false },
       { $set: { seen: true } }
@@ -389,5 +384,24 @@ export const markMessagesAsRead = async (req, res) => {
   } catch (error) {
     console.log("Error in markMessagesAsRead controller: ", error.message);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const deleteBulkMessages = async (req, res) => {
+  try {
+    const { messageIds } = req.body;
+    const userId = req.user._id;
+
+    await Message.updateMany(
+      {
+        _id: { $in: messageIds },
+      },
+      {
+        $addToSet: { deletedFor: userId },
+      }
+    );
+    res.status(200).json({success:true});
+  } catch (error) {
+    res.status(500).json({message:"server error"});
   }
 };

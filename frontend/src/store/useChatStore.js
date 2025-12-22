@@ -19,6 +19,8 @@ export const useChatStore = create((set, get) => ({
   isSearchIconOpen: false,
   typingUsers: {},
   unreadCounts: {},
+  selectedMessages:[],
+  isSelectionMode:false,
 
   setTypingStatus: (userId, isTyping) => {
     set((state) => ({
@@ -49,6 +51,37 @@ export const useChatStore = create((set, get) => ({
     localStorage.setItem("isSoundEnabled", newVal);
     set({ isSoundEnabled: newVal });
   },
+
+  toggleSelectionMode: (value) => set({
+    isSelectionMode: value,
+    selectedMessages:[] // clearing slected message  when exiting
+  }),
+   
+  toggleMessageSelection:(messageId) =>{
+    const {selectedMessages} = get();
+    if(selectedMessages.includes(messageId)){
+      set({selectedMessages : selectedMessages.filter(id => id != messageId)});
+    }
+    else{
+      set({selectedMessages: [...selectedMessages,messageId]})
+    }
+  },
+  deleteSelectedMessages: async() =>{
+    const {selectedMessages, messages} =  get();
+    try {
+      await axiosInstance.post("/messages/delete-bulk",{messageIds : selectedMessages});
+      // updating local state
+      set({
+        messages: messages.filter(msg => !selectedMessages.includes(msg._id)),
+        selectedMessages: [],
+        isSelectionMode: false
+      })
+      toast.success("messages deleted")
+    } catch (error) {
+       toast.error("failed to delete messages",error);
+    }
+  },
+
 
   setActiveTab: (tab) => set({ activeTab: tab, searchQuery: "" }),
 
