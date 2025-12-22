@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 const FIVE_MIN = 5 * 60 * 1000;
 
@@ -10,32 +10,20 @@ const useMessageActions = ({
   isSoundEnabled,
   playRandomKeyStrokeSound,
 }) => {
-  const actionMenuRefs = useRef({});
-  const reactionsMenuRefs = useRef({});
-
   const [activeMsgId, setActiveMsgId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
   const [replyTo, setReplyTo] = useState(null);
   const [showReactionsMenu, setShowReactionsMenu] = useState(null);
   const [now, setNow] = useState(Date.now());
-  const [menuPosition, setMenuPosition] = useState({});
-  const [reactionMenuWidth, setReactionMenuWidth] = useState(200);
 
-  // Update time every 30 seconds
+  // Update time for edit window logic
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Calculate reaction menu width
-  useEffect(() => {
-    const itemsPerRow = 4;
-    const calculatedWidth = Math.min(320, (48 + 8) * itemsPerRow + 16);
-    setReactionMenuWidth(calculatedWidth);
-  }, []);
 
-  // Close menus on click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -45,6 +33,7 @@ const useMessageActions = ({
       ) {
         setActiveMsgId(null);
       }
+
       if (
         showReactionsMenu &&
         !e.target.closest(".reactions-menu") &&
@@ -54,116 +43,35 @@ const useMessageActions = ({
       }
     };
 
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
   }, [activeMsgId, showReactionsMenu]);
 
-  const canModify = (createdAt) => now - new Date(createdAt).getTime() < FIVE_MIN;
+  const canModify = (createdAt) =>
+    now - new Date(createdAt).getTime() < FIVE_MIN;
 
-  const handleThreeDotClick = (msgId, e, isMe) => {
+  //Actions
+
+  const handleThreeDotClick = (msgId, e) => {
     e.preventDefault();
     e.stopPropagation();
-
-    // Get button position relative to VIEWPORT (WhatsApp style)
-    const buttonRect = e.currentTarget.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    const menuWidth = 192;
-    const menuHeight = 220;
-    
-    let left, right, top;
-
-    // Horizontal positioning - keep menu close to button
-    if (isMe) {
-      // For right-side messages, place menu to the left
-      right = viewportWidth - buttonRect.left + 8;
-      left = "auto";
-    } else {
-      // For left-side messages, place menu to the right
-      left = buttonRect.right + 8;
-      right = "auto";
-    }
-
-    // Vertical positioning - align with button
-    top = buttonRect.top;
-    
-    // Keep menu on screen vertically
-    if (top + menuHeight > viewportHeight - 16) {
-      top = Math.max(16, viewportHeight - menuHeight - 16);
-    }
-    
-    if (top < 16) {
-      top = 16;
-    }
-
-    setMenuPosition((prev) => ({
-      ...prev,
-      [msgId]: {
-        left: left === "auto" ? "auto" : `${left}px`,
-        right: right === "auto" ? "auto" : `${right}px`,
-        top: `${top}px`,
-      },
-    }));
-
-    setActiveMsgId(activeMsgId === msgId ? null : msgId);
+    setActiveMsgId((prev) => (prev === msgId ? null : msgId));
     setShowReactionsMenu(null);
   };
 
-  const handleReactionButtonClick = (msgId, e, isMe) => {
+  const handleReactionButtonClick = (msgId, e) => {
     e.preventDefault();
     e.stopPropagation();
-
-    const actionMenuRect = actionMenuRefs.current[msgId]?.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    let left, right, top;
-
-    if (actionMenuRect) {
-      // Place reaction menu below action menu
-      top = actionMenuRect.bottom + 8;
-
-      // Align horizontally with action menu
-      if (isMe) {
-        right = viewportWidth - actionMenuRect.right;
-        left = "auto";
-      } else {
-        left = actionMenuRect.left;
-        right = "auto";
-      }
-
-      // If menu goes off bottom, place it above
-      if (top + 120 > viewportHeight - 16) {
-        top = actionMenuRect.top - 120 - 8;
-      }
-    }
-
-    // Keep menu on screen horizontally
-    const menuWidth = reactionMenuWidth;
-    if (left !== "auto" && left + menuWidth > viewportWidth - 16) {
-      left = viewportWidth - menuWidth - 16;
-    }
-
-    setMenuPosition((prev) => ({
-      ...prev,
-      [msgId]: {
-        ...prev[msgId],
-        reactionsLeft: typeof left === "number" ? `${left}px` : left,
-        reactionsRight: typeof right === "number" ? `${right}px` : right,
-        reactionsTop: `${top}px`,
-      },
-    }));
-
-    setShowReactionsMenu(showReactionsMenu === msgId ? null : msgId);
+    setShowReactionsMenu((prev) => (prev === msgId ? null : msgId));
+    setActiveMsgId(null);
   };
 
   const startEdit = (msg) => {
     if (isSoundEnabled) playRandomKeyStrokeSound();
     setEditingId(msg._id);
     setEditText(msg.text || "");
-    setActiveMsgId(null);
-    setShowReactionsMenu(null);
+    closeAllMenus();
   };
 
   const handleEditTextChange = (e) => {
@@ -181,15 +89,14 @@ const useMessageActions = ({
   const handleDelete = (id, type) => {
     if (isSoundEnabled) playRandomKeyStrokeSound();
     if (type === "me") deleteForMe(id);
-    else if (type === "everyone") deleteForEveryone(id);
-    setActiveMsgId(null);
-    setShowReactionsMenu(null);
+    else deleteForEveryone(id);
+    closeAllMenus();
   };
 
   const handleReactionClick = (messageId, emoji) => {
     if (isSoundEnabled) playRandomKeyStrokeSound();
     toggleReaction(messageId, emoji);
-    setShowReactionsMenu(null);
+    closeAllMenus();
   };
 
   const handleExistingReactionClick = (messageId, emoji, e) => {
@@ -201,8 +108,7 @@ const useMessageActions = ({
   const handleReply = (msg) => {
     if (isSoundEnabled) playRandomKeyStrokeSound();
     setReplyTo(msg);
-    setActiveMsgId(null);
-    setShowReactionsMenu(null);
+    closeAllMenus();
   };
 
   const closeAllMenus = () => {
@@ -217,9 +123,7 @@ const useMessageActions = ({
     editText,
     replyTo,
     showReactionsMenu,
-    menuPosition,
-    actionMenuRefs,
-    reactionsMenuRefs,
+
     handleThreeDotClick,
     handleReactionButtonClick,
     startEdit,
@@ -230,6 +134,7 @@ const useMessageActions = ({
     handleExistingReactionClick,
     handleReply,
     closeAllMenus,
+
     setReplyTo,
     setEditingId,
   };

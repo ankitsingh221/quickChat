@@ -1,24 +1,24 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../../store/useChatStore";
 import { useAuthStore } from "../../store/useAuthStore";
+
 import ChatHeader from "../ChatHeader";
 import MessageInput from "../MessageInput";
 import MessagesLoadingSkeleton from "../MessagesLoadingSkeleton";
 import NoChatHistoryPlaceholder from "../NoChatHistoryPlaceholder";
 import MessageList from "./MessageList";
 import ImageLightbox from "./ImageLightbox";
+import MessageSearch from "./MessageSearch";
+
 import useKeyboardSound from "../../hooks/useKeyboardSound";
 import useReadReceipts from "../../hooks/useReadReceipts";
 import useMessageActions from "../../hooks/useMessageActions";
-import MessageSearch from "./MessageSearch";
 
 const ChatContainer = () => {
   const { authUser } = useAuthStore();
-  const { playRandomKeyStrokeSound, playMessageReceivedSound } = useKeyboardSound();
-
   const {
     selectedUser,
-    messages,
+    messages = [],
     isMessagesLoading,
     getMessagesByUserId,
     editMessage,
@@ -28,19 +28,20 @@ const ChatContainer = () => {
     isSoundEnabled,
     markMessagesAsRead,
     getFilteredMessages,
-    searchTerm, 
+    searchTerm,
     clearSearch,
-    updateUnreadCount 
+    updateUnreadCount,
   } = useChatStore();
 
-  const filteredMessages = getFilteredMessages();
-
-  const prevMessagesLengthRef = useRef(messages.length);
-  const messageEndRef = useRef(null);
   const [selectedImg, setSelectedImg] = useState(null);
+  const messageEndRef = useRef(null);
+  const prevMessagesLengthRef = useRef(0);
 
-  useReadReceipts(selectedUser, messages, markMessagesAsRead, getMessagesByUserId);
+  // SOUNDS
+  const { playRandomKeyStrokeSound, playMessageReceivedSound } =
+    useKeyboardSound();
 
+  // MESSAGE ACTIONS (UNCONDITIONAL)
   const messageActions = useMessageActions({
     editMessage,
     deleteForMe,
@@ -50,85 +51,108 @@ const ChatContainer = () => {
     playRandomKeyStrokeSound,
   });
 
-  
+  // READ RECEIPTS
+  useReadReceipts(
+    selectedUser,
+    messages,
+    markMessagesAsRead,
+    getMessagesByUserId
+  );
+
+  //FILTERED MESSAGES
+  const filteredMessages = getFilteredMessages() || [];
+
+  // VISIBILITY / READ HANDLING
   useEffect(() => {
     if (!selectedUser) return;
 
     const handleVisibilityChange = () => {
-      // When user returns to the tab page becomes visible
-      if (!document.hidden) {
-        const hasUnreadMessages = messages.some(
-          msg => msg.senderId.toString() === selectedUser._id.toString() && !msg.seen
-        );
+      if (document.hidden) return;
 
-        if (hasUnreadMessages) {
-          markMessagesAsRead(selectedUser._id);
-          
-          if (updateUnreadCount) {
-            updateUnreadCount(selectedUser._id, 0);
-          } else {
-            useChatStore.setState((state) => ({
-              unreadCounts: {
-                ...state.unreadCounts,
-                [selectedUser._id]: 0,
-              },
-              chats: state.chats.map(chat => 
-                chat._id === selectedUser._id 
-                  ? { ...chat, unreadCount: 0 }
-                  : chat
-              )
-            }));
-          }
-        }
+      const hasUnread = messages.some(
+        (msg) =>
+          msg.senderId?.toString() === selectedUser._id?.toString() && !msg.seen
+      );
+
+      if (!hasUnread) return;
+
+      markMessagesAsRead(selectedUser._id);
+
+      if (updateUnreadCount) {
+        updateUnreadCount(selectedUser._id, 0);
+      } else {
+        useChatStore.setState((state) => ({
+          unreadCounts: {
+            ...state.unreadCounts,
+            [selectedUser._id]: 0,
+          },
+          chats: state.chats.map((chat) =>
+            chat._id === selectedUser._id ? { ...chat, unreadCount: 0 } : chat
+          ),
+        }));
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [selectedUser, messages, markMessagesAsRead, updateUnreadCount]);
 
-  // FIXED: Only scroll to bottom when NEW messages arrive, not on edits/deletes/reactions
+  //AUTO SCROLL + SOUND
   useEffect(() => {
-    // Only scroll if there are MORE messages than before (new message received/sent)
+    if (!Array.isArray(messages)) return;
+
     const hasNewMessages = messages.length > prevMessagesLengthRef.current;
-    
+
     if (hasNewMessages && !searchTerm) {
       messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-    
-    if (hasNewMessages) {
-      const latestMessage = messages[messages.length - 1];
-      const isIncomingMessage = latestMessage.senderId.toString() !== authUser._id.toString();
 
-      if (isIncomingMessage && isSoundEnabled) {
-        if (playMessageReceivedSound) {
-          playMessageReceivedSound();
-        } else {
-          playRandomKeyStrokeSound();
-        }
+    if (hasNewMessages && messages.length > 0) {
+      const latestMessage = messages[messages.length - 1];
+      const isIncoming =
+        latestMessage.senderId?.toString() !== authUser._id?.toString();
+
+      if (isIncoming && isSoundEnabled) {
+        playMessageReceivedSound
+          ? playMessageReceivedSound()
+          : playRandomKeyStrokeSound();
       }
     }
-    
+
     prevMessagesLengthRef.current = messages.length;
-  }, [messages.length, authUser._id, isSoundEnabled, playMessageReceivedSound, playRandomKeyStrokeSound, searchTerm,messages]);
- 
+  }, [
+    messages,
+    authUser._id,
+    isSoundEnabled,
+    playMessageReceivedSound,
+    playRandomKeyStrokeSound,
+    searchTerm,
+  ]);
+
+  //CLEAR SEARCH ON USER CHANGE
   useEffect(() => {
     clearSearch();
     return () => clearSearch();
   }, [selectedUser?._id, clearSearch]);
 
+  // RENDER
   return (
     <>
       <ChatHeader>
         <MessageSearch />
       </ChatHeader>
-
       <div
-        className="flex-1 p-4 md:p-6 overflow-y-auto bg-slate-900 relative custom-scrollbar"
-        onClick={messageActions.closeAllMenus}
+        className="flex-1 p-4 md:p-6 overflow-y-auto ..."
+        onClick={(e) => {
+          if (
+            !e.target.closest(".action-menu") &&
+            !e.target.closest(".reactions-menu") &&
+            !e.target.closest(".three-dot-button")
+          ) {
+            messageActions.closeAllMenus();
+          }
+        }}
       >
         {isMessagesLoading ? (
           <MessagesLoadingSkeleton />
@@ -144,17 +168,25 @@ const ChatContainer = () => {
             <div ref={messageEndRef} />
           </div>
         ) : searchTerm ? (
-          <div className="flex flex-col items-center justify-center h-full opacity-50">
-            <p className="text-slate-400">No messages found matching "{searchTerm}"</p>
+          <div className="flex flex-col items-center justify-center h-full opacity-60">
+            <p className="text-base-content/60">
+              No messages found matching “{searchTerm}”
+            </p>
           </div>
         ) : (
           <NoChatHistoryPlaceholder name={selectedUser?.fullName} />
         )}
       </div>
 
-      <ImageLightbox selectedImg={selectedImg} setSelectedImg={setSelectedImg} />
+      <ImageLightbox
+        selectedImg={selectedImg}
+        setSelectedImg={setSelectedImg}
+      />
 
-      <MessageInput replyTo={messageActions.replyTo} setReplyTo={messageActions.setReplyTo} />
+      <MessageInput
+        replyTo={messageActions.replyTo}
+        setReplyTo={messageActions.setReplyTo}
+      />
     </>
   );
 };

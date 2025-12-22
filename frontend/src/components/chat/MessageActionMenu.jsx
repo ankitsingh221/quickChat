@@ -1,11 +1,28 @@
 import React from "react";
+import { Reply, Pencil,  Smile, Trash2 } from "lucide-react";
+
+const MenuItem = ({ children, onClick, danger, icon: Icon }) => (
+  <button
+    onClick={onClick}
+    className={`
+      flex w-full items-center gap-3 px-4 py-2 text-sm text-left
+      transition-colors duration-150
+      ${
+        danger
+          ? "text-error hover:bg-error/10"
+          : "text-base-content hover:bg-base-content/10"
+      }
+    `}
+  >
+    {Icon && <Icon size={16} className="shrink-0" />}
+    <span className="truncate">{children}</span>
+  </button>
+);
 
 const MessageActionMenu = ({
   msg,
   isMe,
   canEdit,
-  menuPosition,
-  actionMenuRef,
   handleReply,
   startEdit,
   handleDelete,
@@ -13,48 +30,54 @@ const MessageActionMenu = ({
 }) => {
   return (
     <div
-      ref={actionMenuRef}
-      className="action-menu fixed z-[100] w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 overflow-hidden"
-      style={{
-        left: menuPosition.left,
-        right: menuPosition.right,
-        top: menuPosition.top,
-      }}
+      className={`
+        action-menu absolute z-[100] min-w-[190px]
+        rounded-xl border border-base-300 bg-base-300 shadow-2xl
+        /* Positioning: Bottom-full moves it ABOVE the button to avoid cutoff */
+        bottom-full mb-2 ${isMe ? "right-0" : "left-0"}
+        overflow-hidden animate-in fade-in zoom-in duration-100
+      `}
     >
-      <button
-        className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-slate-700 w-full text-left"
-        onClick={() => handleReply(msg)}
-      >
-        ↩ Reply
-      </button>
-      {canEdit && (
-        <button
-          className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-slate-700 w-full text-left"
-          onClick={() => startEdit(msg)}
+      <div className="flex flex-col py-1">
+        <MenuItem icon={Reply} onClick={() => handleReply(msg)}>
+          Reply
+        </MenuItem>
+
+        {canEdit && (
+          <MenuItem icon={Pencil} onClick={() => startEdit(msg)}>
+            Edit
+          </MenuItem>
+        )}
+
+        <div className="border-t border-base-content/5 my-1" />
+
+        <MenuItem 
+          icon={Trash2} 
+          danger 
+          onClick={() => handleDelete(msg._id, "me")}
         >
-          ✏️ Edit
-        </button>
-      )}
-      <button
-        className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-slate-700 w-full text-left text-red-400"
-        onClick={() => handleDelete(msg._id, "me")}
-      >
-        🗑 Delete for me
-      </button>
-      {isMe && (
-        <button
-          className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-slate-700 w-full text-left text-red-400 font-bold"
-          onClick={() => handleDelete(msg._id, "everyone")}
+          Delete for me
+        </MenuItem>
+
+        {isMe && (
+          <MenuItem 
+            icon={Trash2} 
+            danger 
+            onClick={() => handleDelete(msg._id, "everyone")}
+          >
+            Delete for everyone
+          </MenuItem>
+        )}
+
+        <div className="border-t border-base-content/5 my-1" />
+
+        <MenuItem
+          icon={Smile}
+          onClick={(e) => handleReactionButtonClick(msg._id, e)}
         >
-          🗑 Delete for everyone
-        </button>
-      )}
-      <button
-        className="react-button flex items-center gap-2 px-4 py-2 text-sm hover:bg-slate-700 w-full text-left border-t border-slate-700"
-        onClick={(e) => handleReactionButtonClick(msg._id, e, isMe)}
-      >
-        😀 React
-      </button>
+          React
+        </MenuItem>
+      </div>
     </div>
   );
 };

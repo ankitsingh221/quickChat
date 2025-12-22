@@ -28,9 +28,7 @@ export const getMessagesByUserId = async (req, res) => {
     const { id: userToChatId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(userToChatId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid user ID" });
+      return res.status(400).json({ success: false, message: "Invalid user ID" });
     }
 
     const messages = await Message.find({
@@ -38,9 +36,10 @@ export const getMessagesByUserId = async (req, res) => {
         { senderId: myId, receiverId: userToChatId },
         { senderId: userToChatId, receiverId: myId },
       ],
-      deletedFor: { $ne: myId }, 
+      deletedFor: { $ne: myId },
     })
       .sort({ createdAt: 1 })
+      .populate("reactions.userId", "fullName profilePic") 
       .lean();
 
     res.status(200).json({ success: true, messages });
@@ -303,45 +302,55 @@ export const toggleReaction = async (req, res) => {
     const { emoji } = req.body;
     const userId = req.user._id;
 
-    if (!emoji) return res.status(400).json({ success: false, message: "Emoji is required" });
-    if (!mongoose.Types.ObjectId.isValid(messageId))
+    if (!mongoose.Types.ObjectId.isValid(messageId)) {
       return res.status(400).json({ success: false, message: "Invalid message ID" });
+    }
 
     const message = await Message.findById(messageId);
     if (!message) return res.status(404).json({ success: false, message: "Message not found" });
 
-    
-    const existingReaction = message.reactions.find(r => r.userId.equals(userId));
+    // 1. Find if user already reacted
+    const existingReactionIndex = message.reactions.findIndex(
+      (r) => r.userId.toString() === userId.toString()
+    );
 
-    if (existingReaction) {
-      if (existingReaction.emoji === emoji) {
-      
-        message.reactions = message.reactions.filter(r => !r.userId.equals(userId));
-      } else {
-       
-        existingReaction.emoji = emoji;
+    if (existingReactionIndex > -1) {
+      const existingEmoji = message.reactions[existingReactionIndex].emoji;
+
+      //  remove the existing one (Toggle behavior)
+      message.reactions.splice(existingReactionIndex, 1);
+
+      // If the new emoji is different, add it. If it's the same, we leave it removed.
+      if (existingEmoji !== emoji) {
+        message.reactions.push({ userId, emoji });
       }
     } else {
-      
+      // 2. If no existing reaction, add new one
       message.reactions.push({ userId, emoji });
     }
 
+   
     await message.save();
 
-   
+    // 3. Re-fetch and Populate to send full user objects (fullName, profilePic) to frontend
+    const populatedMessage = await Message.findById(messageId)
+      .populate("reactions.userId", "fullName profilePic")
+      .lean();
+
+    // 4. Emit via Socket.io
     const sockets = new Set([
       ...(getReceiverSocketIds(message.senderId) || []),
       ...(getReceiverSocketIds(message.receiverId) || []),
     ]);
 
-    sockets.forEach(socketId => {
+    sockets.forEach((socketId) => {
       io.to(socketId).emit("message:reactionUpdated", {
         messageId: message._id.toString(),
-        reactions: message.reactions,
+        reactions: populatedMessage.reactions,
       });
     });
 
-    res.status(200).json({ success: true, reactions: message.reactions });
+    res.status(200).json({ success: true, reactions: populatedMessage.reactions });
   } catch (error) {
     console.error("toggleReaction error:", error);
     res.status(500).json({ success: false, message: "Server error" });

@@ -282,7 +282,6 @@ export const useChatStore = create((set, get) => ({
 
       const updatedChats = chats.map((chat) => {
         if (chat.lastMessage?._id === messageId) {
-          
           const chatMessages = updatedMessages.filter(
             (m) => m.senderId === chat._id || m.receiverId === chat._id
           );
@@ -346,26 +345,44 @@ export const useChatStore = create((set, get) => ({
 
       const updatedMessages = messages.map((msg) => {
         if (msg._id === messageId) {
-          const existingReaction = msg.reactions?.find(
+          const userExistingReaction = msg.reactions?.find(
             (r) =>
-              r.userId.toString() === authUser._id.toString() &&
-              r.emoji === emoji
+              (r.userId?._id || r.userId).toString() === authUser._id.toString()
           );
 
           let newReactions;
-          if (existingReaction) {
-            newReactions = msg.reactions.filter(
-              (r) =>
-                !(
-                  r.userId.toString() === authUser._id.toString() &&
-                  r.emoji === emoji
-                )
-            );
+
+          const newReactionEntry = {
+            userId: {
+              _id: authUser._id,
+              fullName: authUser.fullName,
+              profilePic: authUser.profilePic,
+            },
+            emoji,
+            displayName: authUser.fullName,
+            profilePic: authUser.profilePic,
+          };
+
+          if (userExistingReaction) {
+            if (userExistingReaction.emoji === emoji) {
+              // Remove reaction
+              newReactions = msg.reactions.filter(
+                (r) =>
+                  (r.userId?._id || r.userId).toString() !==
+                  authUser._id.toString()
+              );
+            } else {
+              // Switch emoji
+              const filtered = msg.reactions.filter(
+                (r) =>
+                  (r.userId?._id || r.userId).toString() !==
+                  authUser._id.toString()
+              );
+              newReactions = [...filtered, newReactionEntry];
+            }
           } else {
-            newReactions = [
-              ...(msg.reactions || []),
-              { userId: authUser._id, emoji },
-            ];
+            // Add new reaction
+            newReactions = [...(msg.reactions || []), newReactionEntry];
           }
 
           return { ...msg, reactions: newReactions };
@@ -376,10 +393,9 @@ export const useChatStore = create((set, get) => ({
       set({ messages: updatedMessages });
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.message || "Failed to toggle reaction");
+      toast.error("Failed to update reaction");
     }
   },
-
   clearChat: async (userId) => {
     try {
       await axiosInstance.delete(`/messages/clear/${userId}`);
@@ -461,10 +477,8 @@ export const useChatStore = create((set, get) => ({
 
       if (!selectedUser) return;
 
-     
       if (selectedUser._id.toString() !== readBy.toString()) return;
 
-    
       set((state) => ({
         messages: state.messages.map((m) =>
           messageIds.includes(m._id.toString()) ? { ...m, seen: true } : m

@@ -1,20 +1,25 @@
-import React from "react";
+import React, { useState } from "react";
 import MessageBubble from "./MessageBubble";
 import MessageReactions from "./MessageReactions";
 import MessageTimestamp from "./MessageTimestamp";
 import MessageActionMenu from "./MessageActionMenu";
 import ReactionPickerMenu from "./ReactionPickerMenu";
+import { MoreVertical } from "lucide-react";
 
-const MessageItem = ({ msg, isMe, authUser, selectedUser, messageActions, setSelectedImg }) => {
+const MessageItem = ({
+  msg,
+  isMe,
+  authUser,
+  selectedUser,
+  messageActions,
+  setSelectedImg,
+}) => {
   const {
     canModify,
     activeMsgId,
     editingId,
     editText,
     showReactionsMenu,
-    menuPosition,
-    actionMenuRefs,
-    reactionsMenuRefs,
     handleThreeDotClick,
     handleReactionButtonClick,
     startEdit,
@@ -29,6 +34,7 @@ const MessageItem = ({ msg, isMe, authUser, selectedUser, messageActions, setSel
 
   const canEdit = isMe && canModify(msg.createdAt);
   const msgReactions = msg.reactions || [];
+  const [showFullPicker, setShowFullPicker] = useState(false);
 
   return (
     <div
@@ -37,13 +43,17 @@ const MessageItem = ({ msg, isMe, authUser, selectedUser, messageActions, setSel
       } mb-4 px-2 md:px-4`}
     >
       <div
-        className={`relative flex items-start gap-2 max-w-[85%] md:max-w-[75%] group ${
+        className={`flex items-start gap-2 max-w-[85%] md:max-w-[75%] group ${
           isMe ? "flex-row-reverse" : "flex-row"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Inner Container for Bubble and Reactions */}
-        <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+        {/* Bubble + reactions + Timestamp container */}
+        <div
+          className={`flex flex-col ${
+            isMe ? "items-end" : "items-start"
+          }`}
+        >
           <MessageBubble
             msg={msg}
             isMe={isMe}
@@ -57,7 +67,6 @@ const MessageItem = ({ msg, isMe, authUser, selectedUser, messageActions, setSel
             setSelectedImg={setSelectedImg}
           />
 
-          {/* Reactions - Placed immediately below bubble */}
           {msgReactions.length > 0 && (
             <div className={`-mt-3 z-10 ${isMe ? "mr-2" : "ml-2"}`}>
               <MessageReactions
@@ -69,55 +78,51 @@ const MessageItem = ({ msg, isMe, authUser, selectedUser, messageActions, setSel
               />
             </div>
           )}
-          
-          {/* Timestamp - Integrated below bubble/reactions */}
+
           <MessageTimestamp msg={msg} isMe={isMe} />
         </div>
 
-        {/* Three Dot Menu Button - with required class for click-outside detection */}
+        {/* Action buttons (Three dots and Menus) */}
         {!msg.isDeleted && (
-          <button
-            className={`three-dot-button p-1.5 rounded-full hover:bg-slate-700/40 transition-all duration-200 mt-1
-              opacity-0 group-hover:opacity-100 flex-shrink-0 text-slate-500`}
-            onClick={(e) => handleThreeDotClick(msg._id, e, isMe)}
-          >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-            </svg>
-          </button>
-        )}
+          <div className="relative self-center z-[60]">
+            {/* Lucide Three-dot Icon Button */}
+            <button
+              className={`p-2 rounded-full transition-all duration-200 
+                ${activeMsgId === msg._id ? "bg-base-300 opacity-100" : "opacity-0 group-hover:opacity-100 hover:bg-base-200"}
+                text-base-content/70 hover:text-base-content`}
+              onClick={(e) => handleThreeDotClick(msg._id, e)}
+            >
+              <MoreVertical size={18} />
+            </button>
 
-        {/* Action Menu */}
-        {activeMsgId === msg._id && menuPosition[msg._id] && (
-          <MessageActionMenu
-            msg={msg}
-            isMe={isMe}
-            canEdit={canEdit}
-            menuPosition={menuPosition[msg._id]}
-            actionMenuRef={(el) => {
-              if (actionMenuRefs && actionMenuRefs.current) {
-                actionMenuRefs.current[msg._id] = el;
-              }
-            }}
-            handleReply={handleReply}
-            startEdit={startEdit}
-            handleDelete={handleDelete}
-            handleReactionButtonClick={handleReactionButtonClick}
-          />
-        )}
+            {/* Action menu - positioned to avoid breaking UI */}
+            {activeMsgId === msg._id && (
+              <div className="absolute bottom-full right-0 mb-2">
+                 <MessageActionMenu
+                    msg={msg}
+                    isMe={isMe}
+                    canEdit={canEdit}
+                    handleReply={handleReply}
+                    startEdit={startEdit}
+                    handleDelete={handleDelete}
+                    handleReactionButtonClick={handleReactionButtonClick}
+                  />
+              </div>
+            )}
 
-        {/* Reaction Picker Menu */}
-        {showReactionsMenu === msg._id && menuPosition[msg._id] && (
-          <ReactionPickerMenu
-            msgId={msg._id}
-            menuPosition={menuPosition[msg._id]}
-            reactionsMenuRef={(el) => {
-              if (reactionsMenuRefs && reactionsMenuRefs.current) {
-                reactionsMenuRefs.current[msg._id] = el;
-              }
-            }}
-            handleReactionClick={handleReactionClick}
-          />
+            {/* Reaction picker - also positioned upwards */}
+            {showReactionsMenu === msg._id && (
+              <div className="reactions-menu absolute bottom-full right-0 mb-2 z-[70]">
+                <ReactionPickerMenu
+                  msgId={msg._id}
+                  isMe={isMe}
+                  handleReactionClick={handleReactionClick}
+                  showFullPicker={showFullPicker}
+                  setShowFullPicker={setShowFullPicker}
+                />
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
