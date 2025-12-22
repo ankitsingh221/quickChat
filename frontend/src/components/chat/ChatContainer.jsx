@@ -64,8 +64,6 @@ const ChatContainer = () => {
         if (hasUnreadMessages) {
           markMessagesAsRead(selectedUser._id);
           
-         
-          
           if (updateUnreadCount) {
             updateUnreadCount(selectedUser._id, 0);
           } else {
@@ -92,12 +90,16 @@ const ChatContainer = () => {
     };
   }, [selectedUser, messages, markMessagesAsRead, updateUnreadCount]);
 
+  // FIXED: Only scroll to bottom when NEW messages arrive, not on edits/deletes/reactions
   useEffect(() => {
-    if (!searchTerm) {
+    // Only scroll if there are MORE messages than before (new message received/sent)
+    const hasNewMessages = messages.length > prevMessagesLengthRef.current;
+    
+    if (hasNewMessages && !searchTerm) {
       messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
     
-    if (messages.length > prevMessagesLengthRef.current) {
+    if (hasNewMessages) {
       const latestMessage = messages[messages.length - 1];
       const isIncomingMessage = latestMessage.senderId.toString() !== authUser._id.toString();
 
@@ -109,8 +111,9 @@ const ChatContainer = () => {
         }
       }
     }
+    
     prevMessagesLengthRef.current = messages.length;
-  }, [messages, authUser._id, isSoundEnabled, playMessageReceivedSound, playRandomKeyStrokeSound, searchTerm]);
+  }, [messages.length, authUser._id, isSoundEnabled, playMessageReceivedSound, playRandomKeyStrokeSound, searchTerm,messages]);
  
   useEffect(() => {
     clearSearch();

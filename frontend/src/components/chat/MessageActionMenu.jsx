@@ -14,7 +14,7 @@ const MessageActionMenu = ({
   return (
     <div
       ref={actionMenuRef}
-      className="fixed z-[100] w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 overflow-hidden"
+      className="action-menu fixed z-[100] w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 overflow-hidden"
       style={{
         left: menuPosition.left,
         right: menuPosition.right,
@@ -50,7 +50,7 @@ const MessageActionMenu = ({
         </button>
       )}
       <button
-        className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-slate-700 w-full text-left border-t border-slate-700"
+        className="react-button flex items-center gap-2 px-4 py-2 text-sm hover:bg-slate-700 w-full text-left border-t border-slate-700"
         onClick={(e) => handleReactionButtonClick(msg._id, e, isMe)}
       >
         😀 React

@@ -110,16 +110,24 @@ const MessageBubble = ({
           ) : (
             <div className="flex flex-col">
               {/* Image Content */}
-              {msg.image && (
-                <div className="mb-2 mt-1 relative overflow-hidden rounded-xl">
-                  <img
-                    src={msg.image}
-                    alt="Sent"
-                    onClick={() => setSelectedImg(msg.image)}
-                    className="max-w-[260px] md:max-w-[320px] max-h-[350px] object-cover cursor-zoom-in"
-                  />
-                </div>
-              )}
+             {msg.image && (
+  <div className="mt-1 mb-2 rounded-xl overflow-hidden">
+    <img
+      src={msg.image}
+      onClick={() => setSelectedImg(msg.image)}
+      className="
+        w-[180px] md:w-[220px]
+        aspect-[4/5]
+        object-cover
+        cursor-zoom-in
+        hover:opacity-90
+        transition
+      "
+      alt="sent"
+    />
+  </div>
+)}
+
 
               {/* Text Content with Highlighting */}
               {msg.text && (

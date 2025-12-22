@@ -74,10 +74,10 @@ const MessageItem = ({ msg, isMe, authUser, selectedUser, messageActions, setSel
           <MessageTimestamp msg={msg} isMe={isMe} />
         </div>
 
-        {/* Three Dot Menu Button - Now perfectly horizontal to the bubble top */}
+        {/* Three Dot Menu Button - with required class for click-outside detection */}
         {!msg.isDeleted && (
           <button
-            className={`p-1.5 rounded-full hover:bg-slate-700/40 transition-all duration-200 mt-1
+            className={`three-dot-button p-1.5 rounded-full hover:bg-slate-700/40 transition-all duration-200 mt-1
               opacity-0 group-hover:opacity-100 flex-shrink-0 text-slate-500`}
             onClick={(e) => handleThreeDotClick(msg._id, e, isMe)}
           >
@@ -87,42 +87,38 @@ const MessageItem = ({ msg, isMe, authUser, selectedUser, messageActions, setSel
           </button>
         )}
 
-        {/* Action Menus remain absolutely positioned relative to the window/selectedUser */}
-       {/* Action Menus */}
-{/* Action Menu */}
-{activeMsgId === msg._id && menuPosition[msg._id] && (
-  <MessageActionMenu
-    msg={msg}
-    isMe={isMe}
-    canEdit={canEdit}
-    menuPosition={menuPosition[msg._id]}
-    // Fixed: Ref callback with safety check
-    actionMenuRef={(el) => {
-      if (actionMenuRefs && actionMenuRefs.current) {
-        actionMenuRefs.current[msg._id] = el;
-      }
-    }}
-    handleReply={handleReply}
-    startEdit={startEdit}
-    handleDelete={handleDelete}
-    handleReactionButtonClick={handleReactionButtonClick}
-  />
-)}
+        {/* Action Menu */}
+        {activeMsgId === msg._id && menuPosition[msg._id] && (
+          <MessageActionMenu
+            msg={msg}
+            isMe={isMe}
+            canEdit={canEdit}
+            menuPosition={menuPosition[msg._id]}
+            actionMenuRef={(el) => {
+              if (actionMenuRefs && actionMenuRefs.current) {
+                actionMenuRefs.current[msg._id] = el;
+              }
+            }}
+            handleReply={handleReply}
+            startEdit={startEdit}
+            handleDelete={handleDelete}
+            handleReactionButtonClick={handleReactionButtonClick}
+          />
+        )}
 
-{/* Reaction Picker Menu */}
-{showReactionsMenu === msg._id && menuPosition[msg._id] && (
-  <ReactionPickerMenu
-    msgId={msg._id}
-    menuPosition={menuPosition[msg._id]}
-    // Fixed: Ref callback with safety check
-    reactionsMenuRef={(el) => {
-      if (reactionsMenuRefs && reactionsMenuRefs.current) {
-        reactionsMenuRefs.current[msg._id] = el;
-      }
-    }}
-    handleReactionClick={handleReactionClick}
-  />
-)}
+        {/* Reaction Picker Menu */}
+        {showReactionsMenu === msg._id && menuPosition[msg._id] && (
+          <ReactionPickerMenu
+            msgId={msg._id}
+            menuPosition={menuPosition[msg._id]}
+            reactionsMenuRef={(el) => {
+              if (reactionsMenuRefs && reactionsMenuRefs.current) {
+                reactionsMenuRefs.current[msg._id] = el;
+              }
+            }}
+            handleReactionClick={handleReactionClick}
+          />
+        )}
       </div>
     </div>
   );

@@ -61,48 +61,48 @@ const useMessageActions = ({
   const canModify = (createdAt) => now - new Date(createdAt).getTime() < FIVE_MIN;
 
   const handleThreeDotClick = (msgId, e, isMe) => {
+    e.preventDefault();
     e.stopPropagation();
 
+    // Get button position relative to VIEWPORT (WhatsApp style)
     const buttonRect = e.currentTarget.getBoundingClientRect();
-    const chatContainer = e.currentTarget.closest(".flex-1");
-    const containerRect = chatContainer.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    const menuWidth = 192;
+    const menuHeight = 220;
+    
+    let left, right, top;
 
-    const buttonLeft = buttonRect.left - containerRect.left;
-    const buttonRight = containerRect.right - buttonRect.right;
-    const buttonTop = buttonRect.top - containerRect.top;
-
-    let left, right;
-
+    // Horizontal positioning - keep menu close to button
     if (isMe) {
-      if (buttonLeft > 250) {
-        right = buttonRight + 24;
-        left = "auto";
-      } else {
-        left = buttonLeft + 24;
-        right = "auto";
-      }
+      // For right-side messages, place menu to the left
+      right = viewportWidth - buttonRect.left + 8;
+      left = "auto";
     } else {
-      if (buttonRight > 250) {
-        left = buttonLeft + 24;
-        right = "auto";
-      } else {
-        right = buttonRight + 24;
-        left = "auto";
-      }
+      // For left-side messages, place menu to the right
+      left = buttonRect.right + 8;
+      right = "auto";
     }
 
-    if (left && left + 176 > viewportWidth - 16) {
-      left = Math.max(16, viewportWidth - buttonRect.right - 24);
-      right = "auto";
+    // Vertical positioning - align with button
+    top = buttonRect.top;
+    
+    // Keep menu on screen vertically
+    if (top + menuHeight > viewportHeight - 16) {
+      top = Math.max(16, viewportHeight - menuHeight - 16);
+    }
+    
+    if (top < 16) {
+      top = 16;
     }
 
     setMenuPosition((prev) => ({
       ...prev,
       [msgId]: {
-        left: left ? `${left}px` : "auto",
-        right: right ? `${right}px` : "auto",
-        top: `${buttonTop + buttonRect.height}px`,
+        left: left === "auto" ? "auto" : `${left}px`,
+        right: right === "auto" ? "auto" : `${right}px`,
+        top: `${top}px`,
       },
     }));
 
@@ -111,66 +111,46 @@ const useMessageActions = ({
   };
 
   const handleReactionButtonClick = (msgId, e, isMe) => {
+    e.preventDefault();
     e.stopPropagation();
 
     const actionMenuRect = actionMenuRefs.current[msgId]?.getBoundingClientRect();
-    const chatContainer = e.currentTarget.closest(".flex-1");
-    const containerRect = chatContainer?.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
     let left, right, top;
 
     if (actionMenuRect) {
-      top = actionMenuRect.bottom - containerRect.top;
+      // Place reaction menu below action menu
+      top = actionMenuRect.bottom + 8;
 
+      // Align horizontally with action menu
       if (isMe) {
-        if (actionMenuRect.left < viewportWidth / 2) {
-          left = actionMenuRect.left - containerRect.left;
-          right = "auto";
-        } else {
-          right = viewportWidth - actionMenuRect.right;
-          left = "auto";
-        }
+        right = viewportWidth - actionMenuRect.right;
+        left = "auto";
       } else {
-        if (actionMenuRect.right > viewportWidth / 2) {
-          right = viewportWidth - actionMenuRect.right;
-          left = "auto";
-        } else {
-          left = actionMenuRect.left - containerRect.left;
-          right = "auto";
-        }
+        left = actionMenuRect.left;
+        right = "auto";
       }
-    } else {
-      const buttonRect = e.currentTarget.closest(".three-dot-button")?.getBoundingClientRect();
-      if (buttonRect) {
-        top = buttonRect.bottom - containerRect.top;
-        if (isMe) {
-          right = viewportWidth - buttonRect.right;
-          left = "auto";
-        } else {
-          left = buttonRect.left - containerRect.left;
-          right = "auto";
-        }
+
+      // If menu goes off bottom, place it above
+      if (top + 120 > viewportHeight - 16) {
+        top = actionMenuRect.top - 120 - 8;
       }
     }
 
-    if (top + 120 > viewportHeight - containerRect.top) {
-      top = (actionMenuRect?.top || 0) - containerRect.top - 120;
-    }
-
+    // Keep menu on screen horizontally
     const menuWidth = reactionMenuWidth;
-    if (left && left + menuWidth > viewportWidth - 16) {
+    if (left !== "auto" && left + menuWidth > viewportWidth - 16) {
       left = viewportWidth - menuWidth - 16;
-      right = "auto";
     }
 
     setMenuPosition((prev) => ({
       ...prev,
       [msgId]: {
         ...prev[msgId],
-        reactionsLeft: left ? `${left}px` : "auto",
-        reactionsRight: right ? `${right}px` : "auto",
+        reactionsLeft: typeof left === "number" ? `${left}px` : left,
+        reactionsRight: typeof right === "number" ? `${right}px` : right,
         reactionsTop: `${top}px`,
       },
     }));
