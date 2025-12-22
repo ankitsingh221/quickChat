@@ -1,5 +1,6 @@
 import React from "react";
-import { useChatStore } from "../../store/useChatStore"; // Adjust path as needed
+import { useChatStore } from "../../store/useChatStore"; 
+import { Forward } from "lucide-react"; // Import Forward icon
 
 const MessageBubble = ({
   msg,
@@ -16,12 +17,9 @@ const MessageBubble = ({
  
   const { searchTerm } = useChatStore();
 
- 
   const highlightText = (text, highlight) => {
     if (!highlight || !highlight.trim()) return text;
-
     const parts = text.split(new RegExp(`(${highlight})`, "gi"));
-
     return (
       <span>
         {parts.map((part, i) =>
@@ -66,6 +64,14 @@ const MessageBubble = ({
         </p>
       ) : (
         <>
+          {/* --- FORWARDED LABEL --- */}
+          {msg.isForwarded && (
+            <div className={`flex items-center gap-1 mb-1 opacity-60 italic text-[11px] ${isMe ? "text-cyan-100" : "text-slate-400"}`}>
+              <Forward size={12} strokeWidth={3} />
+              <span>Forwarded</span>
+            </div>
+          )}
+
           {/* Reply Reference */}
           {msg.replyTo && (
             <div
@@ -80,7 +86,6 @@ const MessageBubble = ({
                   ? "You"
                   : selectedUser?.fullName}
               </p>
-              {/* Highlight text inside the reply preview as well */}
               <p className="truncate opacity-90 mt-0.5 italic">
                 {msg.replyTo.image ? "📷 Photo" : highlightText(msg.replyTo.text, searchTerm)}
               </p>
@@ -110,26 +115,18 @@ const MessageBubble = ({
           ) : (
             <div className="flex flex-col">
               {/* Image Content */}
-             {msg.image && (
-  <div className="mt-1 mb-2 rounded-xl overflow-hidden">
-    <img
-      src={msg.image}
-      onClick={() => setSelectedImg(msg.image)}
-      className="
-        w-[180px] md:w-[220px]
-        aspect-[4/5]
-        object-cover
-        cursor-zoom-in
-        hover:opacity-90
-        transition
-      "
-      alt="sent"
-    />
-  </div>
-)}
+              {msg.image && (
+                <div className="mt-1 mb-2 rounded-xl overflow-hidden">
+                  <img
+                    src={msg.image}
+                    onClick={() => setSelectedImg(msg.image)}
+                    className="w-[180px] md:w-[220px] aspect-[4/5] object-cover cursor-zoom-in hover:opacity-90 transition"
+                    alt="sent"
+                  />
+                </div>
+              )}
 
-
-              {/* Text Content with Highlighting */}
+              {/* Text Content */}
               {msg.text && (
                 <p className="whitespace-pre-wrap break-words leading-relaxed text-[15px]">
                   {highlightText(msg.text, searchTerm)}

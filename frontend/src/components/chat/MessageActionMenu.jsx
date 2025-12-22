@@ -1,5 +1,6 @@
 import React from "react";
-import { Reply, Pencil,  Smile, Trash2 } from "lucide-react";
+import { Reply, Pencil, Smile, Trash2, Forward, CheckSquare } from "lucide-react";
+import { useChatStore } from "../../store/useChatStore"; // Import store to trigger forwarding
 
 const MenuItem = ({ children, onClick, danger, icon: Icon }) => (
   <button
@@ -28,12 +29,14 @@ const MessageActionMenu = ({
   handleDelete,
   handleReactionButtonClick,
 }) => {
+  // Get forwarding and selection actions from store
+  const { setForwardingMessage, toggleMessageSelection, toggleSelectionMode } = useChatStore();
+
   return (
     <div
       className={`
         action-menu absolute z-[100] min-w-[190px]
         rounded-xl border border-base-300 bg-base-300 shadow-2xl
-        /* Positioning: Bottom-full moves it ABOVE the button to avoid cutoff */
         bottom-full mb-2 ${isMe ? "right-0" : "left-0"}
         overflow-hidden animate-in fade-in zoom-in duration-100
       `}
@@ -43,11 +46,32 @@ const MessageActionMenu = ({
           Reply
         </MenuItem>
 
+        {/* --- NEW: FORWARD OPTION --- */}
+        <MenuItem 
+          icon={Forward} 
+          onClick={() => setForwardingMessage(msg)}
+        >
+          Forward
+        </MenuItem>
+
         {canEdit && (
           <MenuItem icon={Pencil} onClick={() => startEdit(msg)}>
             Edit
           </MenuItem>
         )}
+
+        <div className="border-t border-base-content/5 my-1" />
+
+        {/* --- NEW: SELECT OPTION (Linked to your selection mode) --- */}
+        <MenuItem 
+          icon={CheckSquare} 
+          onClick={() => {
+            toggleSelectionMode(true);
+            toggleMessageSelection(msg._id);
+          }}
+        >
+          Select
+        </MenuItem>
 
         <div className="border-t border-base-content/5 my-1" />
 

@@ -19,8 +19,12 @@ export const useChatStore = create((set, get) => ({
   isSearchIconOpen: false,
   typingUsers: {},
   unreadCounts: {},
-  selectedMessages:[],
-  isSelectionMode:false,
+
+  selectedMessages: [],
+  isSelectionMode: false,
+
+  forwardingMessages: null,
+  isForwardModalOpen: false,
 
   setTypingStatus: (userId, isTyping) => {
     set((state) => ({
@@ -46,46 +50,82 @@ export const useChatStore = create((set, get) => ({
     }));
   },
 
+  setActiveTab: (tab) => set({ activeTab: tab, searchQuery: "" }),
+
+  setSelectedUser: (selectedUser) => set({ selectedUser }),
+
   toggleSound: () => {
     const newVal = !get().isSoundEnabled;
     localStorage.setItem("isSoundEnabled", newVal);
     set({ isSoundEnabled: newVal });
   },
 
-  toggleSelectionMode: (value) => set({
-    isSelectionMode: value,
-    selectedMessages:[] // clearing slected message  when exiting
-  }),
-   
-  toggleMessageSelection:(messageId) =>{
-    const {selectedMessages} = get();
-    if(selectedMessages.includes(messageId)){
-      set({selectedMessages : selectedMessages.filter(id => id != messageId)});
-    }
-    else{
-      set({selectedMessages: [...selectedMessages,messageId]})
-    }
-  },
-  deleteSelectedMessages: async() =>{
-    const {selectedMessages, messages} =  get();
-    try {
-      await axiosInstance.post("/messages/delete-bulk",{messageIds : selectedMessages});
-      // updating local state
+  toggleSelectionMode: (value) =>
+    set({
+      isSelectionMode: value,
+      selectedMessages: [],
+    }),
+
+  toggleMessageSelection: (messageId) => {
+    const { selectedMessages } = get();
+    if (selectedMessages.includes(messageId)) {
       set({
-        messages: messages.filter(msg => !selectedMessages.includes(msg._id)),
-        selectedMessages: [],
-        isSelectionMode: false
-      })
-      toast.success("messages deleted")
-    } catch (error) {
-       toast.error("failed to delete messages",error);
+        selectedMessages: selectedMessages.filter((id) => id !== messageId),
+      });
+    } else {
+      set({ selectedMessages: [...selectedMessages, messageId] });
     }
   },
 
+  deleteSelectedMessages: async () => {
+    const { selectedMessages, messages } = get();
+    try {
+      await axiosInstance.post("/messages/delete-bulk", {
+        messageIds: selectedMessages,
+      });
+      set({
+        messages: messages.filter((msg) => !selectedMessages.includes(msg._id)),
+        selectedMessages: [],
+        isSelectionMode: false,
+      });
+      toast.success("Messages deleted");
+    } catch (error) {
+      toast.error("Failed to delete messages", error);
+    }
+  },
 
-  setActiveTab: (tab) => set({ activeTab: tab, searchQuery: "" }),
+  setForwardingMessages: (msgs) =>
+    set({ forwardingMessages: Array.isArray(msgs) ? msgs : [msgs] }),
 
-  setSelectedUser: (selectedUser) => set({ selectedUser }),
+  closeForwardModal: () => set({ forwardingMessages: [] }),
+
+  forwardMessages: async (targetUserId) => {
+    const { forwardingMessages } = get();
+
+    if (!forwardingMessages || forwardingMessages.length === 0) return false;
+
+    try {
+      const promises = forwardingMessages.map((msg) =>
+        axiosInstance.post(`/messages/send/${targetUserId}`, {
+          text: msg.text,
+          image: msg.image,
+          isForwarded: true,
+        })
+      );
+
+      await Promise.all(promises);
+
+      set({
+        selectedMessages: [],
+        isSelectionMode: false,
+      });
+
+      return true;
+    } catch (error) {
+      console.error("Bulk forward error:", error);
+      return false;
+    }
+  },
 
   getAllContacts: async () => {
     set({ isUsersLoading: true });

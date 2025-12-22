@@ -15,7 +15,7 @@ const reactionSchema = new mongoose.Schema(
   { _id: false }
 );
 
-// Main Message schema
+
 const messageSchema = new mongoose.Schema(
   {
     senderId: {
@@ -59,6 +59,7 @@ const messageSchema = new mongoose.Schema(
       image: String,
       senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     },
+    isForwarded: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

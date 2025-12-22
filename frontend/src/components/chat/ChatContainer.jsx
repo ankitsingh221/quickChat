@@ -13,6 +13,7 @@ import MessageSearch from "./MessageSearch";
 import useKeyboardSound from "../../hooks/useKeyboardSound";
 import useReadReceipts from "../../hooks/useReadReceipts";
 import useMessageActions from "../../hooks/useMessageActions";
+import ForwardModal from "./ForwardModal";
 
 const ChatContainer = () => {
   const { authUser } = useAuthStore();
@@ -31,17 +32,18 @@ const ChatContainer = () => {
     searchTerm,
     clearSearch,
     updateUnreadCount,
+    forwardingMessages
   } = useChatStore();
 
   const [selectedImg, setSelectedImg] = useState(null);
   const messageEndRef = useRef(null);
   const prevMessagesLengthRef = useRef(0);
 
-  // SOUNDS
+  // sounds
   const { playRandomKeyStrokeSound, playMessageReceivedSound } =
     useKeyboardSound();
 
-  // MESSAGE ACTIONS (UNCONDITIONAL)
+  // message actions
   const messageActions = useMessageActions({
     editMessage,
     deleteForMe,
@@ -51,7 +53,7 @@ const ChatContainer = () => {
     playRandomKeyStrokeSound,
   });
 
-  // READ RECEIPTS
+  // reading receipt
   useReadReceipts(
     selectedUser,
     messages,
@@ -59,10 +61,10 @@ const ChatContainer = () => {
     getMessagesByUserId
   );
 
-  //FILTERED MESSAGES
+  //filtered messages
   const filteredMessages = getFilteredMessages() || [];
 
-  // VISIBILITY / READ HANDLING
+  //visibility
   useEffect(() => {
     if (!selectedUser) return;
 
@@ -130,13 +132,13 @@ const ChatContainer = () => {
     searchTerm,
   ]);
 
-  //CLEAR SEARCH ON USER CHANGE
+  //clear search on user change
   useEffect(() => {
     clearSearch();
     return () => clearSearch();
   }, [selectedUser?._id, clearSearch]);
 
-  // RENDER
+ 
   return (
     <>
       <ChatHeader>
@@ -187,6 +189,7 @@ const ChatContainer = () => {
         replyTo={messageActions.replyTo}
         setReplyTo={messageActions.setReplyTo}
       />
+      {forwardingMessages && forwardingMessages.length > 0 && <ForwardModal />}
     </>
   );
 };

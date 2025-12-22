@@ -53,7 +53,8 @@ export const sendMessageToUser = async (req, res) => {
   try {
     const senderId = req.user._id;
     const { id: receiverId } = req.params;
-    const { text, image, replyTo } = req.body;
+    const { text, image, replyTo, isForwarded } = req.body;
+
     if (!text && !image)
       return res
         .status(400)
@@ -76,10 +77,15 @@ export const sendMessageToUser = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Receiver not found" });
 
-    let imageUrl;
+    let imageUrl = null;
     if (image) {
-      const uploadResult = await cloudinary.uploader.upload(image);
-      imageUrl = uploadResult.secure_url;
+     
+      if (image.startsWith("http")) {
+        imageUrl = image;
+      } else {
+        const uploadResult = await cloudinary.uploader.upload(image);
+        imageUrl = uploadResult.secure_url;
+      }
     }
 
     const messageData = {
@@ -87,6 +93,7 @@ export const sendMessageToUser = async (req, res) => {
       receiverId,
       text,
       image: imageUrl,
+      isForwarded: isForwarded || false,
     };
 
     if (replyTo) {
@@ -101,7 +108,11 @@ export const sendMessageToUser = async (req, res) => {
     const newMessage = await Message.create(messageData);
 
     const receiverSockets = getReceiverSocketIds(receiverId);
-    receiverSockets.forEach((socketId) =>
+    const senderSockets = getReceiverSocketIds(senderId);
+
+    const allRelevantSockets = [...receiverSockets, ...senderSockets];
+
+    allRelevantSockets.forEach((socketId) =>
       io.to(socketId).emit("newMessage", newMessage)
     );
 
@@ -400,8 +411,8 @@ export const deleteBulkMessages = async (req, res) => {
         $addToSet: { deletedFor: userId },
       }
     );
-    res.status(200).json({success:true});
+    res.status(200).json({ success: true });
   } catch (error) {
-    res.status(500).json({message:"server error"});
+    res.status(500).json({ message: "server error" });
   }
 };

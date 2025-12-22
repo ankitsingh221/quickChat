@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { XIcon, MoreVertical, Trash2, X, CheckSquare } from "lucide-react"; // Added X and CheckSquare
+import { XIcon, MoreVertical, Trash2, X, CheckSquare, Forward } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 
 function ChatHeader({ children }) {
@@ -9,10 +9,12 @@ function ChatHeader({ children }) {
     setSelectedUser, 
     clearChat, 
     typingUsers,
-    isSelectionMode,        // Added from store
-    selectedMessages,       // Added from store
-    toggleSelectionMode,    // Added from store
-    deleteSelectedMessages  // Added from store
+    messages,
+    isSelectionMode,
+    selectedMessages = [], 
+    toggleSelectionMode,
+    deleteSelectedMessages,
+    setForwardingMessages  
   } = useChatStore();
   
   const { onlineUsers } = useAuthStore();
@@ -25,6 +27,7 @@ function ChatHeader({ children }) {
     return () => toggleSelectionMode(false);
   }, [selectedUser?._id, toggleSelectionMode]);
 
+  // Handle Keyboard Shortcuts
   useEffect(() => {
     const handleEscKey = (e) => {
       if (e.key === "Escape") {
@@ -39,6 +42,7 @@ function ChatHeader({ children }) {
     return () => window.removeEventListener("keydown", handleEscKey);
   }, [setSelectedUser, isSelectionMode, toggleSelectionMode]);
 
+  // Handle Click Outside Menu
   useEffect(() => {
     const handleClickOutside = () => {
       if (showMenu) setShowMenu(false);
@@ -70,37 +74,58 @@ function ChatHeader({ children }) {
     }
   };
 
-  // --- RENDER SELECTION MODE HEADER ---
+  
+  const handleBulkForward = () => {
+    // If selectedMessages is an array of IDs, we filter the objects from the message list
+    const msgsToForward = messages.filter(m => selectedMessages.includes(m._id));
+    
+    if (msgsToForward.length > 0) {
+      setForwardingMessages(msgsToForward);
+    }
+  };
+
+  //  rendering selection mode header
   if (isSelectionMode) {
     return (
-      <div className="flex justify-between items-center bg-primary/20 border-b border-primary/30 min-h-[70px] px-6 animate-in slide-in-from-top duration-300">
+      <div className="flex justify-between items-center bg-cyan-950 border-b border-cyan-500/30 min-h-[70px] px-6 animate-in slide-in-from-top duration-300">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => toggleSelectionMode(false)}
-            className="p-2 hover:bg-primary/20 rounded-full transition-colors text-primary"
+            className="p-2 hover:bg-white/10 rounded-full transition-colors text-cyan-400"
           >
             <X className="w-6 h-6" />
           </button>
           <span className="text-slate-200 font-bold text-lg">
-            {selectedMessages.length} selected
+            {(selectedMessages?.length || 0)} selected
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 md:gap-4">
+          {/* FORWARD BUTTON */}
+          <button 
+            onClick={handleBulkForward}
+            disabled={selectedMessages?.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Forward className="w-5 h-5" />
+            <span className="hidden md:inline font-semibold">Forward</span>
+          </button>
+
+          {/* DELETE BUTTON */}
           <button 
             onClick={deleteSelectedMessages}
-            disabled={selectedMessages.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={selectedMessages?.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Trash2 className="w-5 h-5" />
-            <span className="hidden md:inline font-semibold">Delete Selected</span>
+            <span className="hidden md:inline font-semibold">Delete</span>
           </button>
         </div>
       </div>
     );
   }
 
-  // --- RENDER NORMAL HEADER ---
+  //rendering normal header
   return (
     <div className="flex justify-between items-center bg-slate-800/50 border-b border-slate-700/50 min-h-[70px] px-6">
       <div className="flex items-center gap-3">
