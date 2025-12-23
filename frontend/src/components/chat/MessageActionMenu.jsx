@@ -30,7 +30,7 @@ const MessageActionMenu = ({
   handleReactionButtonClick,
 }) => {
   // Get forwarding and selection actions from store
-  const { setForwardingMessage, toggleMessageSelection, toggleSelectionMode } = useChatStore();
+  const { setForwardingMessages, toggleMessageSelection, toggleSelectionMode } = useChatStore();
 
   return (
     <div
@@ -49,7 +49,7 @@ const MessageActionMenu = ({
         {/* --- NEW: FORWARD OPTION --- */}
         <MenuItem 
           icon={Forward} 
-          onClick={() => setForwardingMessage(msg)}
+          onClick={() => setForwardingMessages(msg)}
         >
           Forward
         </MenuItem>
