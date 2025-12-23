@@ -12,6 +12,7 @@ function ContactList() {
     selectedUser,
     isUsersLoading,
     searchQuery,
+    chats,
   } = useChatStore();
 
   const { onlineUsers } = useAuthStore();
@@ -22,7 +23,15 @@ function ContactList() {
 
   if (isUsersLoading) return <UsersLoadingSkeleton />;
 
-  const filteredContacts = allContacts
+  // Merge contacts with chats to get lastMessage
+  const mergedContacts = allContacts.map(contact => {
+    const chat = chats.find(c => c._id === contact._id);
+    return chat 
+      ? { ...contact, lastMessage: chat.lastMessage }
+      : contact;
+  });
+
+  const filteredContacts = mergedContacts
     .filter((contact) =>
       contact.fullName.toLowerCase().includes(searchQuery.toLowerCase())
     )

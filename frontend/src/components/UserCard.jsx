@@ -1,18 +1,28 @@
 import dayjs from "dayjs";
 import { useChatStore } from "../store/useChatStore";
+import { useAuthStore } from "../store/useAuthStore";
 
 function UserCard({ user, isOnline, onClick, isActive, isTyping }) {
   const { unreadCounts } = useChatStore();
+  const { authUser } = useAuthStore();
   
-  //  unreadCounts state, Fallback: user.unreadCount from backend
   const unreadCount = unreadCounts[user._id] ?? user.unreadCount ?? 0;
   
   const lastMessage = user.lastMessage;
+
+
+  const isSentByMe = lastMessage?.senderId === authUser?._id;
 
   const messageText = lastMessage?.text
     ? lastMessage.text
     : lastMessage?.image
     ? "📷 Photo"
+    : "No messages yet";
+
+  const displayMessage = lastMessage && !lastMessage.isDeleted
+    ? isSentByMe 
+      ? `You: ${messageText}`
+      : messageText
     : "No messages yet";
 
   const formatMessageTime = (date) => {
@@ -75,7 +85,7 @@ function UserCard({ user, isOnline, onClick, isActive, isTyping }) {
             </span>
           ) : (
             <span className={`truncate ${unreadCount > 0 ? "text-slate-100 font-medium" : "text-slate-400"}`}>
-              {messageText}
+              {displayMessage}
             </span>
           )}
         </div>

@@ -79,7 +79,6 @@ export const sendMessageToUser = async (req, res) => {
 
     let imageUrl = null;
     if (image) {
-     
       if (image.startsWith("http")) {
         imageUrl = image;
       } else {
@@ -106,13 +105,9 @@ export const sendMessageToUser = async (req, res) => {
     }
 
     const newMessage = await Message.create(messageData);
-
     const receiverSockets = getReceiverSocketIds(receiverId);
-    const senderSockets = getReceiverSocketIds(senderId);
-
-    const allRelevantSockets = [...receiverSockets, ...senderSockets];
-
-    allRelevantSockets.forEach((socketId) =>
+    
+    receiverSockets.forEach((socketId) =>
       io.to(socketId).emit("newMessage", newMessage)
     );
 

@@ -100,11 +100,17 @@ export const useChatStore = create((set, get) => ({
   closeForwardModal: () => set({ forwardingMessages: [] }),
 
   forwardMessages: async (targetUserId) => {
-    const { forwardingMessages } = get();
+    const {
+      forwardingMessages,
+      updateChatWithNewMessage,
+      chats,
+      getMyChatPartners,
+    } = get();
 
     if (!forwardingMessages || forwardingMessages.length === 0) return false;
 
     try {
+      // Send all messages to the target user
       const promises = forwardingMessages.map((msg) =>
         axiosInstance.post(`/messages/send/${targetUserId}`, {
           text: msg.text,
@@ -113,27 +119,63 @@ export const useChatStore = create((set, get) => ({
         })
       );
 
-      await Promise.all(promises);
+      const responses = await Promise.all(promises);
 
-      set({
-        selectedMessages: [],
-        isSelectionMode: false,
-      });
+      // Process the update if we got a valid response
+      if (responses.length > 0 && responses[responses.length - 1].data?.data) {
+        const lastSentMsg = responses[responses.length - 1].data.data;
 
+        // Update the main chat window if the target user is currently open
+        updateChatWithNewMessage(lastSentMsg);
+
+        // Update the ChatList
+        const existingChat = chats.find(
+          (c) => String(c._id) === String(targetUserId)
+        );
+
+        if (!existingChat) {
+          // if  Forwarding to someone NEW.
+          // We need to fetch their profile pic and name from the server.
+          await getMyChatPartners();
+        } else {
+          // if Forwarding to someone ALREADY in the list.
+          // We MUST spread (...chat) to keep fullName and profilePic
+          const updatedChats = chats.map((chat) => {
+            if (String(chat._id) === String(targetUserId)) {
+              return {
+                ...chat, // this keeps name and proifle pic
+                lastMessage: lastSentMsg,
+              };
+            }
+            return chat;
+          });
+          set({ chats: updatedChats });
+        }
+      }
+
+      set({ selectedMessages: [], isSelectionMode: false });
       return true;
     } catch (error) {
-      console.error("Bulk forward error:", error);
+      console.error("Forwarding error:", error);
       return false;
     }
   },
-
   getAllContacts: async () => {
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/contacts");
-      set({
-        allContacts: Array.isArray(res.data?.users) ? res.data.users : [],
+      const contacts = Array.isArray(res.data?.users) ? res.data.users : [];
+
+      // Merge with existing chats to preserve lastMessage
+      const { chats } = get();
+      const mergedContacts = contacts.map((contact) => {
+        const existingChat = chats.find((chat) => chat._id === contact._id);
+        return existingChat
+          ? { ...contact, lastMessage: existingChat.lastMessage }
+          : contact;
       });
+
+      set({ allContacts: mergedContacts });
     } catch (error) {
       console.error(error);
       set({ allContacts: [] });
@@ -173,13 +215,11 @@ export const useChatStore = create((set, get) => ({
 
       let chats = Array.isArray(res.data?.users) ? res.data.users : [];
 
-      // ✅ Build initial unread counts from backend response
       const initialUnreadCounts = {};
       chats.forEach((chat) => {
         initialUnreadCounts[chat._id] = chat.unreadCount || 0;
       });
 
-      // ✅ Sort by last message time (most recent first)
       chats.sort((a, b) => {
         const aTime = a.lastMessage?.createdAt
           ? new Date(a.lastMessage.createdAt).getTime()
@@ -204,7 +244,7 @@ export const useChatStore = create((set, get) => ({
   },
 
   updateChatWithNewMessage: (msg) => {
-    const { chats } = get();
+    const { chats, allContacts } = get();
     const { authUser } = useAuthStore.getState();
     const partnerId =
       msg.senderId === authUser._id ? msg.receiverId : msg.senderId;
@@ -223,15 +263,26 @@ export const useChatStore = create((set, get) => ({
     if (existingIndex > -1) updatedChats.splice(existingIndex, 1);
     updatedChats.unshift(updatedChat);
 
-    set({ chats: updatedChats });
+    // Update allContacts too
+    const updatedContacts = allContacts.map((contact) =>
+      contact._id === partnerId ? { ...contact, lastMessage: msg } : contact
+    );
+
+    set({ chats: updatedChats, allContacts: updatedContacts });
   },
 
   sendMessage: async ({ text, image, replyTo }) => {
-    const { selectedUser, messages, chats, updateChatWithNewMessage } = get();
+    const {
+      selectedUser,
+      messages,
+      chats,
+      allContacts,
+      updateChatWithNewMessage,
+    } = get();
     const { authUser } = useAuthStore.getState();
     if (!selectedUser?._id) return toast.error("No user selected.");
 
-    const tempId = `temp-${Date.now()}`;
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
     const optimisticMessage = {
       _id: tempId,
       senderId: authUser._id,
@@ -256,7 +307,15 @@ export const useChatStore = create((set, get) => ({
     let updatedChats = [...chats];
     if (existingIndex > -1) updatedChats.splice(existingIndex, 1);
     updatedChats.unshift(updatedChat);
-    set({ chats: updatedChats });
+
+    // Update allContacts
+    const updatedContacts = allContacts.map((contact) =>
+      contact._id === selectedUser._id
+        ? { ...contact, lastMessage: optimisticMessage }
+        : contact
+    );
+
+    set({ chats: updatedChats, allContacts: updatedContacts });
 
     try {
       const payload = { text, image };
@@ -286,6 +345,11 @@ export const useChatStore = create((set, get) => ({
                 }
               : msg
           ),
+          allContacts: state.allContacts.map((contact) =>
+            contact._id === selectedUser._id
+              ? { ...contact, lastMessage: res.data.data }
+              : contact
+          ),
         }));
 
         updateChatWithNewMessage(res.data.data);
@@ -293,7 +357,7 @@ export const useChatStore = create((set, get) => ({
     } catch (error) {
       console.error("Send message error:", error);
 
-      set({ messages, chats });
+      set({ messages, chats, allContacts });
       toast.error(error.response?.data?.message || "Failed to send message");
     }
   },
@@ -438,14 +502,12 @@ export const useChatStore = create((set, get) => ({
 
           if (userExistingReaction) {
             if (userExistingReaction.emoji === emoji) {
-              // Remove reaction
               newReactions = msg.reactions.filter(
                 (r) =>
                   (r.userId?._id || r.userId).toString() !==
                   authUser._id.toString()
               );
             } else {
-              // Switch emoji
               const filtered = msg.reactions.filter(
                 (r) =>
                   (r.userId?._id || r.userId).toString() !==
@@ -454,7 +516,6 @@ export const useChatStore = create((set, get) => ({
               newReactions = [...filtered, newReactionEntry];
             }
           } else {
-            // Add new reaction
             newReactions = [...(msg.reactions || []), newReactionEntry];
           }
 
@@ -469,17 +530,31 @@ export const useChatStore = create((set, get) => ({
       toast.error("Failed to update reaction");
     }
   },
+
   clearChat: async (userId) => {
     try {
       await axiosInstance.delete(`/messages/clear/${userId}`);
+
+      // Clear the chat window
       set({ messages: [] });
+
+      // Update the chatlist instantly
+      const { chats } = get();
+      const updatedChats = chats.map((chat) => {
+        if (String(chat._id) === String(userId)) {
+          // We set lastMessage to null so UserCard shows "No messages yet"
+          return { ...chat, lastMessage: null };
+        }
+        return chat;
+      });
+
+      set({ chats: updatedChats });
       toast.success("Chat cleared successfully");
     } catch (error) {
       console.error("Clear chat error:", error);
-      toast.error(error.response?.data?.message || "Failed to clear chat");
+      toast.error("Failed to clear chat");
     }
   },
-
   updateUnreadCount: (userId, count) => {
     set((state) => ({
       unreadCounts: {
@@ -495,6 +570,7 @@ export const useChatStore = create((set, get) => ({
   subscribeToMessages: () => {
     const { socket } = useAuthStore.getState();
     if (!socket) return;
+
     socket.off("newMessage");
     socket.off("messagesRead");
     socket.off("message:edited");
@@ -504,25 +580,34 @@ export const useChatStore = create((set, get) => ({
     socket.off("chat:cleared");
     socket.off("userTyping");
     socket.off("userStopTyping");
+
     socket.on("newMessage", (msg) => {
       const { selectedUser, messages, authUser } = get();
+
+      if (msg.senderId === authUser?._id) {
+        return;
+      }
+
+      const messageExists = messages.some((m) => m._id === msg._id);
+      if (messageExists) {
+        return;
+      }
+
       const isMessageFromSelectedUser = selectedUser?._id === msg.senderId;
       const isMessageForCurrentChat =
         isMessageFromSelectedUser || selectedUser?._id === msg.receiverId;
 
       if (isMessageForCurrentChat) {
-        if (!messages.some((m) => m._id === msg._id)) {
-          set({
-            messages: [
-              ...messages,
-              {
-                ...msg,
-                reactions: msg.reactions || [],
-                replyTo: msg.replyTo || null,
-              },
-            ],
-          });
-        }
+        set({
+          messages: [
+            ...messages,
+            {
+              ...msg,
+              reactions: msg.reactions || [],
+              replyTo: msg.replyTo || null,
+            },
+          ],
+        });
 
         if (isMessageFromSelectedUser) {
           const isPageVisible = !document.hidden;
@@ -536,10 +621,8 @@ export const useChatStore = create((set, get) => ({
           }
         }
       } else {
-        if (msg.senderId !== authUser?._id) {
-          const currentCount = get().unreadCounts[msg.senderId] || 0;
-          get().updateUnreadCount(msg.senderId, currentCount + 1);
-        }
+        const currentCount = get().unreadCounts[msg.senderId] || 0;
+        get().updateUnreadCount(msg.senderId, currentCount + 1);
       }
 
       get().updateChatWithNewMessage(msg);
@@ -558,6 +641,7 @@ export const useChatStore = create((set, get) => ({
         ),
       }));
     });
+
     socket.on("message:edited", (msg) => {
       set((state) => ({
         messages: state.messages.map((m) =>
@@ -580,13 +664,13 @@ export const useChatStore = create((set, get) => ({
             : m
         ),
       }));
+    });
 
-      socket.on("chat:cleared", ({ userId }) => {
-        const { selectedUser } = get();
-        if (selectedUser?._id === userId) {
-          set({ messages: [] });
-        }
-      });
+    socket.on("chat:cleared", ({ userId }) => {
+      const { selectedUser } = get();
+      if (selectedUser?._id === userId) {
+        set({ messages: [] });
+      }
     });
 
     socket.on("message:deletedForMe", ({ messageId }) => {
