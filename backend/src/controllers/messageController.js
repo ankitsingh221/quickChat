@@ -106,7 +106,7 @@ export const sendMessageToUser = async (req, res) => {
 
     const newMessage = await Message.create(messageData);
     const receiverSockets = getReceiverSocketIds(receiverId);
-    
+
     receiverSockets.forEach((socketId) =>
       io.to(socketId).emit("newMessage", newMessage)
     );
@@ -124,8 +124,10 @@ export const sendMessageToUser = async (req, res) => {
 
 export const getChatPartners = async (req, res) => {
   try {
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
     const loggedInUserId = req.user._id;
-
     const messages = await Message.find({
       $or: [{ senderId: loggedInUserId }, { receiverId: loggedInUserId }],
       deletedFor: { $ne: loggedInUserId },
@@ -135,6 +137,8 @@ export const getChatPartners = async (req, res) => {
 
     const chatMap = new Map();
     messages.forEach((msg) => {
+      if (!msg.senderId || !msg.receiverId) return; 
+
       const partnerId =
         msg.senderId.toString() === loggedInUserId.toString()
           ? msg.receiverId.toString()
@@ -146,33 +150,49 @@ export const getChatPartners = async (req, res) => {
     });
 
     const partnerIds = Array.from(chatMap.keys());
-    const users = await User.find({ _id: { $in: partnerIds } }, "-password");
 
+    const users = await User.find({ _id: { $in: partnerIds } }, "-password");
+  
     const usersWithLastMessage = await Promise.all(
       users.map(async (user) => {
-        const unreadCount = await Message.countDocuments({
-          senderId: user._id,
-          receiverId: loggedInUserId,
-          seen: false,
-        });
+        try {
+          const unreadCount = await Message.countDocuments({
+            senderId: user._id,
+            receiverId: loggedInUserId,
+            seen: false,
+          });
 
-        return {
-          ...user.toObject(),
-          lastMessage: chatMap.get(user._id.toString()),
-          unreadCount,
-        };
+          const lastMsg = chatMap.get(user._id.toString());
+
+          return {
+            ...user.toObject(),
+            lastMessage: lastMsg || null,
+            unreadCount: unreadCount || 0,
+          };
+        } catch (innerErr) {
+          return null;
+        }
       })
     );
+    const filteredUsers = usersWithLastMessage.filter((u) => u !== null);
+    //sage sort
+    filteredUsers.sort((a, b) => {
+      const timeA = a.lastMessage?.createdAt
+        ? new Date(a.lastMessage.createdAt).getTime()
+        : 0;
+      const timeB = b.lastMessage?.createdAt
+        ? new Date(b.lastMessage.createdAt).getTime()
+        : 0;
+      return timeB - timeA;
+    });
 
-    //  Sort by last message date
-    usersWithLastMessage.sort(
-      (a, b) => b.lastMessage.createdAt - a.lastMessage.createdAt
-    );
-
-    res.status(200).json({ success: true, users: usersWithLastMessage });
+    return res.status(200).json({ success: true, users: filteredUsers });
   } catch (error) {
-    console.error("getChatPartners error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      details: error.message,
+    });
   }
 };
 
