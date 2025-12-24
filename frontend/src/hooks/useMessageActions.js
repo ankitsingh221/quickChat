@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import toast from "react-hot-toast";
 
 const FIVE_MIN = 5 * 60 * 1000;
 
@@ -9,6 +10,7 @@ const useMessageActions = ({
   toggleReaction,
   isSoundEnabled,
   playRandomKeyStrokeSound,
+  activeChatId,
 }) => {
   const [activeMsgId, setActiveMsgId] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -17,103 +19,89 @@ const useMessageActions = ({
   const [showReactionsMenu, setShowReactionsMenu] = useState(null);
   const [now, setNow] = useState(Date.now());
 
-  // Update time for edit window logic
+  // Timer to keep "Delete for Everyone" logic accurate
   useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 30000);
+    const interval = setInterval(() => setNow(Date.now()), 10000);
     return () => clearInterval(interval);
   }, []);
 
+  // reset on refresh on switch
+  useEffect(() => {
+    setActiveMsgId(null);
+    setEditingId(null);
+    setReplyTo(null);
+    setShowReactionsMenu(null);
+  }, [activeChatId]);
 
+  //click outside handler
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (
-        activeMsgId &&
-        !e.target.closest(".action-menu") &&
-        !e.target.closest(".three-dot-button")
-      ) {
+      // Check if click is outside menus
+      if (activeMsgId && !e.target.closest(".action-menu") && !e.target.closest(".three-dot-button")) {
         setActiveMsgId(null);
       }
-
-      if (
-        showReactionsMenu &&
-        !e.target.closest(".reactions-menu") &&
-        !e.target.closest(".react-button")
-      ) {
+      if (showReactionsMenu && !e.target.closest(".reactions-menu") && !e.target.closest(".react-button")) {
         setShowReactionsMenu(null);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [activeMsgId, showReactionsMenu]);
 
-  const canModify = (createdAt) =>
-    now - new Date(createdAt).getTime() < FIVE_MIN;
+  //  logic helpers
+  const canModify = useCallback((createdAt) => {
+    return now - new Date(createdAt).getTime() < FIVE_MIN;
+  }, [now]);
 
-  //Actions
-
-  const handleThreeDotClick = (msgId, e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setActiveMsgId((prev) => (prev === msgId ? null : msgId));
+  const closeAllMenus = () => {
+    setActiveMsgId(null);
     setShowReactionsMenu(null);
   };
 
-  const handleReactionButtonClick = (msgId, e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setShowReactionsMenu((prev) => (prev === msgId ? null : msgId));
-    setActiveMsgId(null);
-  };
-
+  // action handlers
   const startEdit = (msg) => {
-    if (isSoundEnabled) playRandomKeyStrokeSound();
+    if (!canModify(msg.createdAt)) {
+      toast.error("Editing time limit (5m) expired");
+      return;
+    }
+    if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
     setEditingId(msg._id);
     setEditText(msg.text || "");
     closeAllMenus();
   };
 
-  const handleEditTextChange = (e) => {
-    setEditText(e.target.value);
-    if (isSoundEnabled) playRandomKeyStrokeSound();
-  };
-
-  const submitEdit = (id) => {
+  const submitEdit = (id, createdAt) => {
     if (!editText.trim()) return;
-    if (isSoundEnabled) playRandomKeyStrokeSound();
-    editMessage(id, editText);
-    setEditingId(null);
+    if (!canModify(createdAt)) {
+      toast.error("Too late to edit!");
+      setEditingId(null);
+      return;
+    }
+    
+    try {
+      editMessage(id, editText);
+      setEditingId(null);
+      setEditText("");
+    } catch (err) {
+      console.error("Edit failed:", err);
+    }
   };
 
-  const handleDelete = (id, type) => {
-    if (isSoundEnabled) playRandomKeyStrokeSound();
-    if (type === "me") deleteForMe(id);
-    else deleteForEveryone(id);
-    closeAllMenus();
-  };
-
-  const handleReactionClick = (messageId, emoji) => {
-    if (isSoundEnabled) playRandomKeyStrokeSound();
-    toggleReaction(messageId, emoji);
-    closeAllMenus();
-  };
-
-  const handleExistingReactionClick = (messageId, emoji, e) => {
-    e.stopPropagation();
-    if (isSoundEnabled) playRandomKeyStrokeSound();
-    toggleReaction(messageId, emoji);
-  };
-
-  const handleReply = (msg) => {
-    if (isSoundEnabled) playRandomKeyStrokeSound();
-    setReplyTo(msg);
-    closeAllMenus();
-  };
-
-  const closeAllMenus = () => {
-    setActiveMsgId(null);
-    setShowReactionsMenu(null);
+  const handleDelete = (id, type, createdAt) => {
+    try {
+      if (type === "me") {
+        deleteForMe(id);
+      } else {
+        if (!canModify(createdAt)) {
+          toast.error("Too late to delete for everyone");
+          return;
+        }
+        deleteForEveryone(id);
+      }
+      closeAllMenus();
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
   };
 
   return {
@@ -123,18 +111,35 @@ const useMessageActions = ({
     editText,
     replyTo,
     showReactionsMenu,
-
-    handleThreeDotClick,
-    handleReactionButtonClick,
+    handleThreeDotClick: (msgId, e) => {
+      e?.preventDefault();
+      e?.stopPropagation();
+      setActiveMsgId(prev => prev === msgId ? null : msgId);
+      setShowReactionsMenu(null);
+    },
+    handleReactionButtonClick: (msgId, e) => {
+      e?.preventDefault();
+      e?.stopPropagation();
+      setShowReactionsMenu(prev => prev === msgId ? null : msgId);
+      setActiveMsgId(null);
+    },
     startEdit,
-    handleEditTextChange,
+    handleEditTextChange: (e) => {
+      setEditText(e.target.value);
+      if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
+    },
     submitEdit,
     handleDelete,
-    handleReactionClick,
-    handleExistingReactionClick,
-    handleReply,
+    handleReactionClick: (messageId, emoji) => {
+      toggleReaction(messageId, emoji);
+      closeAllMenus();
+    },
+    handleReply: (msg) => {
+      if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
+      setReplyTo(msg);
+      closeAllMenus();
+    },
     closeAllMenus,
-
     setReplyTo,
     setEditingId,
   };

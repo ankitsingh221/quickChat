@@ -9,17 +9,28 @@ export const createMessageSlice = (set, get) => ({
   isSelectionMode: false,
   forwardingMessages: null,
   isForwardModalOpen: false,
+  typingUsers: {},
 
   setForwardingMessages: (msgs) =>
     set({ forwardingMessages: Array.isArray(msgs) ? msgs : [msgs] }),
 
   closeForwardModal: () => set({ forwardingMessages: [] }),
 
-  getFilteredMessages: () => get().messages,
+  getFilteredMessages: () => {
+    const { messages, groupMessages, selectedGroup, searchTerm } = get();
 
+    const source = selectedGroup ? groupMessages || [] : messages || [];
+
+    if (!searchTerm) return source;
+
+    // If searching, filter safely
+    return source.filter((msg) =>
+      msg.text?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  },
   getMessagesByUserId: async (userId) => {
     if (!userId) return;
-    set({ isMessagesLoading: true });
+    set({ isMessagesLoading: true, groupMessages: [] });
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
       const messages = Array.isArray(res.data?.messages)
@@ -136,20 +147,26 @@ export const createMessageSlice = (set, get) => ({
       const res = await axiosInstance.patch(`/messages/edit/${messageId}`, {
         text: newText,
       });
-      set((state) => ({
-        messages: state.messages.map((msg) =>
+      const updatedData = res.data?.data || res.data;
+
+      set((state) => {
+        const updateMsg = (msg) =>
           msg._id === messageId
             ? {
-                ...res.data,
+                ...msg,
+                ...updatedData,
                 reactions: msg.reactions || [],
                 replyTo: msg.replyTo || null,
               }
-            : msg
-        ),
-      }));
+            : msg;
+
+        return {
+          messages: state.messages.map(updateMsg),
+          groupMessages: (state.groupMessages || []).map(updateMsg),
+        };
+      });
     } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || "Failed to edit message");
+      toast.error("Failed to edit message", error);
     }
   },
 
@@ -179,182 +196,191 @@ export const createMessageSlice = (set, get) => ({
   },
 
   deleteForMe: async (messageId) => {
-    const { messages, chats } = get();
     try {
       await axiosInstance.delete(`/messages/delete/forMe/${messageId}`);
 
-      const updatedMessages = messages.filter((msg) => msg._id !== messageId);
-      set({ messages: updatedMessages });
+      set((state) => {
+        const filteredPrivate = state.messages.filter(
+          (msg) => msg._id !== messageId
+        );
+        const filteredGroup = (state.groupMessages || []).filter(
+          (msg) => msg._id !== messageId
+        );
 
-      const updatedChats = chats.map((chat) => {
-        if (chat.lastMessage?._id === messageId) {
-          const chatMessages = updatedMessages.filter(
-            (m) => m.senderId === chat._id || m.receiverId === chat._id
-          );
-          return {
-            ...chat,
-            lastMessage: chatMessages.length
-              ? chatMessages[chatMessages.length - 1]
-              : null,
-          };
-        }
-        return chat;
+        const updatedChats = state.chats.map((chat) => {
+          if (chat.lastMessage?._id === messageId) {
+            const remaining = filteredPrivate.filter(
+              (m) => m.senderId === chat._id || m.receiverId === chat._id
+            );
+            return {
+              ...chat,
+              lastMessage: remaining.length
+                ? remaining[remaining.length - 1]
+                : null,
+            };
+          }
+          return chat;
+        });
+
+        return {
+          messages: filteredPrivate,
+          groupMessages: filteredGroup,
+          chats: updatedChats,
+        };
       });
-
-      set({ chats: updatedChats });
     } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || "Failed to delete message");
+      toast.error("Failed to delete message", error);
     }
   },
 
   deleteForEveryone: async (messageId) => {
-    const { messages, chats } = get();
     try {
       await axiosInstance.delete(`/messages/delete/forEveryone/${messageId}`);
 
-      const updatedMessages = messages.map((msg) =>
-        msg._id === messageId
-          ? { ...msg, isDeleted: true, text: null, image: null }
-          : msg
-      );
-      set({ messages: updatedMessages });
+      set((state) => {
+        const transform = (msg) =>
+          msg._id === messageId
+            ? { ...msg, isDeleted: true, text: null, image: null }
+            : msg;
 
-      const updatedChats = chats.map((chat) => {
-        if (chat.lastMessage?._id === messageId) {
-          const chatMessages = updatedMessages.filter(
-            (m) => m.senderId === chat._id || m.receiverId === chat._id
-          );
-          return {
-            ...chat,
-            lastMessage: chatMessages.length
-              ? chatMessages[chatMessages.length - 1]
-              : null,
-          };
-        }
-        return chat;
+        const updatedPrivate = state.messages.map(transform);
+        const updatedGroup = (state.groupMessages || []).map(transform);
+
+        return {
+          messages: updatedPrivate,
+          groupMessages: updatedGroup,
+        };
       });
-
-      set({ chats: updatedChats });
     } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || "Failed to delete message");
+      toast.error("Failed to delete for everyone ", error);
     }
   },
-  deleteSelectedMessages: async () => {
-    const { selectedMessages, messages } = get();
-    try {
-      await axiosInstance.post("/messages/delete-bulk", {
-        messageIds: selectedMessages,
-      });
-      set({
-        messages: messages.filter((msg) => !selectedMessages.includes(msg._id)),
-        selectedMessages: [],
-        isSelectionMode: false,
-      });
-      toast.success("Messages deleted");
-    } catch (error) {
-      toast.error("Failed to delete messages", error);
-    }
-  },
-
   toggleReaction: async (messageId, emoji) => {
-    const { messages } = get();
     const { authUser } = useAuthStore.getState();
+
+    const updateLocalState = (messagesArray) =>
+      messagesArray.map((msg) => {
+        if (msg._id !== messageId) return msg;
+
+        const reactions = [...(msg.reactions || [])];
+        const existingIdx = reactions.findIndex(
+          (r) => (r.userId?._id || r.userId) === authUser._id
+        );
+
+        if (existingIdx > -1) {
+          if (reactions[existingIdx].emoji === emoji)
+            reactions.splice(existingIdx, 1);
+          else reactions[existingIdx].emoji = emoji;
+        } else {
+          reactions.push({
+            userId: authUser._id,
+            emoji,
+            displayName: authUser.fullName,
+          });
+        }
+        return { ...msg, reactions };
+      });
+
+    set((state) => ({
+      messages: updateLocalState(state.messages),
+      groupMessages: updateLocalState(state.groupMessages),
+    }));
 
     try {
       await axiosInstance.patch(`/messages/reaction/${messageId}`, { emoji });
-
-      const updatedMessages = messages.map((msg) => {
-        if (msg._id === messageId) {
-          const userExistingReaction = msg.reactions?.find(
-            (r) =>
-              (r.userId?._id || r.userId).toString() === authUser._id.toString()
-          );
-
-          let newReactions;
-
-          const newReactionEntry = {
-            userId: {
-              _id: authUser._id,
-              fullName: authUser.fullName,
-              profilePic: authUser.profilePic,
-            },
-            emoji,
-            displayName: authUser.fullName,
-            profilePic: authUser.profilePic,
-          };
-
-          if (userExistingReaction) {
-            if (userExistingReaction.emoji === emoji) {
-              newReactions = msg.reactions.filter(
-                (r) =>
-                  (r.userId?._id || r.userId).toString() !==
-                  authUser._id.toString()
-              );
-            } else {
-              const filtered = msg.reactions.filter(
-                (r) =>
-                  (r.userId?._id || r.userId).toString() !==
-                  authUser._id.toString()
-              );
-              newReactions = [...filtered, newReactionEntry];
-            }
-          } else {
-            newReactions = [...(msg.reactions || []), newReactionEntry];
-          }
-
-          return { ...msg, reactions: newReactions };
-        }
-        return msg;
-      });
-
-      set({ messages: updatedMessages });
     } catch (error) {
-      console.error(error);
       toast.error("Failed to update reaction");
     }
   },
 
-  clearChat: async (userId) => {
+  deleteSelectedMessages: async (deleteType = "forMe") => {
+    const { selectedMessages } = get();
+    const isForEveryone = deleteType === "forEveryone";
+
     try {
-      await axiosInstance.delete(`/messages/clear/${userId}`);
-
-      // Clear the chat window
-      set({ messages: [] });
-
-      // Update the chatlist instantly
-      const { chats } = get();
-      const updatedChats = chats.map((chat) => {
-        if (String(chat._id) === String(userId)) {
-          // We set lastMessage to null so UserCard shows "No messages yet"
-          return { ...chat, lastMessage: null };
-        }
-        return chat;
+      await axiosInstance.post("/messages/delete-bulk", {
+        messageIds: selectedMessages,
+        isForEveryone: isForEveryone,
       });
 
-      set({ chats: updatedChats });
-      toast.success("Chat cleared successfully");
+      set((state) => {
+        const updateList = (list) => {
+          if (isForEveryone) {
+            // Keep the message object but mark as deleted
+            return list.map((m) =>
+              selectedMessages.includes(m._id)
+                ? { ...m, isDeleted: true, text: null, image: null }
+                : m
+            );
+          } else {
+            // Remove from local view entirely
+            return list.filter((m) => !selectedMessages.includes(m._id));
+          }
+        };
+
+        return {
+          messages: updateList(state.messages),
+          groupMessages: updateList(state.groupMessages || []),
+          selectedMessages: [],
+          isSelectionMode: false,
+        };
+      });
+
+      toast.success(isForEveryone ? "Deleted for everyone" : "Deleted for me");
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response?.data?.message || "Failed to delete messages");
+    }
+  },
+  clearChat: async (id, isGroup = false) => {
+    try {
+      await axiosInstance.delete(`/messages/clear/${id}?isGroup=${isGroup}`);
+      set((state) => {
+        if (isGroup) {
+          return {
+            // Immediately empty the array
+            groupMessages: [],
+            // Update the sidebar preview
+            groups: (state.groups || []).map((g) =>
+              String(g._id) === String(id) ? { ...g, lastMessage: null } : g
+            ),
+          };
+        } else {
+          return {
+            // Immediately empty the array
+            messages: [],
+            // Update the sidebar preview
+            chats: (state.chats || []).map((c) =>
+              String(c._id) === String(id) ? { ...c, lastMessage: null } : c
+            ),
+          };
+        }
+      });
+
+      toast.success("Chat cleared");
     } catch (error) {
       console.error("Clear chat error:", error);
       toast.error("Failed to clear chat");
     }
   },
 
-  forwardMessages: async (targetUserId) => {
+  forwardMessages: async (targetId, isTargetGroup = false) => {
     const {
       forwardingMessages,
       updateChatWithNewMessage,
+      updateGroupWithNewMessage,
       chats,
+      groups,
       getMyChatPartners,
     } = get();
 
     if (!forwardingMessages || forwardingMessages.length === 0) return false;
 
     try {
-      // Send all messages to the target user
+      const endpointPrefix = isTargetGroup ? "/groups/send" : "/messages/send";
+
       const promises = forwardingMessages.map((msg) =>
-        axiosInstance.post(`/messages/send/${targetUserId}`, {
+        axiosInstance.post(`${endpointPrefix}/${targetId}`, {
           text: msg.text,
           image: msg.image,
           isForwarded: true,
@@ -363,52 +389,64 @@ export const createMessageSlice = (set, get) => ({
 
       const responses = await Promise.all(promises);
 
-      // Process the update if we got a valid response
+      //  Process the last sent message for UI update
       if (responses.length > 0 && responses[responses.length - 1].data?.data) {
         const lastSentMsg = responses[responses.length - 1].data.data;
 
-        // Update the main chat window if the target user is currently open
-        updateChatWithNewMessage(lastSentMsg);
+        if (isTargetGroup) {
+          // Update Group UI
+          updateGroupWithNewMessage?.(lastSentMsg);
 
-        // Update the ChatList
-        const existingChat = chats.find(
-          (c) => String(c._id) === String(targetUserId)
-        );
-
-        if (!existingChat) {
-          // if  Forwarding to someone NEW.
-          // We need to fetch their profile pic and name from the server.
-          await getMyChatPartners();
-        } else {
-          // if Forwarding to someone ALREADY in the list.
-          // We MUST spread (...chat) to keep fullName and profilePic
-          const updatedChats = chats.map((chat) => {
-            if (String(chat._id) === String(targetUserId)) {
-              return {
-                ...chat, // this keeps name and proifle pic
-                lastMessage: lastSentMsg,
-              };
-            }
-            return chat;
+          // Update Group Sidebar
+          set({
+            groups: groups.map((g) =>
+              String(g._id) === String(targetId)
+                ? { ...g, lastMessage: lastSentMsg }
+                : g
+            ),
           });
-          set({ chats: updatedChats });
+        } else {
+          // Update Private UI
+          updateChatWithNewMessage?.(lastSentMsg);
+
+          // Update Private Sidebar
+          const existingChat = chats.find(
+            (c) => String(c._id) === String(targetId)
+          );
+          if (!existingChat) {
+            await getMyChatPartners(); // Refresh list if new person
+          } else {
+            set({
+              chats: chats.map((c) =>
+                String(c._id) === String(targetId)
+                  ? { ...c, lastMessage: lastSentMsg }
+                  : c
+              ),
+            });
+          }
         }
       }
 
       set({ selectedMessages: [], isSelectionMode: false });
+      toast.success(`Forwarded to ${isTargetGroup ? "group" : "chat"}`);
       return true;
     } catch (error) {
       console.error("Forwarding error:", error);
+      toast.error("Failed to forward messages");
       return false;
     }
   },
- 
+
   updateChatWithNewMessage: (msg) => {
+    //  If this is a group message, let createGroupSlice handle it.
+    if (msg.groupId) return;
+
     const { chats, allContacts } = get();
     const { authUser } = useAuthStore.getState();
+
+    // Logic for private chat partner
     const partnerId =
       msg.senderId === authUser._id ? msg.receiverId : msg.senderId;
-
     const existingIndex = chats.findIndex((c) => c._id === partnerId);
 
     const updatedChat = {
@@ -423,12 +461,20 @@ export const createMessageSlice = (set, get) => ({
     if (existingIndex > -1) updatedChats.splice(existingIndex, 1);
     updatedChats.unshift(updatedChat);
 
-    // Update allContacts too
     const updatedContacts = allContacts.map((contact) =>
       contact._id === partnerId ? { ...contact, lastMessage: msg } : contact
     );
 
     set({ chats: updatedChats, allContacts: updatedContacts });
+  },
+
+  setTypingStatus: (userId, isTyping) => {
+    set((state) => ({
+      typingUsers: {
+        ...state.typingUsers,
+        [userId]: isTyping,
+      },
+    }));
   },
 
   subscribeToMessages: () => {
@@ -543,34 +589,55 @@ export const createMessageSlice = (set, get) => ({
     });
 
     socket.on("message:reactionUpdated", ({ messageId, reactions }) => {
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m._id === messageId ? { ...m, reactions: reactions || [] } : m
-        ),
-      }));
+      set((state) => {
+        const updater = (msg) =>
+          msg._id === messageId ? { ...msg, reactions } : msg;
+
+        return {
+          messages: state.messages.map(updater),
+          groupMessages: state.groupMessages.map(updater),
+        };
+      });
     });
 
-    socket.on("userTyping", ({ userId }) => {
-      get().setTypingStatus(userId, true);
+    socket.on("userTyping", ({ chatId, isGroup }) => {
+  
+      if (!isGroup) {
+        set((state) => ({
+          typingUsers: {
+            ...state.typingUsers,
+            [chatId]: true, // chatId is the Sender's ID sent from backend
+          },
+        }));
+      }
     });
 
-    socket.on("userStopTyping", ({ userId }) => {
-      get().setTypingStatus(userId, false);
+    socket.on("userStopTyping", ({ chatId, isGroup }) => {
+      if (!isGroup) {
+        set((state) => {
+          const newTyping = { ...state.typingUsers };
+          delete newTyping[chatId];
+          return { typingUsers: newTyping };
+        });
+      }
     });
   },
 
   unsubscribeFromMessages: () => {
     const { socket } = useAuthStore.getState();
     if (!socket) return;
+    {
+      socket.off("newMessage");
+      socket.off("messagesRead");
+      socket.off("message:edited");
+      socket.off("message:deleted");
+      socket.off("message:deletedForMe");
+      socket.off("message:reactionUpdated");
+      socket.off("chat:cleared");
+      socket.off("userTyping");
+      socket.off("userStopTyping");
+    }
 
-    socket.off("newMessage");
-    socket.off("messagesRead");
-    socket.off("message:edited");
-    socket.off("message:deleted");
-    socket.off("message:deletedForMe");
-    socket.off("message:reactionUpdated");
-    socket.off("chat:cleared");
-    socket.off("userTyping");
-    socket.off("userStopTyping");
+    set({ typingUsers: {} });
   },
 });

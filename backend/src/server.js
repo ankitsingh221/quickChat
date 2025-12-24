@@ -1,9 +1,10 @@
-import express from "express";
+import express, { application } from "express";
 import dotenv from "dotenv";
 dotenv.config();
 import { connectDB } from "./lib/db.js";
 import authRoute from "./routes/authRoute.js";
 import messageRoute from "./routes/messageRoute.js";
+import groupRoutes from "./routes/groupRoute.js"
 import cookieParser from "cookie-parser";
 import { globalLimiter } from "./middleware/rateLimiter.js";
 import cors from "cors"; 
@@ -30,6 +31,7 @@ app.use(globalLimiter);
 // Routes
 app.use("/api/auth", authRoute);
 app.use("/api/messages", messageRoute);
+app.use("/api/groups", groupRoutes)
 
 
 // Connect to DB first

@@ -1,5 +1,6 @@
 import { axiosInstance } from "../../lib/axios";
 import toast from "react-hot-toast";
+import { useAuthStore } from "../useAuthStore";
 
 export const createContactSlice = (set, get) => ({
   allContacts: [],
@@ -8,7 +9,26 @@ export const createContactSlice = (set, get) => ({
   isUsersLoading: false,
   unreadCounts: {},
 
-  setSelectedUser: (selectedUser) => set({ selectedUser }),
+
+setSelectedUser: (user) => {
+  set({ 
+    selectedUser: user, 
+    selectedGroup: null, 
+    messages: [],
+    typingUsers: {} 
+  });
+
+  if (user) {
+    //  Fetch History
+    get().getMessagesByUserId(user._id);
+    const socket = useAuthStore.getState().socket;
+    if (socket) {
+      // Tell backend to join the recipient's room
+      socket.emit("joinChat", user._id); 
+    }
+    get().subscribeToMessages?.();
+  }
+},
 
   getAllContacts: async () => {
     set({ isUsersLoading: true });

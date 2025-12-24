@@ -1,34 +1,30 @@
 import React from "react";
 import MessageItem from "./MessageItem";
 
-// Helper function to format the date label
 const formatHeaderDate = (date) => {
   const messageDate = new Date(date);
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
 
-  if (messageDate.toDateString() === today.toDateString()) {
-    return "Today";
-  }
-  if (messageDate.toDateString() === yesterday.toDateString()) {
-    return "Yesterday";
-  }
-  return messageDate.toLocaleDateString("en-GB"); // Returns DD/MM/YYYY
+  if (messageDate.toDateString() === today.toDateString()) return "Today";
+  if (messageDate.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return messageDate.toLocaleDateString("en-GB"); 
 };
 
-const MessageList = ({ messages, authUser, selectedUser, messageActions, setSelectedImg }) => {
+const MessageList = ({ messages, authUser, selectedUser, selectedGroup, messageActions, setSelectedImg }) => {
   return (
     <>
       {messages.map((msg, index) => {
-        const isMe = msg.senderId.toString() === authUser._id.toString();
+        // FIX: Extract the ID string safely. 
+        // Checks msg.senderId._id (for groups) first, falls back to msg.senderId (for private).
+        const senderIdStr = msg.senderId?._id || msg.senderId;
+        const isMe = senderIdStr?.toString() === authUser?._id?.toString();
         
-        // Calculate if we need to show a date separator
         const currentDateLabel = formatHeaderDate(msg.createdAt);
         const previousMessage = messages[index - 1];
         const previousDateLabel = previousMessage ? formatHeaderDate(previousMessage.createdAt) : null;
         
-        // Show separator if it's the first message or the date has changed
         const showSeparator = currentDateLabel !== previousDateLabel;
 
         return (
@@ -48,6 +44,7 @@ const MessageList = ({ messages, authUser, selectedUser, messageActions, setSele
               isMe={isMe}
               authUser={authUser}
               selectedUser={selectedUser}
+              selectedGroup={selectedGroup}
               messageActions={messageActions}
               setSelectedImg={setSelectedImg}
             />

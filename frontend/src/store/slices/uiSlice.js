@@ -15,11 +15,6 @@ export const createUISlice = (set, get) => ({
   clearSearch: () =>
     set({ searchTerm: "", searchIndex: 0, isSearchIconOpen: false }),
 
-  setTypingStatus: (userId, isTyping) => {
-    set((state) => ({
-      typingUsers: { ...state.typingUsers, [userId]: isTyping },
-    }));
-  },
 
   toggleSound: () => {
     const newVal = !get().isSoundEnabled;

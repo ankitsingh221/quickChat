@@ -23,10 +23,17 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+   // UPDATE 1: receiverId is no longer required because of groups
     receiverId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: function() { return !this.groupId; } // Required only if not a group message
+    },
+    // UPDATE 2: Add groupId field
+    groupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Group",
+      default: null,
     },
     text: {
       type: String,
@@ -52,6 +59,12 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    seenBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     reactions: [reactionSchema],
     replyTo: {
       _id: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
@@ -65,6 +78,7 @@ const messageSchema = new mongoose.Schema(
 );
 
 messageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
+messageSchema.index({ groupId: 1, createdAt: -1 });
 messageSchema.index({ deletedFor: 1 });
 
 export default mongoose.model("Message", messageSchema);

@@ -1,6 +1,6 @@
 import React from "react";
 import { Reply, Pencil, Smile, Trash2, Forward, CheckSquare } from "lucide-react";
-import { useChatStore } from "../../store/useChatStore"; // Import store to trigger forwarding
+import { useChatStore } from "../../store/useChatStore";
 
 const MenuItem = ({ children, onClick, danger, icon: Icon }) => (
   <button
@@ -28,25 +28,25 @@ const MessageActionMenu = ({
   startEdit,
   handleDelete,
   handleReactionButtonClick,
+  isGroup, // Now being used below
 }) => {
-  // Get forwarding and selection actions from store
   const { setForwardingMessages, toggleMessageSelection, toggleSelectionMode } = useChatStore();
 
   return (
     <div
       className={`
-        action-menu absolute z-[100] min-w-[190px]
+        action-menu absolute z-[100] min-w-[210px]
         rounded-xl border border-base-300 bg-base-300 shadow-2xl
         bottom-full mb-2 ${isMe ? "right-0" : "left-0"}
         overflow-hidden animate-in fade-in zoom-in duration-100
       `}
     >
       <div className="flex flex-col py-1">
+        {/* Contextual Reply Label */}
         <MenuItem icon={Reply} onClick={() => handleReply(msg)}>
-          Reply
+          {isGroup ? "Reply to group" : "Reply"}
         </MenuItem>
 
-        {/* --- NEW: FORWARD OPTION --- */}
         <MenuItem 
           icon={Forward} 
           onClick={() => setForwardingMessages(msg)}
@@ -54,15 +54,14 @@ const MessageActionMenu = ({
           Forward
         </MenuItem>
 
-        {canEdit && (
+        {isMe && canEdit && (
           <MenuItem icon={Pencil} onClick={() => startEdit(msg)}>
-            Edit
+            Edit message
           </MenuItem>
         )}
 
         <div className="border-t border-base-content/5 my-1" />
 
-        {/* --- NEW: SELECT OPTION (Linked to your selection mode) --- */}
         <MenuItem 
           icon={CheckSquare} 
           onClick={() => {
@@ -70,7 +69,7 @@ const MessageActionMenu = ({
             toggleMessageSelection(msg._id);
           }}
         >
-          Select
+          Select message
         </MenuItem>
 
         <div className="border-t border-base-content/5 my-1" />
@@ -83,13 +82,16 @@ const MessageActionMenu = ({
           Delete for me
         </MenuItem>
 
-        {isMe && (
+        {/* Using isGroup here to clarify that "Delete for everyone" 
+           removes the message for all members of the group.
+        */}
+        {isMe && canEdit && (
           <MenuItem 
             icon={Trash2} 
             danger 
             onClick={() => handleDelete(msg._id, "everyone")}
           >
-            Delete for everyone
+            {isGroup ? "Delete for everyone in group" : "Delete for everyone"}
           </MenuItem>
         )}
 
@@ -99,7 +101,7 @@ const MessageActionMenu = ({
           icon={Smile}
           onClick={(e) => handleReactionButtonClick(msg._id, e)}
         >
-          React
+          Add reaction
         </MenuItem>
       </div>
     </div>

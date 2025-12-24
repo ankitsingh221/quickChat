@@ -1,8 +1,9 @@
+import mongoose from "mongoose";
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketIds, io, emitToUser } from "../lib/socket.js";
 import Message from "../models/message.js";
 import User from "../models/user.js";
-import mongoose from "mongoose";
+import Group from "../models/group.js";
 
 const FIVE_MIN = 5 * 60 * 1000;
 
@@ -137,7 +138,7 @@ export const getChatPartners = async (req, res) => {
 
     const chatMap = new Map();
     messages.forEach((msg) => {
-      if (!msg.senderId || !msg.receiverId) return; 
+      if (!msg.senderId || !msg.receiverId) return;
 
       const partnerId =
         msg.senderId.toString() === loggedInUserId.toString()
@@ -152,7 +153,7 @@ export const getChatPartners = async (req, res) => {
     const partnerIds = Array.from(chatMap.keys());
 
     const users = await User.find({ _id: { $in: partnerIds } }, "-password");
-  
+
     const usersWithLastMessage = await Promise.all(
       users.map(async (user) => {
         try {
@@ -201,9 +202,13 @@ export const editMessage = async (req, res) => {
     const { id } = req.params;
     const { text } = req.body;
 
-    const message = await Message.findById(id);
+    const message = await Message.findById(id).populate(
+      "senderId",
+      "fullName profilePic"
+    );
     if (!message) return res.sendStatus(404);
     if (!message.senderId.equals(req.user._id)) return res.sendStatus(403);
+
     if (Date.now() - message.createdAt.getTime() > FIVE_MIN)
       return res.status(403).json({ message: "Edit time expired" });
 
@@ -211,11 +216,17 @@ export const editMessage = async (req, res) => {
     message.isEdited = true;
     await message.save();
 
-    const receiverSockets = getReceiverSocketIds(message.receiverId);
-    receiverSockets.forEach((socketId) =>
-      io.to(socketId).emit("message:edited", message)
-    );
-
+    // REAL-TIME BROADCAST
+    if (message.groupId) {
+      // Use your helper from socket.js to notify the whole group room
+      io.to(message.groupId.toString()).emit("message:edited", message);
+    } else {
+      // Private chat logic
+      const receiverSockets = getReceiverSocketIds(message.receiverId);
+      receiverSockets.forEach((socketId) =>
+        io.to(socketId).emit("message:edited", message)
+      );
+    }
     res.json(message);
   } catch (error) {
     console.error("editMessage error:", error);
@@ -262,11 +273,18 @@ export const deleteForEveryone = async (req, res) => {
     message.image = null;
     await message.save();
 
-    // Emit to all sockets of receiver
-    const receiverSockets = getReceiverSocketIds(message.receiverId);
-    receiverSockets.forEach((socketId) =>
-      io.to(socketId).emit("message:deleted", { messageId: id })
-    );
+    const payload = { messageId: id, groupId: message.groupId || null };
+
+    if (message.groupId) {
+      // Broadcast to group room
+      io.to(message.groupId.toString()).emit("message:deleted", payload);
+    } else {
+      // Broadcast to private receiver
+      const receiverSockets = getReceiverSocketIds(message.receiverId);
+      receiverSockets.forEach((socketId) =>
+        io.to(socketId).emit("message:deleted", payload)
+      );
+    }
 
     res.sendStatus(200);
   } catch (error) {
@@ -277,38 +295,30 @@ export const deleteForEveryone = async (req, res) => {
 
 export const clearChat = async (req, res) => {
   try {
+    const { id } = req.params;
+    const { isGroup } = req.query;
     const userId = req.user._id;
-    const { id: otherUserId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(otherUserId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid user ID",
-      });
+    let filter = {};
+    if (isGroup === "true") {
+      filter = { groupId: id };
+    } else {
+      filter = {
+        $or: [
+          { senderId: userId, receiverId: id },
+          { senderId: id, receiverId: userId },
+        ],
+      };
     }
 
-    await Message.updateMany(
-      {
-        $or: [
-          { senderId: userId, receiverId: otherUserId },
-          { senderId: otherUserId, receiverId: userId },
-        ],
-      },
-      {
-        $addToSet: { deletedFor: userId },
-      }
-    );
+    // CRITICAL: We don't delete the message, we add the user to the "hidden" list
+    await Message.updateMany(filter, {
+      $addToSet: { deletedFor: userId },
+    });
 
-    res.status(200).json({
-      success: true,
-      message: "Chat cleared successfully",
-    });
+    res.status(200).json({ success: true, message: "Chat cleared" });
   } catch (error) {
-    console.error("Clear chat error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -318,64 +328,55 @@ export const toggleReaction = async (req, res) => {
     const { emoji } = req.body;
     const userId = req.user._id;
 
-    if (!mongoose.Types.ObjectId.isValid(messageId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid message ID" });
-    }
-
     const message = await Message.findById(messageId);
-    if (!message)
-      return res
-        .status(404)
-        .json({ success: false, message: "Message not found" });
+    if (!message) return res.status(404).json({ message: "Message not found" });
 
-    // 1. Find if user already reacted
-    const existingReactionIndex = message.reactions.findIndex(
+    // Handle Toggle Logic
+    const existingIndex = message.reactions.findIndex(
       (r) => r.userId.toString() === userId.toString()
     );
 
-    if (existingReactionIndex > -1) {
-      const existingEmoji = message.reactions[existingReactionIndex].emoji;
-
-      //  remove the existing one (Toggle behavior)
-      message.reactions.splice(existingReactionIndex, 1);
-
-      // If the new emoji is different, add it. If it's the same, we leave it removed.
-      if (existingEmoji !== emoji) {
-        message.reactions.push({ userId, emoji });
+    if (existingIndex > -1) {
+      if (message.reactions[existingIndex].emoji === emoji) {
+        message.reactions.splice(existingIndex, 1); // Remove if same emoji
+      } else {
+        message.reactions[existingIndex].emoji = emoji; // Update if different emoji
       }
     } else {
-      // 2. If no existing reaction, add new one
-      message.reactions.push({ userId, emoji });
+      message.reactions.push({ userId, emoji }); // Add new
     }
 
     await message.save();
 
-    // 3. Re-fetch and Populate to send full user objects (fullName, profilePic) to frontend
-    const populatedMessage = await Message.findById(messageId)
+    // CRITICAL: Populate user details so other clients see names/avatars
+    const populated = await Message.findById(messageId)
       .populate("reactions.userId", "fullName profilePic")
       .lean();
 
-    // 4. Emit via Socket.io
-    const sockets = new Set([
-      ...(getReceiverSocketIds(message.senderId) || []),
-      ...(getReceiverSocketIds(message.receiverId) || []),
-    ]);
+    const reactionPayload = {
+      messageId: message._id.toString(),
+      reactions: populated.reactions,
+      groupId: message.groupId || null,
+    };
 
-    sockets.forEach((socketId) => {
-      io.to(socketId).emit("message:reactionUpdated", {
-        messageId: message._id.toString(),
-        reactions: populatedMessage.reactions,
+    // BROADCAST
+    if (message.groupId) {
+      io.to(message.groupId.toString()).emit(
+        "message:reactionUpdated",
+        reactionPayload
+      );
+    } else {
+      // Send to both parties in private chat
+      [message.senderId, message.receiverId].forEach((uId) => {
+        getReceiverSocketIds(uId).forEach((sId) =>
+          io.to(sId).emit("message:reactionUpdated", reactionPayload)
+        );
       });
-    });
+    }
 
-    res
-      .status(200)
-      .json({ success: true, reactions: populatedMessage.reactions });
+    res.status(200).json({ success: true, reactions: populated.reactions });
   } catch (error) {
-    console.error("toggleReaction error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ success: false });
   }
 };
 
@@ -415,19 +416,255 @@ export const markMessagesAsRead = async (req, res) => {
 
 export const deleteBulkMessages = async (req, res) => {
   try {
-    const { messageIds } = req.body;
+    const { messageIds, isForEveryone } = req.body;
     const userId = req.user._id;
+
+    if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No messages selected" });
+    }
+
+    // Find the first message to identify the group/chat room
+    const firstMsg = await Message.findById(messageIds[0]);
+    if (!firstMsg)
+      return res.status(404).json({ message: "Messages not found" });
+
+    if (isForEveryone) {
+      // Logic: Only mark messages as deleted if the current user is the sender
+      await Message.updateMany(
+        { _id: { $in: messageIds }, senderId: userId },
+        { $set: { isDeleted: true, text: null, image: null } }
+      );
+
+      // Broadcast to others
+      const payload = {
+        messageIds,
+        isForEveryone: true,
+        groupId: firstMsg.groupId,
+      };
+      if (firstMsg.groupId) {
+        io.to(firstMsg.groupId.toString()).emit(
+          "messages:bulkDeleted",
+          payload
+        );
+      } else {
+        const partnerId = firstMsg.senderId.equals(userId)
+          ? firstMsg.receiverId
+          : firstMsg.senderId;
+        getReceiverSocketIds(partnerId).forEach((sId) =>
+          io.to(sId).emit("messages:bulkDeleted", payload)
+        );
+      }
+    } else {
+      // Logic: "Delete for Me" - works for any message in the chat
+      await Message.updateMany(
+        { _id: { $in: messageIds } },
+        { $addToSet: { deletedFor: userId } }
+      );
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Bulk Delete Error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error during deletion" });
+  }
+};
+
+// Send message to group
+export const sendMessageToGroup = async (req, res) => {
+  try {
+    const senderId = req.user._id;
+    const { id: groupId } = req.params;
+    const { text, image, replyTo, isForwarded } = req.body;
+
+    if (!text && !image) {
+      return res.status(400).json({
+        success: false,
+        message: "Text or image is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(groupId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid group ID",
+      });
+    }
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: "Group not found",
+      });
+    }
+
+    // Check if sender is a member
+    if (!group.members.some((m) => m.equals(senderId))) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not a member of this group",
+      });
+    }
+
+    // Check if only admins can send
+    if (group.settings.onlyAdminsCanSend) {
+      const isAdmin = group.admins.some((a) => a.equals(senderId));
+      if (!isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "Only admins can send messages in this group",
+        });
+      }
+    }
+
+    let imageUrl = null;
+    if (image) {
+      if (image.startsWith("http")) {
+        imageUrl = image;
+      } else {
+        const uploadResult = await cloudinary.uploader.upload(image);
+        imageUrl = uploadResult.secure_url;
+      }
+    }
+
+    const messageData = {
+      senderId,
+      groupId,
+      text,
+      image: imageUrl,
+      isForwarded: isForwarded || false,
+    };
+
+    if (replyTo) {
+      messageData.replyTo = {
+        _id: replyTo._id,
+        text: replyTo.text || null,
+        image: replyTo.image || null,
+        senderId: replyTo.senderId,
+      };
+    }
+
+    const newMessage = await Message.create(messageData);
+
+    // Populate sender info
+    await newMessage.populate("senderId", "fullName profilePic");
+
+    // Update group's lastMessage
+    group.lastMessage = newMessage._id;
+    await group.save();
+
+    // Emit to all group members EXCEPT sender
+    group.members.forEach((memberId) => {
+      if (!memberId.equals(senderId)) {
+        const sockets = getReceiverSocketIds(memberId);
+        sockets.forEach((socketId) => {
+          io.to(socketId).emit("newGroupMessage", newMessage);
+        });
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Message sent successfully",
+      data: newMessage,
+    });
+  } catch (error) {
+    console.error("sendMessageToGroup error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Get group messages
+export const getGroupMessages = async (req, res) => {
+  try {
+    const { id: groupId } = req.params;
+    const userId = req.user._id;
+
+    if (!mongoose.Types.ObjectId.isValid(groupId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid group ID" });
+    }
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
+    }
+
+    // SAFE CHECK: Check membership
+    const isMember = group.members?.some(
+      (m) => m.toString() === userId.toString()
+    );
+    if (!isMember) {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    const messages = await Message.find({
+      groupId,
+      // Ensure deletedFor is an array in your Model!
+      deletedFor: { $ne: userId },
+    })
+      .sort({ createdAt: 1 })
+      .populate("senderId", "fullName profilePic")
+      .lean();
+
+    // MATCH FRONTEND: return { success: true, messages: [...] }
+    res.status(200).json({ success: true, messages });
+  } catch (error) {
+    console.error("getGroupMessages error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Mark group messages as seen
+export const markGroupMessagesAsSeen = async (req, res) => {
+  try {
+    const { id: groupId } = req.params;
+    const userId = req.user._id;
+
+    const messages = await Message.find({
+      groupId,
+      senderId: { $ne: userId },
+      seenBy: { $ne: userId },
+    });
+
+    if (messages.length === 0) {
+      return res.status(200).json({ message: "No unread messages" });
+    }
 
     await Message.updateMany(
       {
-        _id: { $in: messageIds },
+        groupId,
+        senderId: { $ne: userId },
+        seenBy: { $ne: userId },
       },
       {
-        $addToSet: { deletedFor: userId },
+        $addToSet: { seenBy: userId },
       }
     );
-    res.status(200).json({ success: true });
+
+    // Emit to group members
+    const group = await Group.findById(groupId);
+    group.members.forEach((memberId) => {
+      const sockets = getReceiverSocketIds(memberId);
+      sockets.forEach((socketId) => {
+        io.to(socketId).emit("groupMessagesRead", {
+          groupId,
+          userId,
+          messageIds: messages.map((m) => m._id.toString()),
+        });
+      });
+    });
+
+    res.status(200).json({ message: "Messages marked as seen" });
   } catch (error) {
-    res.status(500).json({ message: "server error" });
+    console.error("markGroupMessagesAsSeen error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };

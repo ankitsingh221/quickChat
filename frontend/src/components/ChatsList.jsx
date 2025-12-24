@@ -12,30 +12,34 @@ function ChatList() {
     isUserLoading,
     setSelectedUser,
     selectedUser,
+    selectedGroup,
+    setSelectedGroup,
     searchQuery,
-    typingUsers,
+    typingUsers,        
+    groupTypingUsers,    
   } = useChatStore();
 
-  const { onlineUsers } = useAuthStore();
+  const { onlineUsers, authUser } = useAuthStore();
 
   useEffect(() => {
     getMyChatPartners();
   }, [getMyChatPartners]);
 
+  // ✅ Memoize filtered chats with proper dependencies
   const filteredChats = useMemo(() => {
     const chatArray = Array.isArray(chats) ? chats : [];
 
     return chatArray
       .filter((chat) => {
-        // Search filter
-        const matchesSearch = chat.fullName
-          ?.toLowerCase()
+        const chatName = chat.fullName || chat.groupName || "";
+        const matchesSearch = chatName
+          .toLowerCase()
           .includes(searchQuery.toLowerCase());
 
-        // hide if lastMessage is null or cleared
         const hasMessages = !!chat.lastMessage;
+        const isSelected = selectedGroup?._id === chat._id || selectedUser?._id === chat._id;
 
-        return matchesSearch && hasMessages;
+        return matchesSearch && (hasMessages || isSelected);
       })
       .sort((a, b) => {
         const aTime = a.lastMessage?.createdAt
@@ -46,23 +50,56 @@ function ChatList() {
           : 0;
         return bTime - aTime;
       });
-  }, [chats, searchQuery]);
+  }, [chats, searchQuery, selectedGroup?._id, selectedUser?._id]);
+
+  // ✅ NEW: Separate function to calculate typing status (not memoized so it updates reactively)
+  const getTypingStatus = (chat) => {
+    const stringId = chat._id.toString();
+    const isGroup = !!chat.groupName;
+
+    if (isGroup) {
+      const groupTypers = groupTypingUsers[stringId] || [];
+      // Filter out current user and check if anyone else is typing
+      return groupTypers.some(u => u.userId !== authUser?._id);
+    } else {
+      return !!typingUsers[stringId];
+    }
+  };
 
   if (isUserLoading) return <UsersLoadingSkeleton />;
   if (filteredChats.length === 0) return <NoChatsFound />;
 
   return (
-    <div className="flex flex-col gap-1 overflow-y-auto max-h-full custom-scrollbar">
-      {filteredChats.map((chat) => (
-        <UserCard
-          key={chat._id}
-          user={chat}
-          isOnline={onlineUsers.includes(chat._id)}
-          isActive={selectedUser?._id === chat._id}
-          isTyping={!!typingUsers?.[chat._id]}
-          onClick={() => setSelectedUser(chat)}
-        />
-      ))}
+    <div className="flex flex-col gap-1 overflow-y-auto max-h-full custom-scrollbar py-2">
+      {filteredChats.map((chat) => {
+        const isGroup = !!chat.groupName;
+        
+        // ✅ Calculate typing status for each render (reactive to state changes)
+        const isTyping = getTypingStatus(chat);
+
+        const handleChatClick = () => {
+          if (isGroup) {
+            setSelectedGroup(chat);
+          } else {
+            setSelectedUser(chat);
+          }
+        };
+
+        const isActive = isGroup 
+          ? selectedGroup?._id === chat._id 
+          : selectedUser?._id === chat._id;
+
+        return (
+          <UserCard
+            key={chat._id}
+            user={chat}
+            isOnline={!isGroup && onlineUsers.includes(chat._id)}
+            isActive={isActive}
+            isTyping={isTyping} 
+            onClick={handleChatClick}
+          />
+        );
+      })}
     </div>
   );
 }

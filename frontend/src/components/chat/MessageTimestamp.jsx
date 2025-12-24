@@ -1,11 +1,22 @@
 import React from "react";
+import { useChatStore } from "../../store/useChatStore";
 
 const MessageTimestamp = ({ msg, isMe }) => {
+  const { selectedGroup } = useChatStore();
+  const isGroup = !!selectedGroup;
+
   const timeString = new Date(msg.createdAt).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
   }).toLowerCase();
+
+  // Logic for Read Receipts in Groups
+  // In many systems, we show double ticks only if everyone has seen it, 
+  // or we just show a single tick to represent "sent to server".
+  const isRead = isGroup 
+    ? (msg.seenBy?.length >= selectedGroup.members?.length - 1) // Everyone else saw it
+    : msg.seen;
 
   return (
     <div
@@ -20,7 +31,7 @@ const MessageTimestamp = ({ msg, isMe }) => {
       {/* Status Icons for Sent Messages */}
       {isMe && !msg.isDeleted && (
         <div className="flex items-center">
-          {msg.seen ? (
+          {isRead ? (
             /* Double Tick (Read) - Cyan Glow */
             <span className="text-cyan-400 drop-shadow-[0_0_3px_rgba(34,211,238,0.4)]">
               <svg
@@ -37,7 +48,7 @@ const MessageTimestamp = ({ msg, isMe }) => {
               </svg>
             </span>
           ) : (
-            /* Single Tick (Delivered/Sent) */
+            /* Single Tick (Sent) */
             <span className="text-slate-600">
               <svg
                 className="w-3.5 h-3.5"

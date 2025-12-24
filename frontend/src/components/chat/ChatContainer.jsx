@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../../store/useChatStore";
 import { useAuthStore } from "../../store/useAuthStore";
+import { MessageSquare } from "lucide-react";
 
 import ChatHeader from "../ChatHeader";
 import MessageInput from "../MessageInput";
@@ -16,34 +17,52 @@ import useMessageActions from "../../hooks/useMessageActions";
 import ForwardModal from "./ForwardModal";
 
 const ChatContainer = () => {
-  const { authUser } = useAuthStore();
+  const { authUser, socket } = useAuthStore();
   const {
     selectedUser,
-    messages = [],
+    selectedGroup,
+    messages,
+    groupMessages,
     isMessagesLoading,
+    isGroupMessagesLoading,
     getMessagesByUserId,
+    getGroupMessages,
     editMessage,
     deleteForMe,
     deleteForEveryone,
     toggleReaction,
     isSoundEnabled,
     markMessagesAsRead,
+    markGroupMessagesAsRead,
     getFilteredMessages,
     searchTerm,
     clearSearch,
     updateUnreadCount,
-    forwardingMessages
+    forwardingMessages,
+    subscribeToMessages,
+    subscribeToGroupEvents,
+    unsubscribeFromMessages,
+    unsubscribeFromGroupEvents,
+    groupTypingUsers,
   } = useChatStore();
 
   const [selectedImg, setSelectedImg] = useState(null);
   const messageEndRef = useRef(null);
   const prevMessagesLengthRef = useRef(0);
 
-  // sounds
-  const { playRandomKeyStrokeSound, playMessageReceivedSound } =
-    useKeyboardSound();
+ 
+  const isGroup = !!selectedGroup;
+  const activeChatId = isGroup ? selectedGroup?._id : selectedUser?._id;
+  const activeMessages = isGroup ? (groupMessages || []) : (messages || []);
+  const isLoading = isGroup ? isGroupMessagesLoading : isMessagesLoading;
 
-  // message actions
+  const { playRandomKeyStrokeSound, playMessageReceivedSound } = useKeyboardSound();
+
+  // get typing user for group
+  const typingUsers = isGroup ? (groupTypingUsers[activeChatId] || []) : [];
+  const otherTypingUsers = typingUsers.filter(u => u.userId !== authUser?._id);
+
+  // intilize action
   const messageActions = useMessageActions({
     editMessage,
     deleteForMe,
@@ -51,146 +70,202 @@ const ChatContainer = () => {
     toggleReaction,
     isSoundEnabled,
     playRandomKeyStrokeSound,
+    isGroup: isGroup,
   });
+  
+ 
+  useEffect(() => {
+    subscribeToMessages();
+    subscribeToGroupEvents();
+    return () => {
+      unsubscribeFromMessages();
+      unsubscribeFromGroupEvents();
+    };
+  }, []);
 
-  // reading receipt
+ 
+  useEffect(() => {
+    if (!activeChatId) return;
+
+    console.log(`📡 Switching to ${isGroup ? 'group' : 'private'} chat:`, activeChatId);
+
+    // Fetch messages
+    if (isGroup) {
+      getGroupMessages(activeChatId);
+      
+      // Join the group socket room
+      if (socket) {
+        socket.emit("joinChat", activeChatId);
+        socket.emit("joinGroup", activeChatId);
+      }
+    } else {
+      getMessagesByUserId(activeChatId);
+      
+      // Join the private chat room
+      if (socket) {
+        socket.emit("joinChat", activeChatId);
+      }
+    }
+
+    prevMessagesLengthRef.current = 0;
+
+    //  Leave room when switching chats
+    return () => {
+      if (socket && activeChatId) {
+        console.log("🚪 Leaving room:", activeChatId);
+        socket.emit("leaveChat", activeChatId);
+        if (isGroup) {
+          socket.emit("leaveGroup", activeChatId);
+        }
+      }
+    };
+  }, [activeChatId, isGroup, socket, getMessagesByUserId, getGroupMessages]);
+
+  // 5. read receipts (Private Only)
   useReadReceipts(
-    selectedUser,
+    isGroup ? null : selectedUser, 
     messages,
     markMessagesAsRead,
     getMessagesByUserId
   );
 
-  //filtered messages
-  const filteredMessages = getFilteredMessages() || [];
-
-  //visibility
+  // visiblity and unread logic
   useEffect(() => {
-    if (!selectedUser) return;
+    if (!activeChatId || !authUser?._id || document.hidden) return;
 
-    const handleVisibilityChange = () => {
-      if (document.hidden) return;
+    const handleReadMarking = () => {
+      const hasUnread = activeMessages.some((msg) => {
+        const senderId = msg.senderId?._id || msg.senderId;
+        const isMine = senderId?.toString() === authUser._id.toString();
+        if (isMine) return false;
 
-      const hasUnread = messages.some(
-        (msg) =>
-          msg.senderId?.toString() === selectedUser._id?.toString() && !msg.seen
-      );
+        return isGroup 
+          ? !msg.seenBy?.includes(authUser._id) 
+          : !msg.seen;
+      });
 
       if (!hasUnread) return;
 
-      markMessagesAsRead(selectedUser._id);
-
-      if (updateUnreadCount) {
-        updateUnreadCount(selectedUser._id, 0);
+      if (isGroup) {
+        markGroupMessagesAsRead?.(activeChatId);
       } else {
-        useChatStore.setState((state) => ({
-          unreadCounts: {
-            ...state.unreadCounts,
-            [selectedUser._id]: 0,
-          },
-          chats: state.chats.map((chat) =>
-            chat._id === selectedUser._id ? { ...chat, unreadCount: 0 } : chat
-          ),
-        }));
+        markMessagesAsRead?.(activeChatId);
       }
+      updateUnreadCount?.(activeChatId, 0);
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [selectedUser, messages, markMessagesAsRead, updateUnreadCount]);
+    document.addEventListener("visibilitychange", handleReadMarking);
+    handleReadMarking();
 
-  //AUTO SCROLL + SOUND
-  useEffect(() => {
-    if (!Array.isArray(messages)) return;
-
-    const hasNewMessages = messages.length > prevMessagesLengthRef.current;
-
-    if (hasNewMessages && !searchTerm) {
-      messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-
-    if (hasNewMessages && messages.length > 0) {
-      const latestMessage = messages[messages.length - 1];
-      const isIncoming =
-        latestMessage.senderId?.toString() !== authUser._id?.toString();
-
-      if (isIncoming && isSoundEnabled) {
-        playMessageReceivedSound
-          ? playMessageReceivedSound()
-          : playRandomKeyStrokeSound();
-      }
-    }
-
-    prevMessagesLengthRef.current = messages.length;
+    return () => document.removeEventListener("visibilitychange", handleReadMarking);
   }, [
-    messages,
-    authUser._id,
-    isSoundEnabled,
-    playMessageReceivedSound,
-    playRandomKeyStrokeSound,
-    searchTerm,
+    activeChatId, 
+    activeMessages.length, 
+    isGroup, 
+    authUser?._id,
+    activeMessages,
+    markMessagesAsRead,
+    markGroupMessagesAsRead,
+    updateUnreadCount
   ]);
 
-  //clear search on user change
+  // auto scroll and sound
   useEffect(() => {
-    clearSearch();
-    return () => clearSearch();
-  }, [selectedUser?._id, clearSearch]);
+    if (activeMessages.length > prevMessagesLengthRef.current) {
+      if (!searchTerm) {
+        messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
 
- 
+      const latestMsg = activeMessages[activeMessages.length - 1];
+      const senderId = latestMsg?.senderId?._id || latestMsg?.senderId;
+      if (senderId?.toString() !== authUser?._id?.toString() && isSoundEnabled) {
+        playMessageReceivedSound?.();
+      }
+    }
+    prevMessagesLengthRef.current = activeMessages.length;
+  }, [
+    activeMessages.length, 
+    isSoundEnabled, 
+    searchTerm, 
+    authUser?._id, 
+    playMessageReceivedSound,
+    activeMessages
+  ]);
+
+ // search cleanup
+  useEffect(() => {
+    clearSearch?.();
+  }, [activeChatId, clearSearch]);
+
+  // filterd messages
+  const filteredMessages = getFilteredMessages(activeMessages) || [];
+
+  if (!activeChatId) return null;
+
   return (
-    <>
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
       <ChatHeader>
         <MessageSearch />
       </ChatHeader>
+
       <div
-        className="flex-1 p-4 md:p-6 overflow-y-auto ..."
-        onClick={(e) => {
-          if (
-            !e.target.closest(".action-menu") &&
-            !e.target.closest(".reactions-menu") &&
-            !e.target.closest(".three-dot-button")
-          ) {
-            messageActions.closeAllMenus();
-          }
-        }}
+        className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar bg-base-200/50 relative"
+        onClick={() => messageActions.closeAllMenus()}
       >
-        {isMessagesLoading ? (
+        {isLoading ? (
           <MessagesLoadingSkeleton />
         ) : filteredMessages.length > 0 ? (
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className="max-w-4xl mx-auto space-y-6">
             <MessageList
               messages={filteredMessages}
               authUser={authUser}
               selectedUser={selectedUser}
+              selectedGroup={selectedGroup}
               messageActions={messageActions}
               setSelectedImg={setSelectedImg}
             />
-            <div ref={messageEndRef} />
+            <div ref={messageEndRef} className="h-2" />
           </div>
         ) : searchTerm ? (
           <div className="flex flex-col items-center justify-center h-full opacity-60">
             <p className="text-base-content/60">
-              No messages found matching “{searchTerm}”
+              No messages found matching "<span className="text-primary">{searchTerm}</span>"
             </p>
           </div>
         ) : (
-          <NoChatHistoryPlaceholder name={selectedUser?.fullName} />
+          <NoChatHistoryPlaceholder 
+            name={isGroup ? selectedGroup?.groupName : selectedUser?.fullName} 
+          />
         )}
       </div>
 
-      <ImageLightbox
-        selectedImg={selectedImg}
-        setSelectedImg={setSelectedImg}
+      <ImageLightbox selectedImg={selectedImg} setSelectedImg={setSelectedImg} />
+
+      {/*  TYPING INDICATOR FOR GROUP CHAT */}
+      {isGroup && otherTypingUsers.length > 0 && (
+        <div className="px-4 py-2 border-t border-slate-700/50 bg-slate-900/50">
+          <div className="max-w-3xl mx-auto flex items-center gap-2">
+            <div className="flex space-x-1">
+              <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <p className="text-xs text-slate-400 italic">
+              {otherTypingUsers.map(u => u.userName).join(", ")} 
+              {otherTypingUsers.length === 1 ? " is" : " are"} typing...
+            </p>
+          </div>
+        </div>
+      )}
+
+      <MessageInput 
+        replyTo={messageActions.replyTo} 
+        setReplyTo={messageActions.setReplyTo} 
+        isGroup={isGroup} 
       />
 
-      <MessageInput
-        replyTo={messageActions.replyTo}
-        setReplyTo={messageActions.setReplyTo}
-      />
-      {forwardingMessages && forwardingMessages.length > 0 && <ForwardModal />}
-    </>
+      {forwardingMessages?.length > 0 && <ForwardModal />}
+    </div>
   );
 };
 

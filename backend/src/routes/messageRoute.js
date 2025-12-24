@@ -10,7 +10,10 @@ import {
   clearChat,
   toggleReaction,
   markMessagesAsRead,
-  deleteBulkMessages
+  deleteBulkMessages,
+  sendMessageToGroup,
+  getGroupMessages,
+  markGroupMessagesAsSeen
 } from "../controllers/messageController.js";
 import protectRoute from "../middleware/authMiddleware.js";
 
@@ -25,9 +28,13 @@ router.get("/contacts", getAllContacts);
 router.get("/conversations", getChatPartners);
 
 router.get("/:id", getMessagesByUserId);
-
 router.post("/send/:id", sendMessageToUser);
 
+
+router.post("/group/:id/send", protectRoute, sendMessageToGroup);
+router.get("/group/:id", protectRoute, getGroupMessages);
+router.put("/group/:id/read", protectRoute, markGroupMessagesAsSeen);
+  
 
 router.patch("/edit/:id", editMessage);
 
@@ -40,5 +47,7 @@ router.delete("/clear/:id", protectRoute, clearChat);
 
 router.patch("/reaction/:messageId/",toggleReaction)
 router.put("/read/:id", protectRoute, markMessagesAsRead);
+
+
 
 export default router;
