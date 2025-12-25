@@ -1,36 +1,39 @@
-import { useState } from "react"; // Added useState
+import { useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import BorderAnimatedContainer from "../components/BorderAnimatedContainer";
 import ProfileHeader from "../components/ProfileHeader";
 import ActiveTabSwitch from "../components/ActiveTabSwitch";
 import ChatsList from "../components/ChatsList";
 import ContactList from "../components/ContactList";
-import GroupList from "../components/groups/GroupList"; // Added GroupList
-import CreateGroupModal from "../components/groups/CreateGroupModal"; // Added Modal
+import GroupList from "../components/groups/GroupList";
+import CreateGroupModal from "../components/groups/CreateGroupModal";
 import ChatContainer from "../components/chat/ChatContainer";
 import NoConversationPlaceholder from "../components/NoConversationPlaceholder";
 
 function ChatPage() {
   const { activeTab, selectedUser, selectedGroup } = useChatStore();
-  
-  // 1. MODAL STATE AT TOP LEVEL
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
 
   return (
-    <div className="relative w-full max-w-6xl h-[calc(100vh-4rem)] mx-auto px-2 md:px-0">
+    /* Changed: h-screen (100vh) and w-full without max-width constraints */
+    <div className="fixed inset-0 w-screen h-screen bg-slate-950 overflow-hidden">
       
-      {/* 2. RENDER MODAL HERE (Outside the flex layout to avoid clipping) */}
       <CreateGroupModal 
         isOpen={isCreateGroupOpen} 
         onClose={() => setIsCreateGroupOpen(false)} 
       />
 
-      <BorderAnimatedContainer>
+      {/* Note: If BorderAnimatedContainer has internal padding/margins, 
+         you might need to adjust its props to allow it to fill the screen.
+      */}
+      <BorderAnimatedContainer className="h-full w-full border-none rounded-none">
+        
         {/* LEFT SIDEBAR */}
         <div
           className={`
-            w-full md:w-80
+            w-full md:w-96
             h-full
+            border-r border-slate-700/50
             bg-slate-800/50 backdrop-blur-sm
             flex flex-col
             ${(selectedUser || selectedGroup) ? "hidden md:flex" : "flex"}
@@ -38,7 +41,6 @@ function ChatPage() {
         >
           <ProfileHeader />
           
-          {/* 3. PASS THE TRIGGER TO ACTIVE TAB SWITCH */}
           <ActiveTabSwitch onOpenCreateGroup={() => setIsCreateGroupOpen(true)} />
 
           <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
@@ -57,7 +59,6 @@ function ChatPage() {
             ${(selectedUser || selectedGroup) ? "flex" : "hidden md:flex"}
           `}
         >
-          {/* Show ChatContainer if either a user OR a group is selected */}
           {(selectedUser || selectedGroup) ? (
             <ChatContainer />
           ) : (
