@@ -8,7 +8,6 @@ const useReadReceipts = (
 ) => {
   const isMarkingAsRead = useRef(false);
 
-  
   useEffect(() => {
     if (selectedUser?._id) {
       getMessagesByUserId(selectedUser._id);
@@ -16,20 +15,17 @@ const useReadReceipts = (
     }
   }, [selectedUser?._id, getMessagesByUserId]);
 
-  
   useEffect(() => {
     if (!selectedUser?._id || messages.length === 0) return;
 
     const handleMarkAsRead = () => {
-      
       const isWindowFocused = document.hasFocus();
       const isPageVisible = !document.hidden;
 
-      
-      const unreadMessages = messages.filter(
-        (msg) => msg.senderId === selectedUser._id && !msg.seen
-      );
-
+      const unreadMessages = messages.filter((msg) => {
+        const senderId = msg.senderId?._id || msg.senderId; 
+        return senderId === selectedUser._id && !msg.seen;
+      });
       if (
         unreadMessages.length > 0 &&
         !isMarkingAsRead.current &&
@@ -48,7 +44,6 @@ const useReadReceipts = (
 
     handleMarkAsRead();
 
-   
     window.addEventListener("focus", handleMarkAsRead);
     document.addEventListener("visibilitychange", handleMarkAsRead);
 

@@ -87,8 +87,6 @@ const ChatContainer = () => {
   useEffect(() => {
     if (!activeChatId) return;
 
-    console.log(`📡 Switching to ${isGroup ? 'group' : 'private'} chat:`, activeChatId);
-
     // Fetch messages
     if (isGroup) {
       getGroupMessages(activeChatId);
@@ -130,44 +128,60 @@ const ChatContainer = () => {
   );
 
   // visiblity and unread logic
-  useEffect(() => {
-    if (!activeChatId || !authUser?._id || document.hidden) return;
+  // Inside ChatContainer.jsx
+useEffect(() => {
+  // CRITICAL: Only proceed if we have an active chat AND the window is actually visible
+  if (!activeChatId || !authUser?._id || document.hidden) return;
 
-    const handleReadMarking = () => {
-      const hasUnread = activeMessages.some((msg) => {
-        const senderId = msg.senderId?._id || msg.senderId;
-        const isMine = senderId?.toString() === authUser._id.toString();
-        if (isMine) return false;
+  const handleReadMarking = () => {
+    // Check if the chat container is actually visible (not just the tab)
+    if (document.hidden) return;
 
-        return isGroup 
-          ? !msg.seenBy?.includes(authUser._id) 
-          : !msg.seen;
-      });
+    const hasUnread = activeMessages.some((msg) => {
+      const senderId = msg.senderId?._id || msg.senderId;
+      const isMine = senderId?.toString() === authUser._id.toString();
+      if (isMine) return false;
 
-      if (!hasUnread) return;
+      // Only mark as read if the message belongs to the CURRENT active chat
+      // If it's a private chat, check msg.senderId matches activeChatId
+      const isMessageFromCurrentChat = isGroup 
+        ? msg.groupId === activeChatId 
+        : senderId === activeChatId;
 
-      if (isGroup) {
-        markGroupMessagesAsRead?.(activeChatId);
-      } else {
-        markMessagesAsRead?.(activeChatId);
-      }
-      updateUnreadCount?.(activeChatId, 0);
-    };
+      if (!isMessageFromCurrentChat) return false;
 
-    document.addEventListener("visibilitychange", handleReadMarking);
-    handleReadMarking();
+      return isGroup 
+        ? !msg.seenBy?.includes(authUser._id) 
+        : !msg.seen;
+    });
 
-    return () => document.removeEventListener("visibilitychange", handleReadMarking);
-  }, [
-    activeChatId, 
-    activeMessages.length, 
-    isGroup, 
-    authUser?._id,
-    activeMessages,
-    markMessagesAsRead,
-    markGroupMessagesAsRead,
-    updateUnreadCount
-  ]);
+    if (!hasUnread) return;
+
+    if (isGroup) {
+      markGroupMessagesAsRead?.(activeChatId);
+    } else {
+      markMessagesAsRead?.(activeChatId);
+    }
+    updateUnreadCount?.(activeChatId, 0);
+  };
+
+  // Add a slight delay to ensure the UI has rendered
+  const timeoutId = setTimeout(handleReadMarking, 300);
+
+  document.addEventListener("visibilitychange", handleReadMarking);
+  return () => {
+    clearTimeout(timeoutId);
+    document.removeEventListener("visibilitychange", handleReadMarking);
+  };
+}, [
+  activeChatId, 
+  activeMessages, 
+  isGroup,
+  authUser?._id,
+  markGroupMessagesAsRead,
+  updateUnreadCount,
+  markMessagesAsRead
+]);
 
   // auto scroll and sound
   useEffect(() => {

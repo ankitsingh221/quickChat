@@ -491,49 +491,60 @@ export const createMessageSlice = (set, get) => ({
     socket.off("userStopTyping");
 
     socket.on("newMessage", (msg) => {
-      const { selectedUser, messages, authUser } = get();
+      const { selectedUser, messages } = get();
+      const { authUser } = useAuthStore.getState();
 
-      if (msg.senderId === authUser?._id) {
+      //  Use authUser from useAuthStore, not from get()
+      if (
+        msg.senderId === authUser?._id ||
+        msg.senderId?._id === authUser?._id
+      ) {
         return;
       }
 
+      // Check if message already exists (prevents duplicates)
       const messageExists = messages.some((m) => m._id === msg._id);
       if (messageExists) {
         return;
       }
 
-      const isMessageFromSelectedUser = selectedUser?._id === msg.senderId;
-      const isMessageForCurrentChat =
-        isMessageFromSelectedUser || selectedUser?._id === msg.receiverId;
+      // Check if this message is for the currently open chat
+      const isMessageFromSelectedUser =
+        selectedUser?._id === msg.senderId ||
+        selectedUser?._id === msg.senderId?._id;
 
-      if (isMessageForCurrentChat) {
-        set({
+      if (isMessageFromSelectedUser) {
+        // Message is for the OPEN chat
+        set((state) => ({
           messages: [
-            ...messages,
+            ...state.messages,
             {
               ...msg,
               reactions: msg.reactions || [],
               replyTo: msg.replyTo || null,
             },
           ],
-        });
+        }));
 
-        if (isMessageFromSelectedUser) {
-          const isPageVisible = !document.hidden;
-
-          if (isPageVisible) {
-            get().markMessagesAsRead(selectedUser._id);
-            get().updateUnreadCount(msg.senderId, 0);
-          } else {
-            const currentCount = get().unreadCounts[msg.senderId] || 0;
-            get().updateUnreadCount(msg.senderId, currentCount + 1);
-          }
+        //  If chat is open and visible, mark as read immediately (no unread count)
+        const isPageVisible = !document.hidden;
+        if (isPageVisible) {
+          get().markMessagesAsRead(msg.senderId);
+          get().updateUnreadCount(msg.senderId, 0); 
+        } else {
+          // Page is hidden, increment unread
+          const currentCount = get().unreadCounts[msg.senderId] || 0;
+          get().updateUnreadCount(msg.senderId, currentCount + 1);
         }
       } else {
-        const currentCount = get().unreadCounts[msg.senderId] || 0;
-        get().updateUnreadCount(msg.senderId, currentCount + 1);
+        //Message is for a DIFFERENT chat (not currently open)
+        const senderId =
+          typeof msg.senderId === "object" ? msg.senderId._id : msg.senderId;
+        const currentCount = get().unreadCounts[senderId] || 0;
+        get().updateUnreadCount(senderId, currentCount + 1);
       }
 
+      // Update sidebar last message
       get().updateChatWithNewMessage(msg);
     });
 
@@ -601,7 +612,6 @@ export const createMessageSlice = (set, get) => ({
     });
 
     socket.on("userTyping", ({ chatId, isGroup }) => {
-  
       if (!isGroup) {
         set((state) => ({
           typingUsers: {
