@@ -136,6 +136,18 @@ io.on("connection", async (socket) => {
     });
   });
 
+  socket.on("markRead", ({ userId, readerId }) => {
+    console.log(`User ${readerId} read messages from ${userId}`);
+
+    const senderSockets = getReceiverSocketIds(userId);
+    senderSockets.forEach((socketId) => {
+      io.to(socketId).emit("messagesRead", {
+        userId: readerId,
+        chatId: userId,
+      });
+    });
+  });
+
   // Online status broadcast (existing)
   io.emit("getOnlineUsers", Array.from(userSocketMap.keys()));
 

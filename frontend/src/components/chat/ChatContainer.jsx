@@ -38,10 +38,6 @@ const ChatContainer = () => {
     clearSearch,
     updateUnreadCount,
     forwardingMessages,
-    subscribeToMessages,
-    subscribeToGroupEvents,
-    unsubscribeFromMessages,
-    unsubscribeFromGroupEvents,
     groupTypingUsers,
   } = useChatStore();
 
@@ -73,7 +69,6 @@ const ChatContainer = () => {
     activeChatId: activeChatId,
   });
 
-  // permission logic for edit info of groups
   const isCreator =
     isGroup &&
     (selectedGroup?.createdBy?._id || selectedGroup?.createdBy) ===
@@ -90,22 +85,9 @@ const ChatContainer = () => {
 
   const canSendMessage = !isGroup || !onlyAdminsCanSend || isAdmin || isCreator;
 
-  // 1. Subscriptions
-  useEffect(() => {
-    subscribeToMessages();
-    subscribeToGroupEvents();
-    return () => {
-      unsubscribeFromMessages();
-      unsubscribeFromGroupEvents();
-    };
-  }, [
-    subscribeToMessages,
-    subscribeToGroupEvents,
-    unsubscribeFromMessages,
-    unsubscribeFromGroupEvents,
-  ]);
 
-  // 2. Room Joining & Fetching
+
+  // 1. Room Joining & Fetching
   useEffect(() => {
     if (!activeChatId) return;
 
@@ -130,7 +112,7 @@ const ChatContainer = () => {
     };
   }, [activeChatId, isGroup, socket, getMessagesByUserId, getGroupMessages]);
 
-  // 3. Read Receipts Hook
+  // 2. Read Receipts Hook
   useReadReceipts(
     isGroup ? null : selectedUser,
     messages,
@@ -138,31 +120,66 @@ const ChatContainer = () => {
     getMessagesByUserId
   );
 
-  // 4. Mark Read Logic
+  // FIXED Mark Read Logic - Only mark as read when actively viewing THIS specific chat
   useEffect(() => {
-    if (!activeChatId || !authUser?._id || document.hidden) return;
+    // Guard: Don't mark as read if no chat is selected, page is hidden, or still loading
+    if (!activeChatId || !authUser?._id || document.hidden || isLoading) return;
 
+    // Guard: Don't mark as read if there are no messages
+    if (activeMessages.length === 0) return;
+
+    //  This function should ONLY run for the CURRENT chat
     const handleReadMarking = () => {
+      // Double-check visibility and that we're still on the same chat
       if (document.hidden) return;
+
+      // Verify we're still viewing this specific chat
+      const currentChatId = isGroup
+        ? selectedGroup?._id
+        : selectedUser?._id;
+      if (currentChatId !== activeChatId) {
+        console.log("Chat changed, not marking as read");
+        return;
+      }
+
+      // Check if there are any unread messages FOR THIS SPECIFIC CHAT
       const hasUnread = activeMessages.some((msg) => {
         const senderId = msg.senderId?._id || msg.senderId;
+
+        // Skip own messages
         if (senderId?.toString() === authUser._id.toString()) return false;
-        const isFromCurrent = isGroup
-          ? msg.groupId === activeChatId
-          : senderId === activeChatId;
-        if (!isFromCurrent) return false;
-        return isGroup ? !msg.seenBy?.includes(authUser._id) : !msg.seen;
+
+        // Verify message is from/for THIS chat
+        if (isGroup) {
+          // For groups: check if message is in this group and not seen by me
+          return (
+            msg.groupId === activeChatId && !msg.seenBy?.includes(authUser._id)
+          );
+        } else {
+          // For private: check if message is from this user and not seen
+          return senderId === activeChatId && !msg.seen;
+        }
       });
 
-      if (!hasUnread) return;
+      if (!hasUnread) {
+        console.log("No unread messages in THIS chat");
+        return;
+      }
 
-      if (isGroup) markGroupMessagesAsSeen?.(activeChatId);
-      else markMessagesAsRead?.(activeChatId);
+      // Mark as read
+      if (isGroup) {
+        markGroupMessagesAsSeen?.(activeChatId);
+      } else {
+        markMessagesAsRead?.(activeChatId);
+      }
       updateUnreadCount?.(activeChatId, 0);
     };
 
-    const timeoutId = setTimeout(handleReadMarking, 500);
+    //  Increased delay to 1.5 seconds to ensure user is actively viewing
+    const timeoutId = setTimeout(handleReadMarking, 1500);
+
     document.addEventListener("visibilitychange", handleReadMarking);
+
     return () => {
       clearTimeout(timeoutId);
       document.removeEventListener("visibilitychange", handleReadMarking);
@@ -171,75 +188,74 @@ const ChatContainer = () => {
     activeChatId,
     activeMessages,
     isGroup,
+    isLoading,
     authUser._id,
     markGroupMessagesAsSeen,
     markMessagesAsRead,
     updateUnreadCount,
+    selectedGroup,
+    selectedUser
   ]);
 
- // 5 & 6. Combined Initial Jump and New Message Scroll
-useEffect(() => {
-  if (isLoading || activeMessages.length === 0) return;
+  // 4. Combined Initial Jump and New Message Scroll
+  useEffect(() => {
+    if (isLoading || activeMessages.length === 0) return;
 
-  // Determine if this is the initial load of a new chat
-  const isFirstLoad = prevMessagesLengthRef.current === 0;
+    const isFirstLoad = prevMessagesLengthRef.current === 0;
 
-  if (isFirstLoad) {
-    // 1. INITIAL JUMP LOGIC
-    const firstUnreadIndex = activeMessages.findIndex((msg) => {
-      const senderId = msg.senderId?._id || msg.senderId;
-      if (senderId?.toString() === authUser?._id?.toString()) return false;
-      return isGroup ? !msg.seenBy?.includes(authUser._id) : !msg.seen;
-    });
+    if (isFirstLoad) {
+      const firstUnreadIndex = activeMessages.findIndex((msg) => {
+        const senderId = msg.senderId?._id || msg.senderId;
+        if (senderId?.toString() === authUser?._id?.toString()) return false;
+        return isGroup ? !msg.seenBy?.includes(authUser._id) : !msg.seen;
+      });
 
-    const timeoutId = setTimeout(() => {
-      if (firstUnreadIndex !== -1) {
-        const element = document.getElementById(`msg-${activeMessages[firstUnreadIndex]._id}`);
-        if (element) {
-          // Use 'auto' to jump instantly without showing the scrolling animation
-          element.scrollIntoView({ behavior: "auto", block: "center" });
+      const timeoutId = setTimeout(() => {
+        if (firstUnreadIndex !== -1) {
+          const element = document.getElementById(
+            `msg-${activeMessages[firstUnreadIndex]._id}`
+          );
+          if (element) {
+            element.scrollIntoView({ behavior: "auto", block: "center" });
+          }
+        } else {
+          messageEndRef.current?.scrollIntoView({ behavior: "auto" });
         }
-      } else {
-        // No unread, jump to bottom instantly
-        messageEndRef.current?.scrollIntoView({ behavior: "auto" });
+        prevMessagesLengthRef.current = activeMessages.length;
+      }, 50);
+
+      return () => clearTimeout(timeoutId);
+    } else {
+      if (activeMessages.length > prevMessagesLengthRef.current) {
+        if (!searchTerm) {
+          messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+
+        const latestMsg = activeMessages[activeMessages.length - 1];
+        const senderId = latestMsg?.senderId?._id || latestMsg?.senderId;
+
+        if (
+          senderId?.toString() !== authUser?._id?.toString() &&
+          isSoundEnabled
+        ) {
+          playMessageReceivedSound?.();
+        }
+
+        prevMessagesLengthRef.current = activeMessages.length;
       }
-      // Update ref to current length AFTER the initial jump
-      prevMessagesLengthRef.current = activeMessages.length;
-    }, 50); // Lower timeout for snappier feel
-
-    return () => clearTimeout(timeoutId);
-  } else {
-    // 2. NEW MESSAGE LOGIC
-    // Only trigger if messages length actually increased
-    if (activeMessages.length > prevMessagesLengthRef.current) {
-      if (!searchTerm) {
-        // Use 'smooth' only for new messages coming in
-        messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }
-
-      const latestMsg = activeMessages[activeMessages.length - 1];
-      const senderId = latestMsg?.senderId?._id || latestMsg?.senderId;
-
-      if (senderId?.toString() !== authUser?._id?.toString() && isSoundEnabled) {
-        playMessageReceivedSound?.();
-      }
-
-      // Sync the ref length
-      prevMessagesLengthRef.current = activeMessages.length;
     }
-  }
-}, [
-  activeChatId, 
-  isLoading, 
-  activeMessages, 
-  authUser._id, 
-  isGroup, 
-  searchTerm, 
-  isSoundEnabled, 
-  playMessageReceivedSound
-]);
+  }, [
+    activeChatId,
+    isLoading,
+    activeMessages,
+    authUser._id,
+    isGroup,
+    searchTerm,
+    isSoundEnabled,
+    playMessageReceivedSound,
+  ]);
 
-  // 7. Search Cleanup
+  // 6. Search Cleanup
   useEffect(() => {
     clearSearch?.();
   }, [activeChatId, clearSearch]);
@@ -265,7 +281,6 @@ useEffect(() => {
           `,
           backgroundSize: "auto, auto, 24px 24px",
         }}
-        // FIX: Check if the click is actually on the background
         onClick={(e) => {
           if (e.target === e.currentTarget) {
             messageActions.closeAllMenus();

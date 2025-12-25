@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
+import { useSocketSetup } from "../hooks/useSocketSetup"; 
 import BorderAnimatedContainer from "../components/BorderAnimatedContainer";
 import ProfileHeader from "../components/ProfileHeader";
 import ActiveTabSwitch from "../components/ActiveTabSwitch";
@@ -14,8 +15,9 @@ function ChatPage() {
   const { activeTab, selectedUser, selectedGroup } = useChatStore();
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
 
+  useSocketSetup();
+
   return (
-    /* Changed: h-screen (100vh) and w-full without max-width constraints */
     <div className="fixed inset-0 w-screen h-screen bg-slate-950 overflow-hidden">
       
       <CreateGroupModal 
@@ -23,9 +25,6 @@ function ChatPage() {
         onClose={() => setIsCreateGroupOpen(false)} 
       />
 
-      {/* Note: If BorderAnimatedContainer has internal padding/margins, 
-         you might need to adjust its props to allow it to fill the screen.
-      */}
       <BorderAnimatedContainer className="h-full w-full border-none rounded-none">
         
         {/* LEFT SIDEBAR */}

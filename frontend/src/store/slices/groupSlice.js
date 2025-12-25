@@ -123,11 +123,9 @@ export const createGroupSlice = (set, get) => ({
   },
 
   updateGroupInfo: async (groupId, updateData) => {
-  
     set({ isUpdatingGroup: true });
 
     try {
-   
       const res = await axiosInstance.put(`/groups/${groupId}`, updateData);
 
       const updatedGroup = res.data.data || res.data;
@@ -135,7 +133,7 @@ export const createGroupSlice = (set, get) => ({
       set((state) => ({
         //  Update the list sidebar
         groups: state.groups.map((g) => (g._id === groupId ? updatedGroup : g)),
-        // Update the active group view 
+        // Update the active group view
         selectedGroup:
           state.selectedGroup?._id === groupId
             ? updatedGroup
@@ -161,7 +159,6 @@ export const createGroupSlice = (set, get) => ({
   addMembersToGroup: async (groupId, memberIds) => {
     set({ isUpdatingGroup: true });
     try {
-
       const res = await axiosInstance.post(`/groups/${groupId}/add-members`, {
         memberIds,
       });
@@ -188,7 +185,6 @@ export const createGroupSlice = (set, get) => ({
   },
 
   removeMemberFromGroup: async (groupId, memberId) => {
-   
     set({ isUpdatingGroup: true });
 
     try {
@@ -322,100 +318,111 @@ export const createGroupSlice = (set, get) => ({
     }
   },
 
- sendGroupMessage: async ({ text, image, replyTo, overrideId = null }) => {
-  const { selectedGroup, groupMessages, groups, updateGroupWithNewMessage } = get();
-  const { authUser } = useAuthStore.getState();
+  sendGroupMessage: async ({ text, image, replyTo, overrideId = null }) => {
+    const { selectedGroup, groupMessages, groups, updateGroupWithNewMessage } =
+      get();
+    const { authUser } = useAuthStore.getState();
 
-  // 1. Determine Target (Forwarding vs. Current Chat)
-  const targetGroupId = overrideId || selectedGroup?._id;
-  const isForwarding = !!overrideId;
+    // 1. Determine Target (Forwarding vs. Current Chat)
+    const targetGroupId = overrideId || selectedGroup?._id;
+    const isForwarding = !!overrideId;
 
-  if (!targetGroupId) return toast.error("No group selected.");
+    if (!targetGroupId) return toast.error("No group selected.");
 
-  // 2. Permission Check (Only if we have group data available)
-  // If forwarding, we might not have 'selectedGroup' settings, so we let the backend handle it
-  if (!isForwarding && selectedGroup) {
-    const isCreator = selectedGroup.createdBy === authUser._id || 
-                      selectedGroup.createdBy?._id === authUser._id;
-    const isAdmin = selectedGroup.admins?.some(
-      (admin) => (admin._id || admin) === authUser._id
-    );
-    const onlyAdminsCanSend = selectedGroup.settings?.onlyAdminsCanSend;
+    // 2. Permission Check (Only if we have group data available)
+    // If forwarding, we might not have 'selectedGroup' settings, so we let the backend handle it
+    if (!isForwarding && selectedGroup) {
+      const isCreator =
+        selectedGroup.createdBy === authUser._id ||
+        selectedGroup.createdBy?._id === authUser._id;
+      const isAdmin = selectedGroup.admins?.some(
+        (admin) => (admin._id || admin) === authUser._id
+      );
+      const onlyAdminsCanSend = selectedGroup.settings?.onlyAdminsCanSend;
 
-    if (onlyAdminsCanSend && !isCreator && !isAdmin) {
-      return toast.error("Only admins can send messages in this group.");
-    }
-  }
-
-  // 3. Optimistic UI Logic (SKIP IF FORWARDING)
-  const tempId = `temp-${Date.now()}-${Math.random()}`;
-  if (!isForwarding) {
-    const optimisticMessage = {
-      _id: tempId,
-      senderId: {
-        _id: authUser._id,
-        fullName: authUser.fullName,
-        profilePic: authUser.profilePic,
-      },
-      groupId: targetGroupId, 
-      text,
-      image,
-      replyTo: replyTo || null,
-      reactions: [],
-      createdAt: new Date().toISOString(),
-    };
-
-    set({ groupMessages: [...groupMessages, optimisticMessage] });
-
-    // Update Sidebar
-    const existingIndex = groups.findIndex((g) => g._id === targetGroupId);
-    if (existingIndex !== -1) {
-      const updatedGroups = [...groups];
-      updatedGroups[existingIndex] = { ...updatedGroups[existingIndex], lastMessage: optimisticMessage };
-      const [movedGroup] = updatedGroups.splice(existingIndex, 1);
-      updatedGroups.unshift(movedGroup);
-      set({ groups: updatedGroups });
-    }
-  }
-
-  // 4. API Call
-  try {
-    const payload = { text, image };
-    if (replyTo) {
-      payload.replyTo = {
-        _id: replyTo._id,
-        text: replyTo.text || null,
-        image: replyTo.image || null,
-        senderId: replyTo.senderId,
-      };
-    }
-
-    const res = await axiosInstance.post(
-      `/messages/group/${targetGroupId}/send`,
-      payload
-    );
-
-    // 5. Success Logic (Only update UI if NOT forwarding)
-    if (res.data?.data) {
-      if (!isForwarding) {
-        set((state) => ({
-          groupMessages: state.groupMessages.map((msg) =>
-            msg._id === tempId ? { ...res.data.data, reactions: [], replyTo: res.data.data.replyTo || null } : msg
-          ),
-        }));
-        updateGroupWithNewMessage(res.data.data);
-      } else {
-        // If forwarding, we just update the sidebar of the group we sent it to
-        updateGroupWithNewMessage(res.data.data);
+      if (onlyAdminsCanSend && !isCreator && !isAdmin) {
+        return toast.error("Only admins can send messages in this group.");
       }
     }
-    return res.data.data;
-  } catch (error) {
-    if (!isForwarding) set({ groupMessages, groups }); 
-    toast.error(error.response?.data?.message || "Failed to forward message");
-    throw error;
-  }
-},
+
+    // 3. Optimistic UI Logic (SKIP IF FORWARDING)
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
+    if (!isForwarding) {
+      const optimisticMessage = {
+        _id: tempId,
+        senderId: {
+          _id: authUser._id,
+          fullName: authUser.fullName,
+          profilePic: authUser.profilePic,
+        },
+        groupId: targetGroupId,
+        text,
+        image,
+        replyTo: replyTo || null,
+        reactions: [],
+        createdAt: new Date().toISOString(),
+      };
+
+      set({ groupMessages: [...groupMessages, optimisticMessage] });
+
+      // Update Sidebar
+      const existingIndex = groups.findIndex((g) => g._id === targetGroupId);
+      if (existingIndex !== -1) {
+        const updatedGroups = [...groups];
+        updatedGroups[existingIndex] = {
+          ...updatedGroups[existingIndex],
+          lastMessage: optimisticMessage,
+        };
+        const [movedGroup] = updatedGroups.splice(existingIndex, 1);
+        updatedGroups.unshift(movedGroup);
+        set({ groups: updatedGroups });
+      }
+    }
+
+    // 4. API Call
+    try {
+      const payload = { text, image };
+      if (replyTo) {
+        payload.replyTo = {
+          _id: replyTo._id,
+          text: replyTo.text || null,
+          image: replyTo.image || null,
+          senderId: replyTo.senderId,
+        };
+      }
+
+      const res = await axiosInstance.post(
+        `/messages/group/${targetGroupId}/send`,
+        payload
+      );
+
+      // 5. Success Logic (Only update UI if NOT forwarding)
+      if (res.data?.data) {
+        if (!isForwarding) {
+          set((state) => ({
+            groupMessages: state.groupMessages.map((msg) =>
+              msg._id === tempId
+                ? {
+                    ...res.data.data,
+                    reactions: [],
+                    replyTo: res.data.data.replyTo || null,
+                  }
+                : msg
+            ),
+          }));
+          updateGroupWithNewMessage(res.data.data);
+        } else {
+          // If forwarding, we just update the sidebar of the group we sent it to
+          updateGroupWithNewMessage(res.data.data);
+        }
+      }
+      return res.data.data;
+    } catch (error) {
+      if (!isForwarding) set({ groupMessages, groups });
+      toast.error(error.response?.data?.message || "Failed to forward message");
+      throw error;
+    }
+  },
   updateGroupWithNewMessage: (msg) => {
     //  If this is a private message (no groupId), stop immediately.
     if (!msg.groupId) return;
@@ -500,20 +507,22 @@ export const createGroupSlice = (set, get) => ({
     }));
   },
 
-   setGroupTypingStatus: (groupId, userId, isTyping, userName) => {;
+  setGroupTypingStatus: (groupId, userId, isTyping, userName) => {
     if (!groupId) return;
-    
+
     set((state) => {
       const currentTypers = state.groupTypingUsers[groupId] || [];
-      
+
       let updatedTypers;
       if (isTyping) {
         const exists = currentTypers.some((u) => u.userId === userId);
-        updatedTypers = exists ? currentTypers : [...currentTypers, { userId, userName }];
+        updatedTypers = exists
+          ? currentTypers
+          : [...currentTypers, { userId, userName }];
       } else {
         updatedTypers = currentTypers.filter((u) => u.userId !== userId);
       }
-      
+
       return {
         groupTypingUsers: {
           ...state.groupTypingUsers,
@@ -537,11 +546,14 @@ export const createGroupSlice = (set, get) => ({
     }
   },
 
- subscribeToGroupEvents: () => {
+  subscribeToGroupEvents: () => {
   const { socket } = useAuthStore.getState();
-  if (!socket) return;
+  if (!socket) {
+    console.log("No socket available in subscribeToGroupEvents");
+    return;
+  }
 
- 
+  console.log("Setting up group event listeners");
 
   socket.on("newGroupMessage", (msg) => {
     const { selectedGroup, groupMessages, updateGroupWithNewMessage } = get();
@@ -577,30 +589,79 @@ export const createGroupSlice = (set, get) => ({
     updateGroupWithNewMessage(msg);
   });
 
+  //  FIX FOR PROBLEM 2: Add duplicate check
   socket.on("group:created", (group) => {
-    set((state) => ({
-      groups: [group, ...state.groups],
-    }));
+    console.log("📥 Received group:created", group.groupName);
+    
+    set((state) => {
+      //  Check if group already exists (prevents duplicates)
+      const groupExists = state.groups.some(g => g._id === group._id);
+      
+      if (groupExists) {
+        console.log("Group already exists, skipping");
+        return state; // Return unchanged state
+      }
+      
+      console.log("Adding new group");
+      return {
+        groups: [group, ...state.groups],
+      };
+    });
+    
+    // Auto-join the group room
+    socket.emit("joinGroup", group._id);
     toast.success(`You were added to "${group.groupName}"`);
   });
 
+  // FIX FOR PROBLEM 1 & 2: Better handling
   socket.on("group:updated", (updatedGroup) => {
-    set((state) => ({
-      groups: state.groups.map((g) =>
-        g._id === updatedGroup._id ? updatedGroup : g
-      ),
-      selectedGroup:
-        state.selectedGroup?._id === updatedGroup._id
-          ? updatedGroup
-          : state.selectedGroup,
-      selectedChat:
-        state.selectedChat?._id === updatedGroup._id
-          ? updatedGroup
-          : state.selectedChat,
-    }));
+    console.log("📥 Received group:updated", updatedGroup.groupName);
+    
+    const { authUser } = useAuthStore.getState();
+    const currentSelectedGroup = get().selectedGroup;
+    const currentSelectedChat = get().selectedChat;
+
+    const isStillMember = updatedGroup.members.some(
+      (m) => (m._id || m).toString() === authUser._id.toString()
+    );
+
+    set((state) => {
+      // Check if group exists in our list
+      const groupExists = state.groups.some(g => g._id === updatedGroup._id);
+      
+      // If not a member anymore, remove it
+      if (!isStillMember) {
+        console.log("❌ No longer a member, removing group");
+        return {
+          groups: state.groups.filter((g) => g._id !== updatedGroup._id),
+          selectedGroup: currentSelectedGroup?._id === updatedGroup._id ? null : currentSelectedGroup,
+          selectedChat: currentSelectedChat?._id === updatedGroup._id ? null : currentSelectedChat,
+        };
+      }
+
+      //  If group exists, update it
+      if (groupExists) {
+        console.log("Updating existing group");
+        return {
+          groups: state.groups.map((g) => (g._id === updatedGroup._id ? updatedGroup : g)),
+          selectedGroup: currentSelectedGroup?._id === updatedGroup._id ? updatedGroup : currentSelectedGroup,
+          selectedChat: currentSelectedChat?._id === updatedGroup._id ? updatedGroup : currentSelectedChat,
+        };
+      }
+      
+      // If group doesn't exist but we're a member (shouldn't happen with proper backend)
+      // This means we were just added but didn't receive group:created
+      console.log(" Group doesn't exist, adding it (backup for missing group:created)");
+      return {
+        groups: [updatedGroup, ...state.groups],
+        selectedGroup: currentSelectedGroup,
+        selectedChat: currentSelectedChat,
+      };
+    });
   });
 
   socket.on("group:membersAdded", ({ group }) => {
+    console.log(" Received group:membersAdded");
     set((state) => ({
       groups: state.groups.map((g) => (g._id === group._id ? group : g)),
       selectedGroup:
@@ -609,6 +670,7 @@ export const createGroupSlice = (set, get) => ({
   });
 
   socket.on("group:memberRemoved", ({ groupId, removedMemberId, group }) => {
+    console.log("Received group:memberRemoved");
     const { authUser } = useAuthStore.getState();
 
     if (removedMemberId === authUser._id) {
@@ -652,21 +714,23 @@ export const createGroupSlice = (set, get) => ({
     toast.error("Group was deleted");
   });
 
-  socket.on("groupMessageReadUpdate", ({ groupId: incomingGroupId, userId }) => {
-    const { selectedGroup } = get();
-    if (selectedGroup?._id === incomingGroupId) {
-      set((state) => ({
-        groupMessages: state.groupMessages.map((m) => {
-          if (!m.seenBy.includes(userId)) {
-            return { ...m, seenBy: [...m.seenBy, userId] };
-          }
-          return m;
-        }),
-      }));
+  socket.on(
+    "groupMessageReadUpdate",
+    ({ groupId: incomingGroupId, userId }) => {
+      const { selectedGroup } = get();
+      if (selectedGroup?._id === incomingGroupId) {
+        set((state) => ({
+          groupMessages: state.groupMessages.map((m) => {
+            if (!m.seenBy.includes(userId)) {
+              return { ...m, seenBy: [...m.seenBy, userId] };
+            }
+            return m;
+          }),
+        }));
+      }
     }
-  });
+  );
 
- 
   socket.on("userTyping", ({ chatId, userId, userName, isGroup }) => {
     if (isGroup) {
       get().setGroupTypingStatus(chatId, userId, true, userName);
@@ -705,15 +769,18 @@ export const createGroupSlice = (set, get) => ({
     }));
   });
 
-  socket.on("message:reactionUpdated", ({ messageId, reactions, groupId }) => {
-    if (!groupId) return;
+  socket.on(
+    "message:reactionUpdated",
+    ({ messageId, reactions, groupId }) => {
+      if (!groupId) return;
 
-    set((state) => ({
-      groupMessages: state.groupMessages.map((m) =>
-        m._id === messageId ? { ...m, reactions: reactions || [] } : m
-      ),
-    }));
-  });
+      set((state) => ({
+        groupMessages: state.groupMessages.map((m) =>
+          m._id === messageId ? { ...m, reactions: reactions || [] } : m
+        ),
+      }));
+    }
+  );
 
   socket.on("message:deletedForMe", ({ messageId }) => {
     set((state) => ({

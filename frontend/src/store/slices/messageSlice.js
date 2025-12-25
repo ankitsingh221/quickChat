@@ -62,16 +62,17 @@ export const createMessageSlice = (set, get) => ({
     const { authUser } = useAuthStore.getState();
 
     const targetId = overrideId || selectedUser?._id;
-    if (targetId) return toast.error("No user selected.");
+    if (!targetId) return toast.error("No user selected.");
 
     const isForwarding = !!overrideId;
     let tempId = null;
+
     if (!isForwarding) {
-      const tempId = `temp-${Date.now()}-${Math.random()}`;
+      tempId = `temp-${Date.now()}-${Math.random()}`;
       const optimisticMessage = {
         _id: tempId,
         senderId: authUser._id,
-        receiverId: selectedUser._id,
+        receiverId: targetId,
         text,
         image,
         replyTo: replyTo || null,
@@ -81,11 +82,11 @@ export const createMessageSlice = (set, get) => ({
 
       set({ messages: [...messages, optimisticMessage] });
 
-      const existingIndex = chats.findIndex((c) => c._id === selectedUser._id);
+      const existingIndex = chats.findIndex((c) => c._id === targetId);
       const updatedChat = {
         ...(chats[existingIndex] || {
-          _id: selectedUser._id,
-          fullName: selectedUser.fullName,
+          _id: targetId,
+          fullName: selectedUser?.fullName || "User",
         }),
         lastMessage: optimisticMessage,
       };
@@ -95,7 +96,7 @@ export const createMessageSlice = (set, get) => ({
 
       // Update allContacts
       const updatedContacts = allContacts.map((contact) =>
-        contact._id === selectedUser._id
+        contact._id === targetId
           ? { ...contact, lastMessage: optimisticMessage }
           : contact
       );
@@ -116,11 +117,11 @@ export const createMessageSlice = (set, get) => ({
       }
 
       const res = await axiosInstance.post(
-        `/messages/send/${selectedUser._id}`,
+        `/messages/send/${targetId}`,
         payload
       );
 
-      if (res.data?.data) {
+      if (res.data?.data && !isForwarding) {
         set((state) => ({
           messages: state.messages.map((msg) =>
             msg._id === tempId
@@ -131,8 +132,13 @@ export const createMessageSlice = (set, get) => ({
                 }
               : msg
           ),
+          chats: state.chats.map((chat) =>
+            chat._id === targetId
+              ? { ...chat, lastMessage: res.data.data }
+              : chat
+          ),
           allContacts: state.allContacts.map((contact) =>
-            contact._id === selectedUser._id
+            contact._id === targetId
               ? { ...contact, lastMessage: res.data.data }
               : contact
           ),
@@ -140,11 +146,16 @@ export const createMessageSlice = (set, get) => ({
 
         updateChatWithNewMessage(res.data.data);
       }
+
+      return res.data.data;
     } catch (error) {
       console.error("Send message error:", error);
 
-      set({ messages, chats, allContacts });
+      if (!isForwarding) {
+        set({ messages, chats, allContacts });
+      }
       toast.error(error.response?.data?.message || "Failed to send message");
+      throw error;
     }
   },
 
@@ -179,23 +190,51 @@ export const createMessageSlice = (set, get) => ({
   markMessagesAsRead: async (userId) => {
     if (!userId) return;
 
-    const messages = get().messages;
-    const hasUnread = messages.some((m) => m.senderId === userId && !m.seen);
-    const hasSidebarUnread = (get().unreadCounts[userId] || 0) > 0;
-    if (!hasUnread && !hasSidebarUnread) return;
+    const { messages, unreadCounts, selectedUser } = get();
+    const { authUser, socket } = useAuthStore.getState();
+
+    //  Verify this chat is actually selected
+    if (selectedUser?._id !== userId) {
+      return;
+    }
+
+    // Check if there are actually unread messages
+    const hasUnread = messages.some((m) => {
+      const senderId = m.senderId?._id || m.senderId;
+      return senderId === userId && !m.seen;
+    });
+
+    const hasSidebarUnread = (unreadCounts[userId] || 0) > 0;
+
+    // If no unread messages, don't make the API call
+    if (!hasUnread && !hasSidebarUnread) {
+      console.log("No unread messages to mark");
+      return;
+    }
 
     try {
+      // 1. Optimistic UI Update
       set((state) => ({
-        messages: state.messages.map((m) =>
-          m.senderId === userId ? { ...m, seen: true } : m
-        ),
+        messages: state.messages.map((m) => {
+          const senderId = m.senderId?._id || m.senderId;
+          return senderId === userId ? { ...m, seen: true } : m;
+        }),
         unreadCounts: {
           ...state.unreadCounts,
           [userId]: 0,
         },
       }));
 
+      // 2. Database Update
       await axiosInstance.put(`/messages/read/${userId}`);
+
+      // 3. Socket Emit
+      if (socket) {
+        socket.emit("markRead", {
+          userId: userId,
+          readerId: authUser._id,
+        });
+      }
     } catch (error) {
       console.error("Error marking messages as read:", error);
     }
@@ -370,68 +409,83 @@ export const createMessageSlice = (set, get) => ({
     }
   },
 
- forwardMessages: async (targetId, isTargetGroup = false) => {
-  const { forwardingMessages, updateChatWithNewMessage, updateGroupWithNewMessage, chats, groups, getMyChatPartners } = get();
+  forwardMessages: async (targetId, isTargetGroup = false) => {
+    const {
+      forwardingMessages,
+      updateChatWithNewMessage,
+      updateGroupWithNewMessage,
+      chats,
+      groups,
+      getMyChatPartners,
+    } = get();
 
-  if (!forwardingMessages?.length) return false;
+    if (!forwardingMessages?.length) return false;
 
-  try {
-    // 1. Define the endpoint once since the targetId is the same for all messages
-    const endpoint = isTargetGroup 
-      ? `/messages/group/${targetId}/send` 
-      : `/messages/send/${targetId}`;
+    try {
+      // 1. Define the endpoint once since the targetId is the same for all messages
+      const endpoint = isTargetGroup
+        ? `/messages/group/${targetId}/send`
+        : `/messages/send/${targetId}`;
 
-    // 2. Map promises using the clean endpoint
-    const promises = forwardingMessages.map((msg) =>
-      axiosInstance.post(endpoint, {
-        text: msg.text,
-        image: msg.image,
-        isForwarded: true,
-      })
-    );
+      // 2. Map promises using the clean endpoint
+      const promises = forwardingMessages.map((msg) =>
+        axiosInstance.post(endpoint, {
+          text: msg.text,
+          image: msg.image,
+          isForwarded: true,
+        })
+      );
 
-    const responses = await Promise.all(promises);
+      const responses = await Promise.all(promises);
 
-    // 3. Process the last message for the Sidebar/UI
-    if (responses.length > 0) {
-      const lastSentMsg = responses[responses.length - 1].data?.data;
-      if (!lastSentMsg) return true;
+      // 3. Process the last message for the Sidebar/UI
+      if (responses.length > 0) {
+        const lastSentMsg = responses[responses.length - 1].data?.data;
+        if (!lastSentMsg) return true;
 
-      if (isTargetGroup) {
-        updateGroupWithNewMessage?.(lastSentMsg);
-        // Move group to top of sidebar
-        set({
-          groups: [
-            { ...groups.find(g => String(g._id) === String(targetId)), lastMessage: lastSentMsg },
-            ...groups.filter(g => String(g._id) !== String(targetId))
-          ]
-        });
-      } else {
-        updateChatWithNewMessage?.(lastSentMsg);
-        // Move chat to top of sidebar
-        const chatExists = chats.some((c) => String(c._id) === String(targetId));
-        if (!chatExists) {
-          await getMyChatPartners();
-        } else {
+        if (isTargetGroup) {
+          updateGroupWithNewMessage?.(lastSentMsg);
+          // Move group to top of sidebar
           set({
-            chats: [
-              { ...chats.find(c => String(c._id) === String(targetId)), lastMessage: lastSentMsg },
-              ...chats.filter(c => String(c._id) !== String(targetId))
-            ]
+            groups: [
+              {
+                ...groups.find((g) => String(g._id) === String(targetId)),
+                lastMessage: lastSentMsg,
+              },
+              ...groups.filter((g) => String(g._id) !== String(targetId)),
+            ],
           });
+        } else {
+          updateChatWithNewMessage?.(lastSentMsg);
+          // Move chat to top of sidebar
+          const chatExists = chats.some(
+            (c) => String(c._id) === String(targetId)
+          );
+          if (!chatExists) {
+            await getMyChatPartners();
+          } else {
+            set({
+              chats: [
+                {
+                  ...chats.find((c) => String(c._id) === String(targetId)),
+                  lastMessage: lastSentMsg,
+                },
+                ...chats.filter((c) => String(c._id) !== String(targetId)),
+              ],
+            });
+          }
         }
       }
-    }
 
-    set({ forwardingMessages: [], isSelectionMode: false });
-    toast.success(`Forwarded ${forwardingMessages.length} messages`);
-    return true;
-  } catch (error) {
-    console.error("Forwarding error:", error);
-    toast.error("Failed to forward messages");
-    return false;
-  }
-},
+      set({ forwardingMessages: [], isSelectionMode: false });
+      toast.success(`Forwarded ${forwardingMessages.length} messages`);
+      return true;
+    } catch (error) {
+      console.error("Forwarding error:", error);
+      toast.error("Failed to forward messages");
+      return false;
+    }
+  },
 
   updateChatWithNewMessage: (msg) => {
     //  If this is a group message, let createGroupSlice handle it.
@@ -490,7 +544,7 @@ export const createMessageSlice = (set, get) => ({
       const { selectedUser, messages } = get();
       const { authUser } = useAuthStore.getState();
 
-      //  Use authUser from useAuthStore, not from get()
+      // Skip if this is MY message
       if (
         msg.senderId === authUser?._id ||
         msg.senderId?._id === authUser?._id
@@ -498,19 +552,22 @@ export const createMessageSlice = (set, get) => ({
         return;
       }
 
-      // Check if message already exists (prevents duplicates)
+      // Check if message already exists
       const messageExists = messages.some((m) => m._id === msg._id);
       if (messageExists) {
         return;
       }
 
-      // Check if this message is for the currently open chat
-      const isMessageFromSelectedUser =
-        selectedUser?._id === msg.senderId ||
-        selectedUser?._id === msg.senderId?._id;
+      // Determine the sender ID
+      const senderId =
+        typeof msg.senderId === "object" ? msg.senderId._id : msg.senderId;
 
-      if (isMessageFromSelectedUser) {
-        // Message is for the OPEN chat
+      //  Check if this chat is CURRENTLY OPEN AND VISIBLE
+      const isChatOpen = selectedUser?._id === senderId;
+      const isPageVisible = !document.hidden;
+
+      if (isChatOpen) {
+        // Message is for the CURRENTLY OPEN chat
         set((state) => ({
           messages: [
             ...state.messages,
@@ -522,20 +579,28 @@ export const createMessageSlice = (set, get) => ({
           ],
         }));
 
-        //  If chat is open and visible, mark as read immediately (no unread count)
-        const isPageVisible = !document.hidden;
+        // Only mark as read if BOTH chat is open AND page is visible
         if (isPageVisible) {
-          get().markMessagesAsRead(msg.senderId);
-          get().updateUnreadCount(msg.senderId, 0);
+          // Mark as read after a delay to ensure user sees it
+          setTimeout(() => {
+            // Double-check chat is STILL open and page STILL visible
+            if (!document.hidden && get().selectedUser?._id === senderId) {
+              get().markMessagesAsRead(senderId);
+            } else {
+              console.log(" Chat closed or page hidden, not marking as read");
+              const currentCount = get().unreadCounts[senderId] || 0;
+              get().updateUnreadCount(senderId, currentCount + 1);
+            }
+          }, 1500); // 1.5 second delay
         } else {
-          // Page is hidden, increment unread
-          const currentCount = get().unreadCounts[msg.senderId] || 0;
-          get().updateUnreadCount(msg.senderId, currentCount + 1);
+          // Page is hidden, increment unread immediately
+          console.log(" Page hidden, incrementing unread count");
+          const currentCount = get().unreadCounts[senderId] || 0;
+          get().updateUnreadCount(senderId, currentCount + 1);
         }
       } else {
-        //Message is for a DIFFERENT chat (not currently open)
-        const senderId =
-          typeof msg.senderId === "object" ? msg.senderId._id : msg.senderId;
+        // Message is for a DIFFERENT chat (not currently open)
+        console.log(" Message for different chat, incrementing unread");
         const currentCount = get().unreadCounts[senderId] || 0;
         get().updateUnreadCount(senderId, currentCount + 1);
       }
@@ -544,18 +609,18 @@ export const createMessageSlice = (set, get) => ({
       get().updateChatWithNewMessage(msg);
     });
 
-    socket.on("messagesRead", ({ messageIds, readBy }) => {
-      const { selectedUser } = get();
-
-      if (!selectedUser) return;
-
-      if (selectedUser._id.toString() !== readBy.toString()) return;
-
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          messageIds.includes(m._id.toString()) ? { ...m, seen: true } : m
-        ),
-      }));
+    socket.on("messagesRead", ({ userId, chatId }) => {
+      console.log("📨 Messages read by:", userId);
+      const { authUser } = useAuthStore.getState();
+      if (authUser._id === chatId) {
+        set((state) => ({
+          messages: state.messages.map((m) => {
+            const receiverId = m.receiverId?._id || m.receiverId;
+            // Mark messages as seen if they were sent to the person who just read them
+            return receiverId === userId ? { ...m, seen: true } : m;
+          }),
+        }));
+      }
     });
 
     socket.on("message:edited", (msg) => {
