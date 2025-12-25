@@ -61,14 +61,14 @@ const MessageItem = ({
   return (
     <div
       onClick={handleItemClick}
-      className={`w-full flex flex-col transition-colors duration-200 ${
-        isMe ? "items-end" : "items-start"
+      className={`w-full flex transition-colors duration-200 ${
+        isMe ? "justify-end" : "justify-start"
       } ${isSelectionMode ? "cursor-pointer" : ""} ${
         isSelected ? "bg-cyan-500/10" : ""
-      } mb-4 px-2 md:px-4 py-1 relative`}
+      } mb-2 px-2 md:px-6 py-0.5 relative`}
     >
       <div
-        className={`flex items-end gap-2 max-w-[90%] md:max-w-[80%] group ${
+        className={`flex items-end gap-2 max-w-[85%] md:max-w-[70%] group ${
           isMe ? "flex-row-reverse" : "flex-row"
         }`}
         onClick={(e) => !isSelectionMode && e.stopPropagation()}
@@ -88,7 +88,7 @@ const MessageItem = ({
         )}
 
         {/* 2. AVATAR: Show for others in group, and for you (optional, matching WhatsApp) */}
-        <div className="flex-shrink-0 mb-5">
+        <div className="flex-shrink-0 mb-3">
           <img
             src={senderPic}
             alt={senderName}
@@ -104,23 +104,25 @@ const MessageItem = ({
         >
           {/* SENDER NAME: Only show in groups for other people's messages */}
           {!isMe && isGroup && (
-            <span className="text-[11px] font-medium text-slate-500 ml-3 mb-1 uppercase tracking-tight">
+            <span className="text-[11px] font-medium text-cyan-500/80 ml-3 mb-1 uppercase tracking-tight">
               {senderName}
             </span>
           )}
 
-          <MessageBubble
-            msg={msg}
-            isMe={isMe}
-            authUser={authUser}
-            selectedUser={selectedUser}
-            editingId={editingId}
-            editText={editText}
-            handleEditTextChange={handleEditTextChange}
-            submitEdit={submitEdit}
-            setEditingId={setEditingId}
-            setSelectedImg={setSelectedImg}
-          />
+          <div className="relative">
+            <MessageBubble
+              msg={msg}
+              isMe={isMe}
+              authUser={authUser}
+              selectedUser={selectedUser}
+              editingId={editingId}
+              editText={editText}
+              handleEditTextChange={handleEditTextChange}
+              submitEdit={submitEdit}
+              setEditingId={setEditingId}
+              setSelectedImg={setSelectedImg}
+            />
+          </div>
 
           {msgReactions.length > 0 && (
             <div className={`-mt-3 z-10 ${isMe ? "mr-2" : "ml-2"}`}>

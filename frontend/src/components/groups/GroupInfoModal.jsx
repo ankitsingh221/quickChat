@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
 import { useChatStore } from "../../store/useChatStore";
 import { useAuthStore } from "../../store/useAuthStore";
-import { X, Users, Edit2, UserPlus, LogOut, Trash2, Settings, Info, Camera, Loader2 } from "lucide-react";
+import { X, Users, Edit2, UserPlus, LogOut, Trash2, Settings, Info, Camera, Loader2, Lock } from "lucide-react";
 import AddMembersModal from "./AddMembersModal";
 import GroupSettingsModal from "./GroupSettingsModal";
 import GroupMembersModal from "./GroupMembersModal";
 import toast from "react-hot-toast";
 
 function GroupInfoModal({ onClose }) {
-  // Pull LIVE data from store so adding/removing members reflects immediately
   const { selectedGroup, updateGroupInfo, leaveGroup, deleteGroup, isUpdatingGroup } = useChatStore();
   const { authUser } = useAuthStore();
 
@@ -20,24 +19,34 @@ function GroupInfoModal({ onClose }) {
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
 
-  // Keep local input fields in sync with the store's data
   useEffect(() => {
     if (selectedGroup) {
       setGroupName(selectedGroup.groupName || "");
-      setGroupDescription(selectedGroup.description || "");
+      setGroupDescription(selectedGroup.groupDescription || ""); // Changed from .description to match common schemas
     }
   }, [selectedGroup]);
 
   if (!selectedGroup) return null;
 
-  // Permissions logic
+  // --- PERMISSIONS LOGIC ---
+  
+  // 1. Check if user is the Creator (Super Admin)
+  const isCreator = (
+    typeof selectedGroup.createdBy === "string" 
+      ? selectedGroup.createdBy === authUser._id 
+      : (selectedGroup.createdBy?._id || selectedGroup.createdBy) === authUser._id
+  );
+
+  // 2. Check if user is an Admin
   const isAdmin = selectedGroup.admins?.some(id => 
     typeof id === "string" ? id === authUser._id : id._id === authUser._id
   );
-  const isCreator = (typeof selectedGroup.createdBy === "string" 
-    ? selectedGroup.createdBy === authUser._id 
-    : selectedGroup.createdBy?._id === authUser._id
-  );
+
+  // 3. Creator can do ANYTHING, Admins can do most things
+  const hasAdminPowers = isCreator || isAdmin;
+
+  // 4. Logic for editing Name/Description based on your schema settings
+  const canEditInfo = isCreator || isAdmin || !selectedGroup.settings?.onlyAdminsCanEditGroupInfo;
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -56,7 +65,7 @@ function GroupInfoModal({ onClose }) {
     if (!groupName.trim()) return toast.error("Group name is required");
     const success = await updateGroupInfo(selectedGroup._id, {
       groupName: groupName.trim(),
-      description: groupDescription.trim(),
+      groupDescription: groupDescription.trim(),
     });
     if (success) setIsEditing(false);
   };
@@ -87,7 +96,8 @@ function GroupInfoModal({ onClose }) {
                     <Users className="w-16 h-16 text-slate-600" />
                   )}
                 </div>
-                {isAdmin && (
+                {/* Only admins/creator can change group picture */}
+                {hasAdminPowers && (
                   <label className="absolute -bottom-2 -right-2 p-3 bg-cyan-600 hover:bg-cyan-500 rounded-2xl cursor-pointer shadow-lg border-4 border-slate-900 transition-all hover:scale-110 active:scale-95">
                     {isUpdatingGroup ? <Loader2 size={18} className="text-white animate-spin" /> : <Camera size={18} className="text-white" />}
                     <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={isUpdatingGroup} />
@@ -124,14 +134,15 @@ function GroupInfoModal({ onClose }) {
                   <>
                     <div className="flex items-center justify-center gap-2">
                       <h3 className="text-2xl font-bold text-white truncate max-w-[280px]">{selectedGroup.groupName}</h3>
-                      {isAdmin && (
+                      {/* Respects 'onlyAdminsCanEditGroupInfo' setting but Creator bypasses it */}
+                      {canEditInfo && (
                         <button onClick={() => setIsEditing(true)} className="p-1 text-slate-500 hover:text-cyan-400 transition-colors">
                           <Edit2 size={16} />
                         </button>
                       )}
                     </div>
                     <p className="text-slate-400 text-sm mt-2 leading-relaxed">
-                      {selectedGroup.description || "No description provided."}
+                      {selectedGroup.groupDescription || "No description provided."}
                     </p>
                   </>
                 )}
@@ -150,7 +161,7 @@ function GroupInfoModal({ onClose }) {
               
               <button 
                 onClick={() => setShowAddMembers(true)} 
-                disabled={!isAdmin} 
+                disabled={!hasAdminPowers} 
                 className="flex flex-col items-center justify-center gap-1 p-4 rounded-2xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-800 hover:border-green-500/30 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
               >
                 <UserPlus size={24} className="text-green-400 mb-1" />
@@ -160,25 +171,28 @@ function GroupInfoModal({ onClose }) {
 
             {/* Menu Options */}
             <div className="space-y-1 pt-4 border-t border-slate-800">
-              {isAdmin && (
+              {/* Settings button - ONLY for Creator/Admins */}
+              {hasAdminPowers && (
                 <button onClick={() => setShowSettings(true)} className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-slate-800 text-slate-300 transition-all group">
-                   <div className="flex items-center gap-3">
-                     <Settings size={18} className="group-hover:rotate-45 transition-transform duration-500" /> 
-                     <span className="text-sm font-medium">Group Settings</span>
-                   </div>
-                   <div className="size-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_cyan]" />
+                    <div className="flex items-center gap-3">
+                      <Settings size={18} className="group-hover:rotate-45 transition-transform duration-500" /> 
+                      <span className="text-sm font-medium">Group Settings</span>
+                    </div>
+                    <div className="size-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_cyan]" />
                 </button>
               )}
               
+              {/* Creator CANNOT leave, others CAN */}
               {!isCreator && (
                 <button onClick={() => leaveGroup(selectedGroup._id)} className="w-full flex items-center gap-3 p-4 rounded-2xl text-red-400 hover:bg-red-500/10 transition-colors">
                   <LogOut size={18} /> <span className="text-sm font-semibold">Leave Group</span>
                 </button>
               )}
               
+              {/* ONLY Creator can delete the entire group */}
               {isCreator && (
                 <button onClick={() => deleteGroup(selectedGroup._id)} className="w-full flex items-center gap-3 p-4 rounded-2xl text-red-500 hover:bg-red-500/10 transition-colors">
-                  <Trash2 size={18} /> <span className="text-sm font-semibold">Delete Group</span>
+                  <Trash2 size={18} /> <span className="text-sm font-semibold">Delete Group (Creator)</span>
                 </button>
               )}
             </div>
@@ -187,9 +201,9 @@ function GroupInfoModal({ onClose }) {
       </div>
 
       {/* Sub-modals - Passing live 'selectedGroup' to each */}
-      {showMembers && <GroupMembersModal group={selectedGroup} isAdmin={isAdmin} onClose={() => setShowMembers(false)} />}
+      {showMembers && <GroupMembersModal group={selectedGroup} isAdmin={hasAdminPowers} isCreator={isCreator} onClose={() => setShowMembers(false)} />}
       {showAddMembers && <AddMembersModal group={selectedGroup} onClose={() => setShowAddMembers(false)} />}
-      {showSettings && <GroupSettingsModal group={selectedGroup} onClose={() => setShowSettings(false)} />}
+      {showSettings && <GroupSettingsModal group={selectedGroup} isCreator={isCreator} onClose={() => setShowSettings(false)} />}
     </>
   );
 }

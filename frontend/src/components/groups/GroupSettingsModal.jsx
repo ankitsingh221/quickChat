@@ -1,19 +1,23 @@
 import { useState } from "react";
 import { useChatStore } from "../../store/useChatStore";
 import { X, Settings, ShieldAlert, Loader2 } from "lucide-react";
-import toast from "react-hot-toast"; // Ensure toast is imported
+import toast from "react-hot-toast";
 
-function GroupSettingsModal({ group, onClose }) {
+function GroupSettingsModal({ group, isCreator, onClose }) {
   // 1. Initialize state safely
   const [settings, setSettings] = useState({
     onlyAdminsCanSend: group?.settings?.onlyAdminsCanSend ?? false,
-    onlyAdminsCanEditGroupInfo: group?.settings?.onlyAdminsCanEditGroupInfo ?? false,
+    onlyAdminsCanEditGroupInfo: group?.settings?.onlyAdminsCanEditGroupInfo ?? true,
   });
 
   const { updateGroupInfo, isUpdatingGroup } = useChatStore();
 
   const handleSaveSettings = async () => {
-    // Send the nested settings object to match backend expectations
+    // SECURITY: Only the Creator should be able to change these core settings
+    if (!isCreator) {
+      return toast.error("Only the group creator can modify these settings");
+    }
+
     const success = await updateGroupInfo(group._id, { settings });
     if (success) {
       toast.success("Settings updated successfully");
@@ -52,7 +56,6 @@ function GroupSettingsModal({ group, onClose }) {
               <p className="text-[11px] text-slate-500">Only admins can send messages</p>
             </div>
             
-            {/* WhatsApp Style Toggle */}
             <div className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out ${settings.onlyAdminsCanSend ? 'bg-cyan-500' : 'bg-slate-700'}`}>
                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${settings.onlyAdminsCanSend ? 'translate-x-5' : 'translate-x-0'}`} />
             </div>
@@ -74,7 +77,7 @@ function GroupSettingsModal({ group, onClose }) {
           <div className="bg-amber-500/5 border border-amber-500/10 p-3 rounded-2xl flex gap-3">
              <ShieldAlert className="text-amber-500 shrink-0" size={18} />
              <p className="text-[10px] text-amber-200/60 leading-relaxed">
-               Admins always have full permissions. These settings only restrict regular members.
+               As the <strong>Creator</strong>, you always bypass these restrictions even if you aren't an admin.
              </p>
           </div>
         </div>
@@ -83,8 +86,8 @@ function GroupSettingsModal({ group, onClose }) {
         <div className="p-5 border-t border-slate-800 bg-slate-900/50 flex items-center gap-3">
           <button 
             onClick={handleSaveSettings} 
-            disabled={isUpdatingGroup} 
-            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-900 rounded-xl text-sm font-bold transition-all shadow-lg shadow-cyan-500/10 active:scale-95 disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2"
+            disabled={isUpdatingGroup || !isCreator} 
+            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-900 rounded-xl text-sm font-bold transition-all shadow-lg shadow-cyan-500/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isUpdatingGroup ? (
                 <>
@@ -92,7 +95,7 @@ function GroupSettingsModal({ group, onClose }) {
                     <span>Saving...</span>
                 </>
             ) : (
-                "Apply Changes"
+                isCreator ? "Apply Changes" : "Creator Only"
             )}
           </button>
         </div>

@@ -124,7 +124,7 @@ const MessageBubble = ({
                 <button className="text-xs font-medium hover:underline" onClick={() => setEditingId(null)}>Cancel</button>
                 <button
                   className="px-3 py-1 bg-white text-cyan-700 font-bold rounded-md text-xs hover:bg-slate-100 transition-colors"
-                  onClick={() => submitEdit(msg._id)}
+                  onClick={() => submitEdit(msg._id, msg.createdAt)}
                 >
                   Save
                 </button>

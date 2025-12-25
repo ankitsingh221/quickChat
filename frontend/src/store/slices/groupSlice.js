@@ -328,7 +328,19 @@ export const createGroupSlice = (set, get) => ({
     const { authUser } = useAuthStore.getState();
 
     if (!selectedGroup?._id) return toast.error("No group selected.");
+   
+     const isCreator = selectedGroup.createdBy === authUser._id || 
+                    selectedGroup.createdBy?._id === authUser._id;
+  
+  const isAdmin = selectedGroup.admins?.some(
+    (admin) => (admin._id || admin) === authUser._id
+  );
 
+  const onlyAdminsCanSend = selectedGroup.settings?.onlyAdminsCanSend;
+
+  if (onlyAdminsCanSend && !isCreator && !isAdmin) {
+    return toast.error("Only admins can send messages in this group.");
+  }
     const tempId = `temp-${Date.now()}-${Math.random()}`;
     const optimisticMessage = {
       _id: tempId,

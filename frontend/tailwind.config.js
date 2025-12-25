@@ -19,4 +19,8 @@ export default {
     },
   },
   plugins: [daisyui],
+  // ADD THIS SECTION:
+  daisyui: {
+    themes: ["dark", "light"], // You can add more like "cupcake" or "nord"
+  },
 };

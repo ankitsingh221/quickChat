@@ -33,7 +33,7 @@ export const createGroup = async (req, res) => {
     }
 
     // 2. Ensure only unique IDs and exclude creator (we add them manually)
-    const uniqueMemberIds = [...new Set(memberIds)].filter(id => id !== creatorId);
+    const uniqueMemberIds = [...new Set(memberIds)].filter(id => id.toString() !== creatorId.toString());
 
     // 3. Verify users exist
     const validMembers = await User.find({ _id: { $in: uniqueMemberIds } });
@@ -131,36 +131,56 @@ export const getGroupById = async (req, res) => {
 export const updateGroupInfo = async (req, res) => {
   try {
     const { id } = req.params;
-    const { groupName, groupDescription, groupPic, settings } = req.body; // Added settings
-    const group = await Group.findById(id);
+    const { groupName, groupDescription, groupPic, settings } = req.body;
+    const userId = req.user._id;
 
+    const group = await Group.findById(id);
     if (!group) return res.status(404).json({ success: false, message: "Group not found" });
 
-    const isAdmin = group.admins.some((a) => a.equals(req.user._id));
-    if (group.settings?.onlyAdminsCanEditGroupInfo && !isAdmin) {
+    // 1. STRENGTHENED ROLE CHECK
+    // Use .toString() on both sides to ensure we aren't comparing an Object to a String
+    const isCreator = group.createdBy.toString() === userId.toString();
+    const isAdmin = group.admins.some((a) => a.toString() === userId.toString());
+
+    // 2. PERMISSION CHECK
+    if (group.settings?.onlyAdminsCanEditGroupInfo && !isAdmin && !isCreator) {
       return res.status(403).json({ success: false, message: "Only admins can edit info" });
     }
 
-    if (groupName) group.groupName = groupName;
-    if (groupDescription !== undefined) group.groupDescription = groupDescription;
-    
-    // Handle Settings Update (WhatsApp Broadcast Mode etc.)
-    if (settings) {
-      group.settings = { ...group.settings, ...settings };
+    // 3. SETTINGS PROTECTION (Only Creator)
+    if (settings && !isCreator) {
+      return res.status(403).json({ success: false, message: "Only the creator can change settings" });
     }
 
+    // 4. PREPARE UPDATE OBJECT
+    const updateData = {};
+    if (groupName) updateData.groupName = groupName.trim();
+    if (groupDescription !== undefined) updateData.groupDescription = groupDescription.trim();
+    
+    // Handle Nested Settings properly for Mongoose
+    if (settings) {
+      updateData["settings.onlyAdminsCanSend"] = settings.onlyAdminsCanSend;
+      updateData["settings.onlyAdminsCanEditGroupInfo"] = settings.onlyAdminsCanEditGroupInfo;
+    }
+
+    // Handle Image
     if (groupPic && !groupPic.startsWith("http")) {
       const uploadResult = await cloudinary.uploader.upload(groupPic, { folder: "group_avatars" });
-      group.groupPic = uploadResult.secure_url;
+      updateData.groupPic = uploadResult.secure_url;
     }
 
-    await group.save();
-    
-    const updated = await Group.findById(id).populate("members admins", "fullName profilePic");
-    notifyGroupMembers(group.members, "group:updated", updated);
+    // 5. USE findByIdAndUpdate (More reliable for nested fields)
+    const updated = await Group.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true }
+    ).populate("members admins createdBy", "fullName profilePic isOnline");
+
+    notifyGroupMembers(updated.members, "group:updated", updated);
 
     res.status(200).json({ success: true, data: updated });
   } catch (error) {
+    console.error("Update Error:", error);
     res.status(500).json({ success: false, message: "Update failed" });
   }
 };

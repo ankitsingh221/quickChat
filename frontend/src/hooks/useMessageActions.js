@@ -19,13 +19,13 @@ const useMessageActions = ({
   const [showReactionsMenu, setShowReactionsMenu] = useState(null);
   const [now, setNow] = useState(Date.now());
 
-  // Timer to keep "Delete for Everyone" logic accurate
+  // 1. Timer to keep logic accurate
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // reset on refresh on switch
+  // 2. Reset state on chat switch
   useEffect(() => {
     setActiveMsgId(null);
     setEditingId(null);
@@ -33,10 +33,9 @@ const useMessageActions = ({
     setShowReactionsMenu(null);
   }, [activeChatId]);
 
-  //click outside handler
+  // 3. Click outside handler
   useEffect(() => {
     const handleClickOutside = (e) => {
-      // Check if click is outside menus
       if (activeMsgId && !e.target.closest(".action-menu") && !e.target.closest(".three-dot-button")) {
         setActiveMsgId(null);
       }
@@ -48,20 +47,28 @@ const useMessageActions = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [activeMsgId, showReactionsMenu]);
 
-  //  logic helpers
+  // 4. FIXED LOGIC HELPERS: Handling Clock Drift
   const canModify = useCallback((createdAt) => {
-    return now - new Date(createdAt).getTime() < FIVE_MIN;
+    const messageTime = new Date(createdAt).getTime();
+    const currentTime = now;
+    const diff = currentTime - messageTime;
+
+    // If diff is negative, it means the server clock is ahead of the client.
+    // We treat messages from the "future" as brand new (0ms old).
+    const adjustedAge = diff < 0 ? 0 : diff;
+
+    return adjustedAge < FIVE_MIN;
   }, [now]);
 
-  const closeAllMenus = () => {
+  const closeAllMenus = useCallback(() => {
     setActiveMsgId(null);
     setShowReactionsMenu(null);
-  };
+  }, []);
 
-  // action handlers
+  // 5. Action Handlers
   const startEdit = (msg) => {
     if (!canModify(msg.createdAt)) {
-      toast.error("Editing time limit (5m) expired");
+      toast.error("Editing window (5m) has passed");
       return;
     }
     if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
@@ -133,6 +140,10 @@ const useMessageActions = ({
     handleReactionClick: (messageId, emoji) => {
       toggleReaction(messageId, emoji);
       closeAllMenus();
+    },
+    handleExistingReactionClick: (messageId, emoji) => {
+      // Logic for removing/toggling from the badge directly
+      toggleReaction(messageId, emoji);
     },
     handleReply: (msg) => {
       if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();

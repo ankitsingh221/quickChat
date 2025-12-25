@@ -10,49 +10,67 @@ const MessageInput = ({ replyTo, setReplyTo, isGroup: isGroupProp }) => {
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  const { 
-    sendMessage, 
-    sendGroupMessage, 
-    isSoundEnabled, 
-    selectedUser, 
-    selectedGroup 
+  const {
+    sendMessage,
+    sendGroupMessage,
+    isSoundEnabled,
+    selectedUser,
+    selectedGroup,
   } = useChatStore();
-  
-  const { authUser, socket } = useAuthStore(); 
+
+  const { authUser, socket } = useAuthStore();
   const { playRandomKeyStrokeSound, playMessageSentSound } = useKeyboardSound();
 
   const isGroup = isGroupProp ?? !!selectedGroup;
   const activeChatId = isGroup ? selectedGroup?._id : selectedUser?._id;
-  
-  // Guard for Admin status
-  const isAdmin = isGroup && (
-    selectedGroup?.creator === authUser?._id || 
-    selectedGroup?.admins?.includes(authUser?._id)
-  );
-  
-  const canSend = !isGroup || !selectedGroup?.settings?.onlyAdminsCanSend || isAdmin;
+
+  const isCreator =
+    isGroup &&
+    (selectedGroup?.createdBy?._id || selectedGroup?.createdBy) ===
+      authUser?._id;
+
+  //  Check if user is an Admin
+  const isAdmin =
+    isGroup &&
+    selectedGroup?.admins?.some(
+      (admin) => (admin._id || admin) === authUser?._id
+    );
+
+  //  Final decision: Creator bypasses all restrictions
+  const canSend =
+    !isGroup ||
+    !selectedGroup?.settings?.onlyAdminsCanSend ||
+    isAdmin ||
+    isCreator;
 
   // typing logic both for group and one to one chat
-  const emitTypingStatus = useCallback((status) => {
-    if (!socket || !activeChatId || !authUser) return;
-    
-    const event = status === "typing" ? "typing" : "stopTyping"; 
-    
-    console.log(`📤 Emitting ${isGroup ? 'group' : 'private'} typing:`, event, { 
-      chatId: activeChatId, 
-      isGroup 
-    });
+  const emitTypingStatus = useCallback(
+    (status) => {
+      if (!socket || !activeChatId || !authUser) return;
 
-    socket.emit(event, { 
-      chatId: activeChatId,
-      isGroup: isGroup,
-    });
-  }, [socket, activeChatId, isGroup, authUser]);
+      const event = status === "typing" ? "typing" : "stopTyping";
+
+      console.log(
+        `📤 Emitting ${isGroup ? "group" : "private"} typing:`,
+        event,
+        {
+          chatId: activeChatId,
+          isGroup,
+        }
+      );
+
+      socket.emit(event, {
+        chatId: activeChatId,
+        isGroup: isGroup,
+      });
+    },
+    [socket, activeChatId, isGroup, authUser]
+  );
 
   const handleTyping = (e) => {
     const newValue = e.target.value;
     setText(newValue);
-    
+
     if (isSoundEnabled) playRandomKeyStrokeSound();
     if (!canSend) return;
 
@@ -61,54 +79,59 @@ const MessageInput = ({ replyTo, setReplyTo, isGroup: isGroupProp }) => {
       emitTypingStatus("typing");
 
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      
+
       typingTimeoutRef.current = setTimeout(() => {
         emitTypingStatus("stopTyping");
-      }, 2000); 
+      }, 2000);
     } else {
       emitTypingStatus("stopTyping");
     }
   };
 
- 
   useEffect(() => {
     return () => {
       if (socket && activeChatId) {
-        console.log(`🧹 Cleanup: Stopping ${isGroup ? 'group' : 'private'} typing for`, activeChatId);
-        socket.emit("stopTyping", { 
-          chatId: activeChatId, 
-          isGroup: isGroup 
+        console.log(
+          `🧹 Cleanup: Stopping ${isGroup ? "group" : "private"} typing for`,
+          activeChatId
+        );
+        socket.emit("stopTyping", {
+          chatId: activeChatId,
+          isGroup: isGroup,
         });
       }
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, [activeChatId, isGroup, socket]);
 
-
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
-    
+
     const trimmedText = text.trim();
     if (!trimmedText && !imagePreview) return;
-    if (!canSend) return; 
+    if (!canSend) return;
 
     // Stop typing immediately for both group and one-to-one
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     emitTypingStatus("stopTyping");
 
     if (isSoundEnabled) {
-      playMessageSentSound ? playMessageSentSound() : playRandomKeyStrokeSound();
+      playMessageSentSound
+        ? playMessageSentSound()
+        : playRandomKeyStrokeSound();
     }
 
     const messageData = {
       text: trimmedText,
       image: imagePreview,
-      replyTo: replyTo ? {
-        _id: replyTo._id,
-        text: replyTo.text,
-        image: replyTo.image,
-        senderId: replyTo.senderId,
-      } : null,
+      replyTo: replyTo
+        ? {
+            _id: replyTo._id,
+            text: replyTo.text,
+            image: replyTo.image,
+            senderId: replyTo.senderId,
+          }
+        : null,
     };
 
     try {
@@ -139,7 +162,10 @@ const MessageInput = ({ replyTo, setReplyTo, isGroup: isGroupProp }) => {
   }
 
   return (
-    <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-700/50 relative bg-base-100">
+    <form
+      onSubmit={handleSendMessage}
+      className="p-4 border-t border-slate-700/50 relative bg-base-100"
+    >
       {/* Reply UI */}
       {replyTo && (
         <div className="max-w-3xl mx-auto mb-2 p-2 rounded bg-slate-800 border-l-4 border-cyan-500 flex justify-between items-start animate-in slide-in-from-bottom-2">
@@ -147,9 +173,15 @@ const MessageInput = ({ replyTo, setReplyTo, isGroup: isGroupProp }) => {
             <p className="text-xs font-semibold text-cyan-400">
               Replying to {replyTo.senderId?.fullName || "User"}
             </p>
-            {replyTo.text && <p className="truncate text-slate-300 italic">"{replyTo.text}"</p>}
+            {replyTo.text && (
+              <p className="truncate text-slate-300 italic">"{replyTo.text}"</p>
+            )}
           </div>
-          <button type="button" onClick={() => setReplyTo(null)} className="ml-2">
+          <button
+            type="button"
+            onClick={() => setReplyTo(null)}
+            className="ml-2"
+          >
             <XIcon className="w-4 h-4 text-slate-400 hover:text-white" />
           </button>
         </div>
@@ -159,10 +191,17 @@ const MessageInput = ({ replyTo, setReplyTo, isGroup: isGroupProp }) => {
       {imagePreview && (
         <div className="max-w-3xl mx-auto mb-3 animate-in zoom-in-95">
           <div className="relative inline-block">
-            <img src={imagePreview} alt="Preview" className="w-20 h-20 object-cover rounded-lg border border-slate-700" />
+            <img
+              src={imagePreview}
+              alt="Preview"
+              className="w-20 h-20 object-cover rounded-lg border border-slate-700"
+            />
             <button
               type="button"
-              onClick={() => { setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+              onClick={() => {
+                setImagePreview(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
               className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-slate-200 shadow-lg border border-slate-700"
             >
               <XIcon className="w-3 h-3" />
@@ -188,10 +227,10 @@ const MessageInput = ({ replyTo, setReplyTo, isGroup: isGroupProp }) => {
           />
         </div>
 
-        <input 
-          type="file" 
-          accept="image/*" 
-          ref={fileInputRef} 
+        <input
+          type="file"
+          accept="image/*"
+          ref={fileInputRef}
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) {
@@ -199,8 +238,8 @@ const MessageInput = ({ replyTo, setReplyTo, isGroup: isGroupProp }) => {
               reader.onloadend = () => setImagePreview(reader.result);
               reader.readAsDataURL(file);
             }
-          }} 
-          className="hidden" 
+          }}
+          className="hidden"
         />
 
         <button

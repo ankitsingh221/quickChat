@@ -16,17 +16,18 @@ const groupSchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
+        required: true,
       },
     ],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      
     },
 
     settings: {
       onlyAdminsCanSend: { type: Boolean, default: false },
-      onlyAdminsCanEditGroupInfo: { type: Boolean, default: true },
+      onlyAdminsCanEditGroupInfo: { type: Boolean, default: false },
     },
 
     lastMessage: {
