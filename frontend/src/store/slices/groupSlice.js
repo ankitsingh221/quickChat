@@ -322,26 +322,34 @@ export const createGroupSlice = (set, get) => ({
     }
   },
 
-  sendGroupMessage: async ({ text, image, replyTo }) => {
-    const { selectedGroup, groupMessages, groups, updateGroupWithNewMessage } =
-      get();
-    const { authUser } = useAuthStore.getState();
+ sendGroupMessage: async ({ text, image, replyTo, overrideId = null }) => {
+  const { selectedGroup, groupMessages, groups, updateGroupWithNewMessage } = get();
+  const { authUser } = useAuthStore.getState();
 
-    if (!selectedGroup?._id) return toast.error("No group selected.");
-   
-     const isCreator = selectedGroup.createdBy === authUser._id || 
-                    selectedGroup.createdBy?._id === authUser._id;
-  
-  const isAdmin = selectedGroup.admins?.some(
-    (admin) => (admin._id || admin) === authUser._id
-  );
+  // 1. Determine Target (Forwarding vs. Current Chat)
+  const targetGroupId = overrideId || selectedGroup?._id;
+  const isForwarding = !!overrideId;
 
-  const onlyAdminsCanSend = selectedGroup.settings?.onlyAdminsCanSend;
+  if (!targetGroupId) return toast.error("No group selected.");
 
-  if (onlyAdminsCanSend && !isCreator && !isAdmin) {
-    return toast.error("Only admins can send messages in this group.");
+  // 2. Permission Check (Only if we have group data available)
+  // If forwarding, we might not have 'selectedGroup' settings, so we let the backend handle it
+  if (!isForwarding && selectedGroup) {
+    const isCreator = selectedGroup.createdBy === authUser._id || 
+                      selectedGroup.createdBy?._id === authUser._id;
+    const isAdmin = selectedGroup.admins?.some(
+      (admin) => (admin._id || admin) === authUser._id
+    );
+    const onlyAdminsCanSend = selectedGroup.settings?.onlyAdminsCanSend;
+
+    if (onlyAdminsCanSend && !isCreator && !isAdmin) {
+      return toast.error("Only admins can send messages in this group.");
+    }
   }
-    const tempId = `temp-${Date.now()}-${Math.random()}`;
+
+  // 3. Optimistic UI Logic (SKIP IF FORWARDING)
+  const tempId = `temp-${Date.now()}-${Math.random()}`;
+  if (!isForwarding) {
     const optimisticMessage = {
       _id: tempId,
       senderId: {
@@ -349,7 +357,7 @@ export const createGroupSlice = (set, get) => ({
         fullName: authUser.fullName,
         profilePic: authUser.profilePic,
       },
-      groupId: selectedGroup._id, 
+      groupId: targetGroupId, 
       text,
       image,
       replyTo: replyTo || null,
@@ -357,59 +365,57 @@ export const createGroupSlice = (set, get) => ({
       createdAt: new Date().toISOString(),
     };
 
-    // Only update groupMessages if we are actually in a group view
     set({ groupMessages: [...groupMessages, optimisticMessage] });
 
-    // Safely update the sidebar list
-    const existingIndex = groups.findIndex((g) => g._id === selectedGroup._id);
+    // Update Sidebar
+    const existingIndex = groups.findIndex((g) => g._id === targetGroupId);
     if (existingIndex !== -1) {
       const updatedGroups = [...groups];
-      updatedGroups[existingIndex] = {
-        ...updatedGroups[existingIndex],
-        lastMessage: optimisticMessage,
-      };
-      // Move to top
+      updatedGroups[existingIndex] = { ...updatedGroups[existingIndex], lastMessage: optimisticMessage };
       const [movedGroup] = updatedGroups.splice(existingIndex, 1);
       updatedGroups.unshift(movedGroup);
       set({ groups: updatedGroups });
     }
+  }
 
-    try {
-      const payload = { text, image };
-      if (replyTo) {
-        payload.replyTo = {
-          _id: replyTo._id,
-          text: replyTo.text || null,
-          image: replyTo.image || null,
-          senderId: replyTo.senderId,
-        };
-      }
+  // 4. API Call
+  try {
+    const payload = { text, image };
+    if (replyTo) {
+      payload.replyTo = {
+        _id: replyTo._id,
+        text: replyTo.text || null,
+        image: replyTo.image || null,
+        senderId: replyTo.senderId,
+      };
+    }
 
-      const res = await axiosInstance.post(
-        `/messages/group/${selectedGroup._id}/send`,
-        payload
-      );
+    const res = await axiosInstance.post(
+      `/messages/group/${targetGroupId}/send`,
+      payload
+    );
 
-      if (res.data?.data) {
+    // 5. Success Logic (Only update UI if NOT forwarding)
+    if (res.data?.data) {
+      if (!isForwarding) {
         set((state) => ({
           groupMessages: state.groupMessages.map((msg) =>
-            msg._id === tempId
-              ? {
-                  ...res.data.data,
-                  reactions: [],
-                  replyTo: res.data.data.replyTo || null,
-                }
-              : msg
+            msg._id === tempId ? { ...res.data.data, reactions: [], replyTo: res.data.data.replyTo || null } : msg
           ),
         }));
         updateGroupWithNewMessage(res.data.data);
+      } else {
+        // If forwarding, we just update the sidebar of the group we sent it to
+        updateGroupWithNewMessage(res.data.data);
       }
-    } catch (error) {
-      set({ groupMessages, groups }); 
-      toast.error(error.response?.data?.message || "Failed to send message");
     }
-  },
-
+    return res.data.data;
+  } catch (error) {
+    if (!isForwarding) set({ groupMessages, groups }); 
+    toast.error(error.response?.data?.message || "Failed to forward message");
+    throw error;
+  }
+},
   updateGroupWithNewMessage: (msg) => {
     //  If this is a private message (no groupId), stop immediately.
     if (!msg.groupId) return;

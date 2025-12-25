@@ -51,7 +51,7 @@ export const createMessageSlice = (set, get) => ({
     }
   },
 
-  sendMessage: async ({ text, image, replyTo }) => {
+  sendMessage: async ({ text, image, replyTo, overrideId = null }) => {
     const {
       selectedUser,
       messages,
@@ -60,42 +60,48 @@ export const createMessageSlice = (set, get) => ({
       updateChatWithNewMessage,
     } = get();
     const { authUser } = useAuthStore.getState();
-    if (!selectedUser?._id) return toast.error("No user selected.");
 
-    const tempId = `temp-${Date.now()}-${Math.random()}`;
-    const optimisticMessage = {
-      _id: tempId,
-      senderId: authUser._id,
-      receiverId: selectedUser._id,
-      text,
-      image,
-      replyTo: replyTo || null,
-      reactions: [],
-      createdAt: new Date().toISOString(),
-    };
+    const targetId = overrideId || selectedUser?._id;
+    if (targetId) return toast.error("No user selected.");
 
-    set({ messages: [...messages, optimisticMessage] });
+    const isForwarding = !!overrideId;
+    let tempId = null;
+    if (!isForwarding) {
+      const tempId = `temp-${Date.now()}-${Math.random()}`;
+      const optimisticMessage = {
+        _id: tempId,
+        senderId: authUser._id,
+        receiverId: selectedUser._id,
+        text,
+        image,
+        replyTo: replyTo || null,
+        reactions: [],
+        createdAt: new Date().toISOString(),
+      };
 
-    const existingIndex = chats.findIndex((c) => c._id === selectedUser._id);
-    const updatedChat = {
-      ...(chats[existingIndex] || {
-        _id: selectedUser._id,
-        fullName: selectedUser.fullName,
-      }),
-      lastMessage: optimisticMessage,
-    };
-    let updatedChats = [...chats];
-    if (existingIndex > -1) updatedChats.splice(existingIndex, 1);
-    updatedChats.unshift(updatedChat);
+      set({ messages: [...messages, optimisticMessage] });
 
-    // Update allContacts
-    const updatedContacts = allContacts.map((contact) =>
-      contact._id === selectedUser._id
-        ? { ...contact, lastMessage: optimisticMessage }
-        : contact
-    );
+      const existingIndex = chats.findIndex((c) => c._id === selectedUser._id);
+      const updatedChat = {
+        ...(chats[existingIndex] || {
+          _id: selectedUser._id,
+          fullName: selectedUser.fullName,
+        }),
+        lastMessage: optimisticMessage,
+      };
+      let updatedChats = [...chats];
+      if (existingIndex > -1) updatedChats.splice(existingIndex, 1);
+      updatedChats.unshift(updatedChat);
 
-    set({ chats: updatedChats, allContacts: updatedContacts });
+      // Update allContacts
+      const updatedContacts = allContacts.map((contact) =>
+        contact._id === selectedUser._id
+          ? { ...contact, lastMessage: optimisticMessage }
+          : contact
+      );
+
+      set({ chats: updatedChats, allContacts: updatedContacts });
+    }
 
     try {
       const payload = { text, image };
@@ -364,78 +370,68 @@ export const createMessageSlice = (set, get) => ({
     }
   },
 
-  forwardMessages: async (targetId, isTargetGroup = false) => {
-    const {
-      forwardingMessages,
-      updateChatWithNewMessage,
-      updateGroupWithNewMessage,
-      chats,
-      groups,
-      getMyChatPartners,
-    } = get();
+ forwardMessages: async (targetId, isTargetGroup = false) => {
+  const { forwardingMessages, updateChatWithNewMessage, updateGroupWithNewMessage, chats, groups, getMyChatPartners } = get();
 
-    if (!forwardingMessages || forwardingMessages.length === 0) return false;
+  if (!forwardingMessages?.length) return false;
 
-    try {
-      const endpointPrefix = isTargetGroup ? "/groups/send" : "/messages/send";
+  try {
+    // 1. Define the endpoint once since the targetId is the same for all messages
+    const endpoint = isTargetGroup 
+      ? `/messages/group/${targetId}/send` 
+      : `/messages/send/${targetId}`;
 
-      const promises = forwardingMessages.map((msg) =>
-        axiosInstance.post(`${endpointPrefix}/${targetId}`, {
-          text: msg.text,
-          image: msg.image,
-          isForwarded: true,
-        })
-      );
+    // 2. Map promises using the clean endpoint
+    const promises = forwardingMessages.map((msg) =>
+      axiosInstance.post(endpoint, {
+        text: msg.text,
+        image: msg.image,
+        isForwarded: true,
+      })
+    );
 
-      const responses = await Promise.all(promises);
+    const responses = await Promise.all(promises);
 
-      //  Process the last sent message for UI update
-      if (responses.length > 0 && responses[responses.length - 1].data?.data) {
-        const lastSentMsg = responses[responses.length - 1].data.data;
+    // 3. Process the last message for the Sidebar/UI
+    if (responses.length > 0) {
+      const lastSentMsg = responses[responses.length - 1].data?.data;
+      if (!lastSentMsg) return true;
 
-        if (isTargetGroup) {
-          // Update Group UI
-          updateGroupWithNewMessage?.(lastSentMsg);
-
-          // Update Group Sidebar
-          set({
-            groups: groups.map((g) =>
-              String(g._id) === String(targetId)
-                ? { ...g, lastMessage: lastSentMsg }
-                : g
-            ),
-          });
+      if (isTargetGroup) {
+        updateGroupWithNewMessage?.(lastSentMsg);
+        // Move group to top of sidebar
+        set({
+          groups: [
+            { ...groups.find(g => String(g._id) === String(targetId)), lastMessage: lastSentMsg },
+            ...groups.filter(g => String(g._id) !== String(targetId))
+          ]
+        });
+      } else {
+        updateChatWithNewMessage?.(lastSentMsg);
+        // Move chat to top of sidebar
+        const chatExists = chats.some((c) => String(c._id) === String(targetId));
+        if (!chatExists) {
+          await getMyChatPartners();
         } else {
-          // Update Private UI
-          updateChatWithNewMessage?.(lastSentMsg);
-
-          // Update Private Sidebar
-          const existingChat = chats.find(
-            (c) => String(c._id) === String(targetId)
-          );
-          if (!existingChat) {
-            await getMyChatPartners(); // Refresh list if new person
-          } else {
-            set({
-              chats: chats.map((c) =>
-                String(c._id) === String(targetId)
-                  ? { ...c, lastMessage: lastSentMsg }
-                  : c
-              ),
-            });
-          }
+          set({
+            chats: [
+              { ...chats.find(c => String(c._id) === String(targetId)), lastMessage: lastSentMsg },
+              ...chats.filter(c => String(c._id) !== String(targetId))
+            ]
+          });
         }
       }
-
-      set({ selectedMessages: [], isSelectionMode: false });
-      toast.success(`Forwarded to ${isTargetGroup ? "group" : "chat"}`);
-      return true;
-    } catch (error) {
-      console.error("Forwarding error:", error);
-      toast.error("Failed to forward messages");
-      return false;
     }
-  },
+
+    set({ forwardingMessages: [], isSelectionMode: false });
+    toast.success(`Forwarded ${forwardingMessages.length} messages`);
+    return true;
+  } catch (error) {
+    console.error("Forwarding error:", error);
+    toast.error("Failed to forward messages");
+    return false;
+  }
+},
 
   updateChatWithNewMessage: (msg) => {
     //  If this is a group message, let createGroupSlice handle it.
@@ -530,7 +526,7 @@ export const createMessageSlice = (set, get) => ({
         const isPageVisible = !document.hidden;
         if (isPageVisible) {
           get().markMessagesAsRead(msg.senderId);
-          get().updateUnreadCount(msg.senderId, 0); 
+          get().updateUnreadCount(msg.senderId, 0);
         } else {
           // Page is hidden, increment unread
           const currentCount = get().unreadCounts[msg.senderId] || 0;

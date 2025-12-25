@@ -177,10 +177,15 @@ const ChatContainer = () => {
     updateUnreadCount,
   ]);
 
-  // 5. Initial Scroll
-  useEffect(() => {
-    if (isLoading || activeMessages.length === 0) return;
+ // 5 & 6. Combined Initial Jump and New Message Scroll
+useEffect(() => {
+  if (isLoading || activeMessages.length === 0) return;
 
+  // Determine if this is the initial load of a new chat
+  const isFirstLoad = prevMessagesLengthRef.current === 0;
+
+  if (isFirstLoad) {
+    // 1. INITIAL JUMP LOGIC
     const firstUnreadIndex = activeMessages.findIndex((msg) => {
       const senderId = msg.senderId?._id || msg.senderId;
       if (senderId?.toString() === authUser?._id?.toString()) return false;
@@ -189,43 +194,50 @@ const ChatContainer = () => {
 
     const timeoutId = setTimeout(() => {
       if (firstUnreadIndex !== -1) {
-        const element = document.getElementById(
-          `msg-${activeMessages[firstUnreadIndex]._id}`
-        );
+        const element = document.getElementById(`msg-${activeMessages[firstUnreadIndex]._id}`);
         if (element) {
+          // Use 'auto' to jump instantly without showing the scrolling animation
           element.scrollIntoView({ behavior: "auto", block: "center" });
         }
       } else {
+        // No unread, jump to bottom instantly
         messageEndRef.current?.scrollIntoView({ behavior: "auto" });
       }
-    }, 200);
+      // Update ref to current length AFTER the initial jump
+      prevMessagesLengthRef.current = activeMessages.length;
+    }, 50); // Lower timeout for snappier feel
 
     return () => clearTimeout(timeoutId);
-  }, [activeChatId, isLoading, activeMessages, authUser._id, isGroup]);
-
-  // 6. Smooth Scroll on New Messages
-  useEffect(() => {
+  } else {
+    // 2. NEW MESSAGE LOGIC
+    // Only trigger if messages length actually increased
     if (activeMessages.length > prevMessagesLengthRef.current) {
       if (!searchTerm) {
+        // Use 'smooth' only for new messages coming in
         messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }
+
       const latestMsg = activeMessages[activeMessages.length - 1];
       const senderId = latestMsg?.senderId?._id || latestMsg?.senderId;
-      if (
-        senderId?.toString() !== authUser?._id?.toString() &&
-        isSoundEnabled
-      ) {
+
+      if (senderId?.toString() !== authUser?._id?.toString() && isSoundEnabled) {
         playMessageReceivedSound?.();
       }
+
+      // Sync the ref length
+      prevMessagesLengthRef.current = activeMessages.length;
     }
-    prevMessagesLengthRef.current = activeMessages.length;
-  }, [
-    activeMessages,
-    isSoundEnabled,
-    searchTerm,
-    authUser._id,
-    playMessageReceivedSound,
-  ]);
+  }
+}, [
+  activeChatId, 
+  isLoading, 
+  activeMessages, 
+  authUser._id, 
+  isGroup, 
+  searchTerm, 
+  isSoundEnabled, 
+  playMessageReceivedSound
+]);
 
   // 7. Search Cleanup
   useEffect(() => {
