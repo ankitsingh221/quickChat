@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import MessageItem from "./MessageItem";
 
 const MessageList = ({
@@ -10,27 +10,28 @@ const MessageList = ({
   setSelectedImg,
 }) => {
   const [initialUnreadId, setInitialUnreadId] = useState(null);
+  // Ref to track if we've already set the initial unread marker for this session
+  const hasSetInitialRef = useRef(null);
 
-  // 1. Memoized date formatter to prevent re-creation
   const formatHeaderDate = useCallback((date) => {
     if (!date) return "";
-    const messageDate = new Date(date);
+    const d = new Date(date);
     const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
-
-    if (messageDate.toDateString() === today.toDateString()) return "Today";
-    if (messageDate.toDateString() === yesterday.toDateString())
-      return "Yesterday";
-    return messageDate.toLocaleDateString("en-GB");
+    if (d.toDateString() === today.toDateString()) return "Today";
+    const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+    return d.toLocaleDateString("en-GB");
   }, []);
 
-  // 2. Identify the unread message
+  // 1. Only set the "New Message" marker when the chat FIRST loads
   useEffect(() => {
-    if (messages.length > 0) {
+    const activeId = selectedGroup?._id || selectedUser?._id;
+    
+    // If we changed chats, reset the tracker
+    if (hasSetInitialRef.current !== activeId) {
       const firstUnread = messages.find((msg) => {
-        const senderId = msg.senderId?._id || msg.senderId;
-        if (senderId?.toString() === authUser?._id?.toString()) return false;
+        const sId = msg.senderId?._id || msg.senderId;
+        if (sId?.toString() === authUser?._id?.toString()) return false;
 
         const isSeen = selectedGroup
           ? msg.seenBy?.includes(authUser?._id)
@@ -41,84 +42,70 @@ const MessageList = ({
 
       if (firstUnread) {
         setInitialUnreadId(firstUnread._id);
+      } else {
+        setInitialUnreadId(null);
       }
+      hasSetInitialRef.current = activeId;
     }
-    // Reset when the chat target changes
-  }, [
-    selectedUser?._id,
-    selectedGroup?._id,
-    authUser?._id,
-    messages,
-    selectedGroup,
-  ]);
+  }, [selectedUser?._id, selectedGroup?._id, messages.length]); 
 
-  // 3. Logic to make the line disappear after the message is marked 'seen'
+  // Logic to clear the "New Message" line after viewing
   useEffect(() => {
     if (!initialUnreadId) return;
 
     const targetMsg = messages.find((m) => m._id === initialUnreadId);
-
     if (targetMsg) {
       const isSeenNow = selectedGroup
         ? targetMsg.seenBy?.includes(authUser?._id)
         : targetMsg.seen;
 
-      if (isSeenNow) {
+      // Only start the fade-out timer if the message is actually marked seen
+      // This respects your "Sticky" requirement
+      if (isSeenNow && !document.hidden) {
         const timer = setTimeout(() => {
           setInitialUnreadId(null);
-        }, 10000);
+        }, 5000); 
         return () => clearTimeout(timer);
       }
     }
-  }, [messages, initialUnreadId, authUser?._id, selectedGroup]);
-
-  if (!messages || messages.length === 0) return null;
+  }, [messages, initialUnreadId, authUser?._id, !!selectedGroup, document.hidden]);
 
   return (
     <div className="flex flex-col">
       {messages.map((msg, index) => {
-        const senderIdStr = msg.senderId?._id || msg.senderId;
-        const isMe = senderIdStr?.toString() === authUser?._id?.toString();
-
-        // Date Logic
-        const currentDateLabel = formatHeaderDate(msg.createdAt);
-        const previousMessage = messages[index - 1];
-        const previousDateLabel = previousMessage
-          ? formatHeaderDate(previousMessage.createdAt)
-          : null;
-        const showDateSeparator = currentDateLabel !== previousDateLabel;
+        const isMe = (msg.senderId?._id || msg.senderId)?.toString() === authUser?._id?.toString();
+        const curDate = formatHeaderDate(msg.createdAt);
+        const prevDate = index > 0 ? formatHeaderDate(messages[index-1].createdAt) : null;
 
         return (
           <React.Fragment key={msg._id || index}>
-            {showDateSeparator && (
-              <div className="flex items-center justify-center my-6 w-full opacity-60">
-                <div className="h-[1px] bg-slate-700/30 flex-grow"></div>
-                <span className="mx-4 text-[11px] font-bold text-slate-400 bg-slate-800/80 px-3 py-1 rounded-md border border-slate-700">
-                  {currentDateLabel}
+            {curDate !== prevDate && (
+              <div className="flex items-center justify-center my-6 opacity-60">
+                <span className="text-[11px] font-bold text-slate-400 bg-slate-800/80 px-3 py-1 rounded-md border border-slate-700">
+                  {curDate}
                 </span>
-                <div className="h-[1px] bg-slate-700/30 flex-grow"></div>
               </div>
             )}
 
+            {/* THE RED LINE POPUP */}
             {msg._id === initialUnreadId && (
-              <div className="flex items-center justify-center my-4 w-full animate-in fade-in zoom-in duration-500">
+              <div className="flex items-center justify-center my-4 animate-in fade-in zoom-in duration-500">
                 <div className="h-[1px] bg-error/30 flex-grow"></div>
                 <span className="mx-4 text-[10px] font-black uppercase tracking-widest text-error bg-error/10 px-3 py-1 rounded-full border border-error/20">
-                  New Messages
+                  New Messages Below
                 </span>
                 <div className="h-[1px] bg-error/30 flex-grow"></div>
               </div>
             )}
 
-            <MessageItem
-              key={msg._id}
-              msg={msg}
-              isMe={isMe}
-              authUser={authUser}
-              selectedUser={selectedUser}
-              selectedGroup={selectedGroup}
-              messageActions={messageActions} // Ensure this is passed!
-              setSelectedImg={setSelectedImg}
+            <MessageItem 
+              msg={msg} 
+              isMe={isMe} 
+              authUser={authUser} 
+              selectedUser={selectedUser} 
+              selectedGroup={selectedGroup} 
+              messageActions={messageActions} 
+              setSelectedImg={setSelectedImg} 
             />
           </React.Fragment>
         );

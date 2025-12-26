@@ -15,25 +15,25 @@ function GroupList() {
     getGroups,
   } = useChatStore();
 
-  // Fetch groups on mount
+  // 1. Fetch groups on mount
   useEffect(() => {
     if (getGroups) getGroups();
   }, [getGroups]);
 
-  // Memoized filter and sort logic
+  // 2. Memoized filter and sort logic
   const filteredGroups = useMemo(() => {
     // Ensure groups is an array to prevent .filter errors
     const groupArray = Array.isArray(groups) ? groups : [];
 
     return groupArray
       .filter((group) =>
-        // FIX: Changed group.name to group.groupName to match your schema
+        // Match groupName with search query
         (group.groupName || "")
           .toLowerCase()
           .includes((searchQuery || "").toLowerCase())
       )
       .sort((a, b) => {
-        // Sort by last message date or creation date
+        // Sort by last message date or creation date (Newest first)
         const aTime = a.lastMessage?.createdAt 
           ? new Date(a.lastMessage.createdAt).getTime() 
           : new Date(a.createdAt || 0).getTime();
@@ -46,10 +46,10 @@ function GroupList() {
       });
   }, [groups, searchQuery]);
 
-  // Loading State
+  // 3. Loading State
   if (isGroupsLoading) return <UsersLoadingSkeleton />;
 
-  // Empty State
+  // 4. Empty State
   if (filteredGroups.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center mt-10 px-4 text-center">
@@ -66,15 +66,17 @@ function GroupList() {
     );
   }
 
+  // 5. Main Render
   return (
     <div className="flex flex-col gap-1 overflow-y-auto max-h-full custom-scrollbar">
       {filteredGroups.map((group) => (
         <GroupCard
           key={group._id}
           group={group}
+          // Safe check: Use optional chaining to prevent crash if selectedGroup is null
           isActive={selectedGroup?._id === group._id}
           onClick={() => {
-            // Logic to switch context from Private to Group
+            // Logic to switch context from Private to Group safely
             setSelectedUser(null); 
             setSelectedGroup(group);
           }}

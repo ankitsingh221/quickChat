@@ -36,7 +36,8 @@ const ChatContainer = () => {
     getFilteredMessages,
     searchTerm,
     clearSearch,
-    updateUnreadCount,
+    updateGroupUnreadCount, 
+    groupUnreadCounts, 
     forwardingMessages,
     groupTypingUsers,
   } = useChatStore();
@@ -65,7 +66,7 @@ const ChatContainer = () => {
     toggleReaction,
     isSoundEnabled,
     playRandomKeyStrokeSound,
-    isGroup: isGroup,
+     isGroup: isGroup,
     activeChatId: activeChatId,
   });
 
@@ -73,19 +74,14 @@ const ChatContainer = () => {
     isGroup &&
     (selectedGroup?.createdBy?._id || selectedGroup?.createdBy) ===
       authUser?._id;
-
   const isAdmin =
     isGroup &&
     selectedGroup?.admins?.some(
       (admin) => (admin._id || admin) === authUser?._id
     );
-
   const onlyAdminsCanSend =
     isGroup && selectedGroup?.settings?.onlyAdminsCanSend;
-
   const canSendMessage = !isGroup || !onlyAdminsCanSend || isAdmin || isCreator;
-
-
 
   // 1. Room Joining & Fetching
   useEffect(() => {
@@ -112,7 +108,7 @@ const ChatContainer = () => {
     };
   }, [activeChatId, isGroup, socket, getMessagesByUserId, getGroupMessages]);
 
-  // 2. Read Receipts Hook
+  // 2. Read Receipts Hook (Private only)
   useReadReceipts(
     isGroup ? null : selectedUser,
     messages,
@@ -120,87 +116,72 @@ const ChatContainer = () => {
     getMessagesByUserId
   );
 
-  // FIXED Mark Read Logic - Only mark as read when actively viewing THIS specific chat
+  // 3. Mark Read Logic
   useEffect(() => {
-    // Guard: Don't mark as read if no chat is selected, page is hidden, or still loading
-    if (!activeChatId || !authUser?._id || document.hidden || isLoading) return;
+    if (!activeChatId || !authUser?._id || isLoading) return;
 
-    // Guard: Don't mark as read if there are no messages
-    if (activeMessages.length === 0) return;
+    let shouldMarkAsRead = false;
 
-    //  This function should ONLY run for the CURRENT chat
-    const handleReadMarking = () => {
-      // Double-check visibility and that we're still on the same chat
+    const performMarkAsRead = () => {
       if (document.hidden) return;
 
-      // Verify we're still viewing this specific chat
-      const currentChatId = isGroup
-        ? selectedGroup?._id
-        : selectedUser?._id;
-      if (currentChatId !== activeChatId) {
-        console.log("Chat changed, not marking as read");
-        return;
-      }
+      const unreadCount = isGroup ? groupUnreadCounts[activeChatId] || 0 : 0;
 
-      // Check if there are any unread messages FOR THIS SPECIFIC CHAT
-      const hasUnread = activeMessages.some((msg) => {
-        const senderId = msg.senderId?._id || msg.senderId;
-
-        // Skip own messages
-        if (senderId?.toString() === authUser._id.toString()) return false;
-
-        // Verify message is from/for THIS chat
+      if (unreadCount > 0 || !isGroup) {
         if (isGroup) {
-          // For groups: check if message is in this group and not seen by me
-          return (
-            msg.groupId === activeChatId && !msg.seenBy?.includes(authUser._id)
-          );
+          markGroupMessagesAsSeen?.(activeChatId);
+          updateGroupUnreadCount?.(activeChatId, 0);
         } else {
-          // For private: check if message is from this user and not seen
-          return senderId === activeChatId && !msg.seen;
+          markMessagesAsRead?.(activeChatId);
         }
-      });
-
-      if (!hasUnread) {
-        console.log("No unread messages in THIS chat");
-        return;
+        shouldMarkAsRead = false;
       }
-
-      // Mark as read
-      if (isGroup) {
-        markGroupMessagesAsSeen?.(activeChatId);
-      } else {
-        markMessagesAsRead?.(activeChatId);
-      }
-      updateUnreadCount?.(activeChatId, 0);
     };
 
-    //  Increased delay to 1.5 seconds to ensure user is actively viewing
-    const timeoutId = setTimeout(handleReadMarking, 1500);
+    // ⏱ Start the 3-second timer
+    let timeoutId = setTimeout(() => {
+      shouldMarkAsRead = true;
+      performMarkAsRead();
+    }, 2000);
 
-    document.addEventListener("visibilitychange", handleReadMarking);
+    // Function to handle tab switching/focus
+    const handleStateChange = () => {
+      clearTimeout(timeoutId);
+      if (!document.hidden) {
+        timeoutId = setTimeout(() => {
+          shouldMarkAsRead = true;
+          performMarkAsRead();
+        }, 3000);
+      }
+    };
+
+    window.addEventListener("focus", handleStateChange);
+    document.addEventListener("visibilitychange", handleStateChange);
 
     return () => {
       clearTimeout(timeoutId);
-      document.removeEventListener("visibilitychange", handleReadMarking);
+      window.removeEventListener("focus", handleStateChange);
+      document.removeEventListener("visibilitychange", handleStateChange);
+
+      if (shouldMarkAsRead) {
+        performMarkAsRead();
+      }
     };
   }, [
     activeChatId,
-    activeMessages,
     isGroup,
     isLoading,
-    authUser._id,
+    authUser?._id,
+    groupUnreadCounts,
+    activeMessages.length,
     markGroupMessagesAsSeen,
     markMessagesAsRead,
-    updateUnreadCount,
-    selectedGroup,
-    selectedUser
+    updateGroupUnreadCount,
   ]);
 
-  // 4. Combined Initial Jump and New Message Scroll
+  // 4. Scrolling Logic
   useEffect(() => {
     if (isLoading || activeMessages.length === 0) return;
-
     const isFirstLoad = prevMessagesLengthRef.current === 0;
 
     if (isFirstLoad) {
@@ -215,53 +196,40 @@ const ChatContainer = () => {
           const element = document.getElementById(
             `msg-${activeMessages[firstUnreadIndex]._id}`
           );
-          if (element) {
+          if (element)
             element.scrollIntoView({ behavior: "auto", block: "center" });
-          }
         } else {
           messageEndRef.current?.scrollIntoView({ behavior: "auto" });
         }
         prevMessagesLengthRef.current = activeMessages.length;
       }, 50);
-
       return () => clearTimeout(timeoutId);
-    } else {
-      if (activeMessages.length > prevMessagesLengthRef.current) {
-        if (!searchTerm) {
-          messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }
-
-        const latestMsg = activeMessages[activeMessages.length - 1];
-        const senderId = latestMsg?.senderId?._id || latestMsg?.senderId;
-
-        if (
-          senderId?.toString() !== authUser?._id?.toString() &&
-          isSoundEnabled
-        ) {
-          playMessageReceivedSound?.();
-        }
-
-        prevMessagesLengthRef.current = activeMessages.length;
+    } else if (activeMessages.length > prevMessagesLengthRef.current) {
+      if (!searchTerm)
+        messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      const latestMsg = activeMessages[activeMessages.length - 1];
+      const sId = latestMsg?.senderId?._id || latestMsg?.senderId;
+      if (sId?.toString() !== authUser?._id?.toString() && isSoundEnabled) {
+        playMessageReceivedSound?.();
       }
+      prevMessagesLengthRef.current = activeMessages.length;
     }
   }, [
     activeChatId,
     isLoading,
     activeMessages,
-    authUser._id,
+    authUser?._id,
     isGroup,
     searchTerm,
     isSoundEnabled,
     playMessageReceivedSound,
   ]);
 
-  // 6. Search Cleanup
   useEffect(() => {
     clearSearch?.();
   }, [activeChatId, clearSearch]);
 
   const filteredMessages = getFilteredMessages(activeMessages) || [];
-
   if (!activeChatId) return null;
 
   return (
@@ -269,23 +237,15 @@ const ChatContainer = () => {
       <ChatHeader>
         <MessageSearch />
       </ChatHeader>
-
       <div
         className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar relative"
         style={{
           backgroundColor: "#0b141a",
-          backgroundImage: `
-            linear-gradient(rgba(18, 25, 31, 0.94), rgba(18, 25, 31, 0.94)),
-            url("https://www.transparenttextures.com/patterns/cubes.png"),
-            radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0)
-          `,
-          backgroundSize: "auto, auto, 24px 24px",
+          backgroundImage: `linear-gradient(rgba(18, 25, 31, 0.94), rgba(18, 25, 31, 0.94)), url("https://www.transparenttextures.com/patterns/cubes.png")`,
         }}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            messageActions.closeAllMenus();
-          }
-        }}
+        onClick={(e) =>
+          e.target === e.currentTarget && messageActions.closeAllMenus()
+        }
       >
         {isLoading ? (
           <MessagesLoadingSkeleton />
@@ -302,7 +262,7 @@ const ChatContainer = () => {
             <div ref={messageEndRef} className="h-2" />
           </div>
         ) : searchTerm ? (
-          <div className="flex flex-col items-center justify-center h-full opacity-60">
+          <div className="flex items-center justify-center h-full opacity-60">
             <p className="text-base-content/60">
               No messages found matching "
               <span className="text-primary">{searchTerm}</span>"
@@ -310,36 +270,31 @@ const ChatContainer = () => {
           </div>
         ) : (
           <NoChatHistoryPlaceholder
-            name={isGroup ? selectedGroup?.groupName : selectedUser?.fullName}
+            name={
+              isGroup
+                ? selectedGroup?.groupName || "Group"
+                : selectedUser?.fullName || "User"
+            }
           />
         )}
       </div>
-
       <ImageLightbox
         selectedImg={selectedImg}
         setSelectedImg={setSelectedImg}
       />
-
       {isGroup && otherTypingUsers.length > 0 && (
-        <div className="px-4 py-2 border-t border-slate-700/50 bg-slate-900/50">
-          <div className="max-w-3xl mx-auto flex items-center gap-2">
-            <div className="flex space-x-1">
-              {[0, 150, 300].map((d) => (
-                <span
-                  key={d}
-                  className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"
-                  style={{ animationDelay: `${d}ms` }}
-                />
-              ))}
-            </div>
-            <p className="text-xs text-slate-400 italic">
-              {otherTypingUsers.map((u) => u.userName).join(", ")}{" "}
-              {otherTypingUsers.length === 1 ? " is" : " are"} typing...
-            </p>
+        <div className="px-4 py-2 border-t border-slate-700/50 bg-slate-900/50 flex items-center gap-2">
+          {/* Typing dots animation */}
+          <div className="flex gap-1">
+            <span className="size-1.5 rounded-full bg-[#5bc0de] animate-bounce [animation-delay:-0.3s]"></span>
+            <span className="size-1.5 rounded-full bg-[#5bc0de] animate-bounce [animation-delay:-0.15s]"></span>
+            <span className="size-1.5 rounded-full bg-[#5bc0de] animate-bounce"></span>
           </div>
+          <p className="text-xs text-[#5bc0de] font-medium italic">
+            {otherTypingUsers.map((u) => u.userName).join(", ")} is typing...
+          </p>
         </div>
       )}
-
       {canSendMessage ? (
         <MessageInput
           replyTo={messageActions.replyTo}
@@ -347,32 +302,12 @@ const ChatContainer = () => {
           isGroup={isGroup}
         />
       ) : (
-        <div className="p-4 bg-slate-900/80 border-t border-slate-800 text-center flex items-center justify-center gap-2">
-          <div className="p-1.5 bg-slate-800 rounded-lg">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-slate-500"
-            >
-              <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-          </div>
-          <p className="text-xs text-slate-500 font-medium">
-            Only admins can send messages to this group.
-          </p>
+        <div className="p-4 text-center text-slate-500 text-xs">
+          Only admins can send messages.
         </div>
       )}
       {forwardingMessages?.length > 0 && <ForwardModal />}
     </div>
   );
 };
-
 export default ChatContainer;

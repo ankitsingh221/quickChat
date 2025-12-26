@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import {  useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useSocketSetup } from "../hooks/useSocketSetup"; 
 import BorderAnimatedContainer from "../components/BorderAnimatedContainer";

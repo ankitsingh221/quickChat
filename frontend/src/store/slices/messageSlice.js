@@ -540,75 +540,35 @@ export const createMessageSlice = (set, get) => ({
     socket.off("userTyping");
     socket.off("userStopTyping");
 
-    socket.on("newMessage", (msg) => {
-      const { selectedUser, messages } = get();
-      const { authUser } = useAuthStore.getState();
+  socket.on("newMessage", (msg) => {
+  const { selectedUser, messages, unreadCounts, updateUnreadCount, updateChatWithNewMessage } = get();
+  const { authUser } = useAuthStore.getState();
 
-      // Skip if this is MY message
-      if (
-        msg.senderId === authUser?._id ||
-        msg.senderId?._id === authUser?._id
-      ) {
-        return;
-      }
+  const senderId = typeof msg.senderId === "object" ? msg.senderId._id : msg.senderId;
+  if (senderId === authUser?._id) return;
+  if (messages.some((m) => m._id === msg._id)) return;
 
-      // Check if message already exists
-      const messageExists = messages.some((m) => m._id === msg._id);
-      if (messageExists) {
-        return;
-      }
+  const isChatOpen = selectedUser?._id === senderId;
+  const isPageVisible = !document.hidden;
 
-      // Determine the sender ID
-      const senderId =
-        typeof msg.senderId === "object" ? msg.senderId._id : msg.senderId;
+  if (isChatOpen) {
+    set((state) => ({
+      messages: [...state.messages, { ...msg, reactions: msg.reactions || [], replyTo: msg.replyTo || null }],
+    }));
 
-      //  Check if this chat is CURRENTLY OPEN AND VISIBLE
-      const isChatOpen = selectedUser?._id === senderId;
-      const isPageVisible = !document.hidden;
+    //  If tab is hidden, increment count even if chat is "open"
+    if (!isPageVisible) {
+      const currentCount = unreadCounts[senderId] || 0;
+      updateUnreadCount(senderId, currentCount + 1);
+    }
+   
+  } else {
+    const currentCount = unreadCounts[senderId] || 0;
+    updateUnreadCount(senderId, currentCount + 1);
+  }
 
-      if (isChatOpen) {
-        // Message is for the CURRENTLY OPEN chat
-        set((state) => ({
-          messages: [
-            ...state.messages,
-            {
-              ...msg,
-              reactions: msg.reactions || [],
-              replyTo: msg.replyTo || null,
-            },
-          ],
-        }));
-
-        // Only mark as read if BOTH chat is open AND page is visible
-        if (isPageVisible) {
-          // Mark as read after a delay to ensure user sees it
-          setTimeout(() => {
-            // Double-check chat is STILL open and page STILL visible
-            if (!document.hidden && get().selectedUser?._id === senderId) {
-              get().markMessagesAsRead(senderId);
-            } else {
-              console.log(" Chat closed or page hidden, not marking as read");
-              const currentCount = get().unreadCounts[senderId] || 0;
-              get().updateUnreadCount(senderId, currentCount + 1);
-            }
-          }, 1500); // 1.5 second delay
-        } else {
-          // Page is hidden, increment unread immediately
-          console.log(" Page hidden, incrementing unread count");
-          const currentCount = get().unreadCounts[senderId] || 0;
-          get().updateUnreadCount(senderId, currentCount + 1);
-        }
-      } else {
-        // Message is for a DIFFERENT chat (not currently open)
-        console.log(" Message for different chat, incrementing unread");
-        const currentCount = get().unreadCounts[senderId] || 0;
-        get().updateUnreadCount(senderId, currentCount + 1);
-      }
-
-      // Update sidebar last message
-      get().updateChatWithNewMessage(msg);
-    });
-
+  updateChatWithNewMessage(msg);
+});
     socket.on("messagesRead", ({ userId, chatId }) => {
       console.log("📨 Messages read by:", userId);
       const { authUser } = useAuthStore.getState();
@@ -623,19 +583,34 @@ export const createMessageSlice = (set, get) => ({
       }
     });
 
-    socket.on("message:edited", (msg) => {
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m._id === msg._id
-            ? {
-                ...msg,
-                reactions: msg.reactions || [],
-                replyTo: m.replyTo || null,
-              }
-            : m
-        ),
-      }));
-    });
+   socket.on("message:edited", (msg) => {
+  set((state) => ({
+    //  Update Private Messages (Keep your existing logic)
+    messages: state.messages.map((m) =>
+      m._id === msg._id
+        ? { ...msg, reactions: msg.reactions || [], replyTo: m.replyTo || null }
+        : m
+    ),
+
+    //  Update Group Messages (The missing part)
+    groupMessages: state.groupMessages.map((m) =>
+      m._id === msg._id
+        ? { ...msg, reactions: msg.reactions || [], replyTo: m.replyTo || null }
+        : m
+    ),
+
+    // Update Sidebar Preview (So the last message text updates too)
+    groups: state.groups.map((group) => {
+      if (group.lastMessage?._id === msg._id) {
+        return {
+          ...group,
+          lastMessage: { ...group.lastMessage, text: msg.text },
+        };
+      }
+      return group;
+    }),
+  }));
+});
 
     socket.on("message:deleted", ({ messageId }) => {
       set((state) => ({
@@ -677,7 +652,7 @@ export const createMessageSlice = (set, get) => ({
         set((state) => ({
           typingUsers: {
             ...state.typingUsers,
-            [chatId]: true, // chatId is the Sender's ID sent from backend
+            [chatId]: true, 
           },
         }));
       }

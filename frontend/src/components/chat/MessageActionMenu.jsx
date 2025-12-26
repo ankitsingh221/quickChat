@@ -28,7 +28,7 @@ const MessageActionMenu = ({
   startEdit,
   handleDelete,
   handleReactionButtonClick,
-  isGroup, // Now being used below
+  isGroup, 
 }) => {
   const { setForwardingMessages, toggleMessageSelection, toggleSelectionMode } = useChatStore();
 

@@ -27,7 +27,6 @@ export const createGroupSlice = (set, get) => ({
     if (group) {
       const socket = useAuthStore.getState().socket;
       get().getGroupMessages(group._id);
-      get().markGroupMessagesAsSeen(group._id);
       if (socket) {
         socket.emit("joinChat", group._id);
         socket.emit("joinGroup", group._id);
@@ -74,11 +73,13 @@ export const createGroupSlice = (set, get) => ({
       const res = await axiosInstance.get("/groups/my-groups");
 
       let groups = Array.isArray(res.data?.data) ? res.data.data : [];
+      const currentCounts = get().groupUnreadCounts; // Get what's already in state
+      const mergedUnreadCounts = { ...currentCounts };
 
-      //  initial unread counts
-      const initialUnreadCounts = {};
       groups.forEach((group) => {
-        initialUnreadCounts[group._id] = group.unreadCount || 0;
+        if (mergedUnreadCounts[group._id] === undefined) {
+          mergedUnreadCounts[group._id] = group.unreadCount || 0;
+        }
       });
 
       // Sort: Last message first, OR Newest created group first if no messages
@@ -95,10 +96,7 @@ export const createGroupSlice = (set, get) => ({
       set({
         groups,
         // Using groupUnreadCounts to match your state naming
-        groupUnreadCounts: {
-          ...get().groupUnreadCounts,
-          ...initialUnreadCounts,
-        },
+        groupUnreadCounts: mergedUnreadCounts,
       });
     } catch (error) {
       console.error("GetGroups Error:", error);
@@ -449,49 +447,41 @@ export const createGroupSlice = (set, get) => ({
 
   markGroupMessagesAsSeen: async (groupId) => {
     if (!groupId) return;
-
     const { groupMessages, groupUnreadCounts } = get();
     const { authUser, socket } = useAuthStore.getState();
 
-    // Check if there's actually anything new to mark as read
+    // ONLY mark as read if there are actual unread messages from OTHERS
     const hasUnread = groupMessages.some(
       (m) =>
-        m.senderId._id !== authUser._id && !m.seenBy?.includes(authUser._id)
+        (m.senderId?._id || m.senderId) !== authUser._id &&
+        !m.seenBy?.includes(authUser._id)
     );
-    const hasSidebarUnread = (groupUnreadCounts[groupId] || 0) > 0;
 
-    if (!hasUnread && !hasSidebarUnread) return;
+    if (!hasUnread && (groupUnreadCounts[groupId] || 0) === 0) return;
 
     try {
-      // 1. Optimistic UI Update (Receiver side)
       set((state) => ({
-        groupMessages: state.groupMessages.map((m) =>
-          m.senderId._id !== authUser._id
-            ? {
-                ...m,
-                seenBy: [...new Set([...(m.seenBy || []), authUser._id])],
-              }
-            : m
+        groupMessages: state.groupMessages.map((m) => {
+          const sId = m.senderId?._id || m.senderId;
+          if (sId !== authUser._id) {
+            return {
+              ...m,
+              seenBy: [...new Set([...(m.seenBy || []), authUser._id])],
+            };
+          }
+          return m;
+        }),
+        groupUnreadCounts: { ...state.groupUnreadCounts, [groupId]: 0 },
+        groups: state.groups.map((g) =>
+          g._id === groupId ? { ...g, unreadCount: 0 } : g
         ),
-        groupUnreadCounts: {
-          ...state.groupUnreadCounts,
-          [groupId]: 0,
-        },
       }));
 
-      // 2. Database Update
       await axiosInstance.put(`/messages/group/${groupId}/read`);
-
-      // 3. SOCKET EMIT (Sender side update)
-      // We pass groupId so the server knows which room to broadcast to
-      if (socket) {
-        socket.emit("markGroupRead", {
-          groupId: groupId,
-          userId: authUser._id,
-        });
-      }
+      if (socket)
+        socket.emit("markGroupRead", { groupId, userId: authUser._id });
     } catch (error) {
-      console.error("Error marking group messages as read:", error);
+      console.error("Error:", error);
     }
   },
 
@@ -501,12 +491,12 @@ export const createGroupSlice = (set, get) => ({
         ...state.groupUnreadCounts,
         [groupId]: count,
       },
+
       groups: state.groups.map((group) =>
         group._id === groupId ? { ...group, unreadCount: count } : group
       ),
     }));
   },
-
   setGroupTypingStatus: (groupId, userId, isTyping, userName) => {
     if (!groupId) return;
 
@@ -547,264 +537,306 @@ export const createGroupSlice = (set, get) => ({
   },
 
   subscribeToGroupEvents: () => {
-  const { socket } = useAuthStore.getState();
-  if (!socket) {
-    console.log("No socket available in subscribeToGroupEvents");
-    return;
-  }
+    const { socket } = useAuthStore.getState();
+    if (!socket) {
+      console.log("No socket available in subscribeToGroupEvents");
+      return;
+    }
+    socket.off("newGroupMessage");
+    socket.off("group:created");
+    socket.off("group:updated");
+    socket.off("group:membersAdded");
+    socket.off("group:memberRemoved");
+    socket.off("group:memberLeft");
+    socket.off("group:adminAdded");
+    socket.off("group:deleted");
+    socket.off("groupMessageReadUpdate");
+    socket.off("userTyping");
+    socket.off("userStopTyping");
+    socket.off("message:deleted");
+    socket.off("message:reactionUpdated");
+    socket.off("message:deletedForMe");
+    socket.off("messages:bulkDeleted");
 
-  console.log("Setting up group event listeners");
+    console.log("Setting up clean group event listeners");
 
-  socket.on("newGroupMessage", (msg) => {
-    const { selectedGroup, groupMessages, updateGroupWithNewMessage } = get();
+    socket.on("newGroupMessage", (msg) => {
+      const {
+        selectedGroup,
+        groupMessages,
+        updateGroupWithNewMessage,
+        groupUnreadCounts,
+        updateGroupUnreadCount,
+      } = get();
+      const { authUser } = useAuthStore.getState();
 
-    if (!msg.groupId) return;
+      if (!msg.groupId) return;
 
-    const isMessageForCurrentGroup = selectedGroup?._id === msg.groupId;
+      const senderId = msg.senderId?._id || msg.senderId;
+      if (senderId === authUser?._id) return;
 
-    if (isMessageForCurrentGroup) {
-      const exists = groupMessages.some((m) => m._id === msg._id);
+      const isMessageForCurrentGroup = selectedGroup?._id === msg.groupId;
+      const isPageVisible = !document.hidden;
 
-      if (!exists) {
+      // 1. Add message to the list if the group is open
+      if (isMessageForCurrentGroup) {
+        const exists = groupMessages.some((m) => m._id === msg._id);
+        if (!exists) {
+          set((state) => ({
+            groupMessages: [
+              ...state.groupMessages,
+              {
+                ...msg,
+                reactions: msg.reactions || [],
+                replyTo: msg.replyTo || null,
+              },
+            ],
+          }));
+        }
+      }
+
+      if (!isMessageForCurrentGroup || !isPageVisible) {
+        const currentCount = groupUnreadCounts[msg.groupId] || 0;
+        updateGroupUnreadCount(msg.groupId, currentCount + 1);
+      } else {
+        // If the group is open AND visible, we don't increment.
+        // We can also optionally trigger the "read" API immediately here.
+        get().markGroupMessagesAsSeen(msg.groupId);
+      }
+
+      updateGroupWithNewMessage(msg);
+    });
+
+    //  FIX FOR PROBLEM 2: Add duplicate check
+    socket.on("group:created", (group) => {
+      console.log("📥 Received group:created", group.groupName);
+
+      set((state) => {
+        //  Check if group already exists (prevents duplicates)
+        const groupExists = state.groups.some((g) => g._id === group._id);
+
+        if (groupExists) {
+          console.log("Group already exists, skipping");
+          return state; // Return unchanged state
+        }
+
+        console.log("Adding new group");
+        return {
+          groups: [group, ...state.groups],
+        };
+      });
+
+      // Auto-join the group room
+      socket.emit("joinGroup", group._id);
+      toast.success(`You were added to "${group.groupName}"`);
+    });
+
+
+    socket.on("group:updated", (updatedGroup) => {
+      const { authUser } = useAuthStore.getState();
+      const currentSelectedGroup = get().selectedGroup;
+      const currentSelectedChat = get().selectedChat;
+
+      const isStillMember = updatedGroup.members.some(
+        (m) => (m._id || m).toString() === authUser._id.toString()
+      );
+
+      set((state) => {
+        // Check if group exists in our list
+        const groupExists = state.groups.some(
+          (g) => g._id === updatedGroup._id
+        );
+
+        // If not a member anymore, remove it
+        if (!isStillMember) {
+          console.log("❌ No longer a member, removing group");
+          return {
+            groups: state.groups.filter((g) => g._id !== updatedGroup._id),
+            selectedGroup:
+              currentSelectedGroup?._id === updatedGroup._id
+                ? null
+                : currentSelectedGroup,
+            selectedChat:
+              currentSelectedChat?._id === updatedGroup._id
+                ? null
+                : currentSelectedChat,
+          };
+        }
+
+        //  If group exists, update it
+        if (groupExists) {
+          console.log("Updating existing group");
+          return {
+            groups: state.groups.map((g) =>
+              g._id === updatedGroup._id ? updatedGroup : g
+            ),
+            selectedGroup:
+              currentSelectedGroup?._id === updatedGroup._id
+                ? updatedGroup
+                : currentSelectedGroup,
+            selectedChat:
+              currentSelectedChat?._id === updatedGroup._id
+                ? updatedGroup
+                : currentSelectedChat,
+          };
+        }
+
+        // If group doesn't exist but we're a member (shouldn't happen with proper backend)
+        console.log(
+          " Group doesn't exist, adding it (backup for missing group:created)"
+        );
+        return {
+          groups: [updatedGroup, ...state.groups],
+          selectedGroup: currentSelectedGroup,
+          selectedChat: currentSelectedChat,
+        };
+      });
+    });
+
+    socket.on("group:membersAdded", ({ group }) => {
+      console.log(" Received group:membersAdded");
+      set((state) => ({
+        groups: state.groups.map((g) => (g._id === group._id ? group : g)),
+        selectedGroup:
+          state.selectedGroup?._id === group._id ? group : state.selectedGroup,
+      }));
+    });
+
+    socket.on("group:memberRemoved", ({ groupId, removedMemberId, group }) => {
+      console.log("Received group:memberRemoved");
+      const { authUser } = useAuthStore.getState();
+
+      if (removedMemberId === authUser._id) {
         set((state) => ({
-          groupMessages: [
-            ...state.groupMessages,
-            {
-              ...msg,
-              reactions: msg.reactions || [],
-              replyTo: msg.replyTo || null,
-            },
-          ],
+          groups: state.groups.filter((g) => g._id !== groupId),
+          selectedGroup:
+            state.selectedGroup?._id === groupId ? null : state.selectedGroup,
+        }));
+        toast.error("You were removed from the group");
+      } else {
+        set((state) => ({
+          groups: state.groups.map((g) => (g._id === groupId ? group : g)),
+          selectedGroup:
+            state.selectedGroup?._id === groupId ? group : state.selectedGroup,
         }));
       }
-
-      if (!document.hidden) {
-        get().markGroupMessagesAsSeen(selectedGroup._id);
-      }
-    } else {
-      const currentCount = get().groupUnreadCounts[msg.groupId] || 0;
-      get().updateGroupUnreadCount(msg.groupId, currentCount + 1);
-    }
-
-    updateGroupWithNewMessage(msg);
-  });
-
-  //  FIX FOR PROBLEM 2: Add duplicate check
-  socket.on("group:created", (group) => {
-    console.log("📥 Received group:created", group.groupName);
-    
-    set((state) => {
-      //  Check if group already exists (prevents duplicates)
-      const groupExists = state.groups.some(g => g._id === group._id);
-      
-      if (groupExists) {
-        console.log("Group already exists, skipping");
-        return state; // Return unchanged state
-      }
-      
-      console.log("Adding new group");
-      return {
-        groups: [group, ...state.groups],
-      };
     });
-    
-    // Auto-join the group room
-    socket.emit("joinGroup", group._id);
-    toast.success(`You were added to "${group.groupName}"`);
-  });
 
-  // FIX FOR PROBLEM 1 & 2: Better handling
-  socket.on("group:updated", (updatedGroup) => {
-    console.log("📥 Received group:updated", updatedGroup.groupName);
-    
-    const { authUser } = useAuthStore.getState();
-    const currentSelectedGroup = get().selectedGroup;
-    const currentSelectedChat = get().selectedChat;
-
-    const isStillMember = updatedGroup.members.some(
-      (m) => (m._id || m).toString() === authUser._id.toString()
-    );
-
-    set((state) => {
-      // Check if group exists in our list
-      const groupExists = state.groups.some(g => g._id === updatedGroup._id);
-      
-      // If not a member anymore, remove it
-      if (!isStillMember) {
-        console.log("❌ No longer a member, removing group");
-        return {
-          groups: state.groups.filter((g) => g._id !== updatedGroup._id),
-          selectedGroup: currentSelectedGroup?._id === updatedGroup._id ? null : currentSelectedGroup,
-          selectedChat: currentSelectedChat?._id === updatedGroup._id ? null : currentSelectedChat,
-        };
-      }
-
-      //  If group exists, update it
-      if (groupExists) {
-        console.log("Updating existing group");
-        return {
-          groups: state.groups.map((g) => (g._id === updatedGroup._id ? updatedGroup : g)),
-          selectedGroup: currentSelectedGroup?._id === updatedGroup._id ? updatedGroup : currentSelectedGroup,
-          selectedChat: currentSelectedChat?._id === updatedGroup._id ? updatedGroup : currentSelectedChat,
-        };
-      }
-      
-      // If group doesn't exist but we're a member (shouldn't happen with proper backend)
-      // This means we were just added but didn't receive group:created
-      console.log(" Group doesn't exist, adding it (backup for missing group:created)");
-      return {
-        groups: [updatedGroup, ...state.groups],
-        selectedGroup: currentSelectedGroup,
-        selectedChat: currentSelectedChat,
-      };
-    });
-  });
-
-  socket.on("group:membersAdded", ({ group }) => {
-    console.log(" Received group:membersAdded");
-    set((state) => ({
-      groups: state.groups.map((g) => (g._id === group._id ? group : g)),
-      selectedGroup:
-        state.selectedGroup?._id === group._id ? group : state.selectedGroup,
-    }));
-  });
-
-  socket.on("group:memberRemoved", ({ groupId, removedMemberId, group }) => {
-    console.log("Received group:memberRemoved");
-    const { authUser } = useAuthStore.getState();
-
-    if (removedMemberId === authUser._id) {
-      set((state) => ({
-        groups: state.groups.filter((g) => g._id !== groupId),
-        selectedGroup:
-          state.selectedGroup?._id === groupId ? null : state.selectedGroup,
-      }));
-      toast.error("You were removed from the group");
-    } else {
+    socket.on("group:memberLeft", ({ groupId, group }) => {
       set((state) => ({
         groups: state.groups.map((g) => (g._id === groupId ? group : g)),
         selectedGroup:
           state.selectedGroup?._id === groupId ? group : state.selectedGroup,
       }));
-    }
-  });
+    });
 
-  socket.on("group:memberLeft", ({ groupId, group }) => {
-    set((state) => ({
-      groups: state.groups.map((g) => (g._id === groupId ? group : g)),
-      selectedGroup:
-        state.selectedGroup?._id === groupId ? group : state.selectedGroup,
-    }));
-  });
+    socket.on("group:adminAdded", ({ groupId, group }) => {
+      set((state) => ({
+        groups: state.groups.map((g) => (g._id === groupId ? group : g)),
+        selectedGroup:
+          state.selectedGroup?._id === groupId ? group : state.selectedGroup,
+      }));
+    });
 
-  socket.on("group:adminAdded", ({ groupId, group }) => {
-    set((state) => ({
-      groups: state.groups.map((g) => (g._id === groupId ? group : g)),
-      selectedGroup:
-        state.selectedGroup?._id === groupId ? group : state.selectedGroup,
-    }));
-  });
+    socket.on("group:deleted", ({ groupId }) => {
+      set((state) => ({
+        groups: state.groups.filter((g) => g._id !== groupId),
+        selectedGroup:
+          state.selectedGroup?._id === groupId ? null : state.selectedGroup,
+      }));
+      toast.error("Group was deleted");
+    });
 
-  socket.on("group:deleted", ({ groupId }) => {
-    set((state) => ({
-      groups: state.groups.filter((g) => g._id !== groupId),
-      selectedGroup:
-        state.selectedGroup?._id === groupId ? null : state.selectedGroup,
-    }));
-    toast.error("Group was deleted");
-  });
-
-  socket.on(
-    "groupMessageReadUpdate",
-    ({ groupId: incomingGroupId, userId }) => {
-      const { selectedGroup } = get();
-      if (selectedGroup?._id === incomingGroupId) {
-        set((state) => ({
-          groupMessages: state.groupMessages.map((m) => {
-            if (!m.seenBy.includes(userId)) {
-              return { ...m, seenBy: [...m.seenBy, userId] };
-            }
-            return m;
-          }),
-        }));
-      }
-    }
-  );
-
-  socket.on("userTyping", ({ chatId, userId, userName, isGroup }) => {
-    if (isGroup) {
-      get().setGroupTypingStatus(chatId, userId, true, userName);
-    }
-  });
-
-  socket.on("userStopTyping", ({ chatId, userId, isGroup }) => {
-    if (isGroup) {
-      get().setGroupTypingStatus(chatId, userId, false);
-    }
-  });
-
-  socket.on("message:deleted", ({ messageId, groupId }) => {
-    if (!groupId) return;
-
-    set((state) => ({
-      groupMessages: state.groupMessages.map((m) =>
-        m._id === messageId
-          ? { ...m, isDeleted: true, text: null, image: null }
-          : m
-      ),
-      groups: state.groups.map((group) => {
-        if (group._id === groupId && group.lastMessage?._id === messageId) {
-          return {
-            ...group,
-            lastMessage: {
-              ...group.lastMessage,
-              isDeleted: true,
-              text: null,
-              image: null,
-            },
-          };
+    socket.on(
+      "groupMessageReadUpdate",
+      ({ groupId: incomingGroupId, userId }) => {
+        const { selectedGroup } = get();
+        if (selectedGroup?._id === incomingGroupId) {
+          set((state) => ({
+            groupMessages: state.groupMessages.map((m) => {
+              if (!m.seenBy.includes(userId)) {
+                return { ...m, seenBy: [...m.seenBy, userId] };
+              }
+              return m;
+            }),
+          }));
         }
-        return group;
-      }),
-    }));
-  });
+      }
+    );
 
-  socket.on(
-    "message:reactionUpdated",
-    ({ messageId, reactions, groupId }) => {
+    socket.on("userTyping", ({ chatId, userId, userName, isGroup }) => {
+      if (isGroup) {
+        get().setGroupTypingStatus(chatId, userId, true, userName);
+      }
+    });
+
+    socket.on("userStopTyping", ({ chatId, userId, isGroup }) => {
+      if (isGroup) {
+        get().setGroupTypingStatus(chatId, userId, false);
+      }
+    });
+
+    socket.on("message:deleted", ({ messageId, groupId }) => {
       if (!groupId) return;
 
       set((state) => ({
         groupMessages: state.groupMessages.map((m) =>
-          m._id === messageId ? { ...m, reactions: reactions || [] } : m
+          m._id === messageId
+            ? { ...m, isDeleted: true, text: null, image: null }
+            : m
         ),
+        groups: state.groups.map((group) => {
+          if (group._id === groupId && group.lastMessage?._id === messageId) {
+            return {
+              ...group,
+              lastMessage: {
+                ...group.lastMessage,
+                isDeleted: true,
+                text: null,
+                image: null,
+              },
+            };
+          }
+          return group;
+        }),
       }));
-    }
-  );
+    });
 
-  socket.on("message:deletedForMe", ({ messageId }) => {
-    set((state) => ({
-      groupMessages: state.groupMessages.filter((m) => m._id !== messageId),
-    }));
-  });
+    socket.on(
+      "message:reactionUpdated",
+      ({ messageId, reactions, groupId }) => {
+        if (!groupId) return;
 
-  socket.on("messages:bulkDeleted", ({ messageIds, groupId }) => {
-    if (!groupId) return;
+        set((state) => ({
+          groupMessages: state.groupMessages.map((m) =>
+            m._id === messageId ? { ...m, reactions: reactions || [] } : m
+          ),
+        }));
+      }
+    );
 
-    set((state) => ({
-      groupMessages: state.groupMessages.filter(
-        (m) => !messageIds.includes(m._id)
-      ),
-      groups: state.groups.map((g) => {
-        if (g._id === groupId && messageIds.includes(g.lastMessage?._id)) {
-          return { ...g, lastMessage: null };
-        }
-        return g;
-      }),
-    }));
-  });
+    socket.on("message:deletedForMe", ({ messageId }) => {
+      set((state) => ({
+        groupMessages: state.groupMessages.filter((m) => m._id !== messageId),
+      }));
+    });
 
-},
+    socket.on("messages:bulkDeleted", ({ messageIds, groupId }) => {
+      if (!groupId) return;
+
+      set((state) => ({
+        groupMessages: state.groupMessages.filter(
+          (m) => !messageIds.includes(m._id)
+        ),
+        groups: state.groups.map((g) => {
+          if (g._id === groupId && messageIds.includes(g.lastMessage?._id)) {
+            return { ...g, lastMessage: null };
+          }
+          return g;
+        }),
+      }));
+    });
+  },
 
   unsubscribeFromGroupEvents: () => {
     const { socket } = useAuthStore.getState();

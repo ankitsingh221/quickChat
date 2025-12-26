@@ -11,38 +11,29 @@ export const useSocketSetup = () => {
     unsubscribeFromGroupEvents
   } = useChatStore();
 
-  console.log(" useSocketSetup - socket:", socket?.connected);
-  console.log(" useSocketSetup - authUser:", authUser?._id);
-  console.log(" useSocketSetup - subscribeToMessages:", typeof subscribeToMessages);
-  console.log(" useSocketSetup - subscribeToGroupEvents:", typeof subscribeToGroupEvents);
-
   useEffect(() => {
-    if (!socket || authUser) {
+    if (!socket || !authUser) {
       return;
     }
     
-    
-    if (subscribeToMessages) {
-      console.log(" Calling subscribeToMessages");
-      subscribeToMessages();
-    }
-    
-    if (subscribeToGroupEvents) {
-      console.log(" Calling subscribeToGroupEvents");
-      subscribeToGroupEvents();
+    // Ensure we only subscribe once the socket is actually connected
+    const handleConnect = () => {
+      console.log("✅ Socket connected, attaching listeners");
+      subscribeToMessages?.();
+      subscribeToGroupEvents?.();
+    };
+
+    if (socket.connected) {
+      handleConnect();
+    } else {
+      socket.on("connect", handleConnect);
     }
 
     return () => {
-      console.log("🌐Cleaning up global socket listeners");
+      console.log("🌐 Cleaning up global socket listeners");
+      socket.off("connect", handleConnect);
       unsubscribeFromMessages?.();
       unsubscribeFromGroupEvents?.();
     };
-  }, [
-    socket, 
-    authUser, 
-    subscribeToMessages, 
-    subscribeToGroupEvents,
-    unsubscribeFromMessages,
-    unsubscribeFromGroupEvents
-  ]);
+  }, [socket, authUser, subscribeToMessages, subscribeToGroupEvents]);
 };
