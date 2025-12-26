@@ -6,15 +6,20 @@ import { useChatStore } from "../../store/useChatStore";
 const MessageInfoDrawer = ({ msg, onClose }) => {
   const { selectedGroup } = useChatStore();
 
-  // 1. Separate members into Read and Delivered categories
-  //  "Read" are those in seenBy, "Delivered" are the rest (minus sender)
-  const readBy = selectedGroup.members.filter((m) => 
-    msg.seenBy.includes(m._id || m) && (m._id || m) !== msg.senderId
-  );
+  if (!selectedGroup || !selectedGroup.members) return null;
+
+  // 1. Refined Filtering logic
+  const readBy = selectedGroup.members.filter((m) => {
+    const memberId = m._id || m;
+    // Check if member is in seenBy array and is NOT the sender
+    return msg.seenBy?.some(id => String(id) === String(memberId)) && String(memberId) !== String(msg.senderId);
+  });
   
-  const deliveredTo = selectedGroup.members.filter((m) => 
-    !msg.seenBy.includes(m._id || m) && (m._id || m) !== msg.senderId
-  );
+  const deliveredTo = selectedGroup.members.filter((m) => {
+    const memberId = m._id || m;
+    // Not in seenBy and NOT the sender
+    return !msg.seenBy?.some(id => String(id) === String(memberId)) && String(memberId) !== String(msg.senderId);
+  });
 
   //Helper to format WhatsApp-style timestamps
   const formatTime = (date) => {

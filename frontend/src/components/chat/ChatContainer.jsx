@@ -138,7 +138,7 @@ const ChatContainer = () => {
       }
     };
 
-    // ⏱ Start the 3-second timer
+    // Start the 3-second timer
     let timeoutId = setTimeout(() => {
       shouldMarkAsRead = true;
       performMarkAsRead();

@@ -2,7 +2,7 @@ import React from "react";
 import { useChatStore } from "../../store/useChatStore";
 
 const MessageTimestamp = ({ msg, isMe }) => {
-  const { selectedGroup } = useChatStore();
+  const { selectedGroup, authUser } = useChatStore();
   const isGroup = !!selectedGroup;
 
   const timeString = new Date(msg.createdAt).toLocaleTimeString([], {
@@ -11,16 +11,19 @@ const MessageTimestamp = ({ msg, isMe }) => {
     hour12: true,
   }).toLowerCase();
 
-  // Logic for Read Receipts in Groups
-  // In many systems, we show double ticks only if everyone has seen it, 
-  // or we just show a single tick to represent "sent to server".
-  const isRead = isGroup 
-    ? (msg.seenBy?.length >= selectedGroup.members?.length - 1) // Everyone else saw it
+ 
+  // Check if at least one other person in the group has seen the message
+  const hasOthersSeen = isGroup 
+    ? msg.seenBy?.filter(id => id !== authUser?._id).length > 0 
     : msg.seen;
+
+  // We only show double ticks if someone has seen it. 
+  // Otherwise, it stays as a single grey tick (Sent).
+  const showDoubleTick = hasOthersSeen;
 
   return (
     <div
-      className={`flex items-center gap-1.5 mt-1 px-1 transition-opacity duration-500 ${
+      className={`flex items-center gap-1 mt-1 px-1 transition-opacity duration-500 ${
         isMe ? "flex-row justify-end" : "flex-row-reverse justify-end"
       }`}
     >
@@ -30,9 +33,9 @@ const MessageTimestamp = ({ msg, isMe }) => {
 
       {/* Status Icons for Sent Messages */}
       {isMe && !msg.isDeleted && (
-        <div className="flex items-center">
-          {isRead ? (
-            /* Double Tick (Read) - Cyan Glow */
+        <div className="flex items-center ml-0.5">
+          {showDoubleTick ? (
+            /* DOUBLE TICK (Cyan) - Someone has seen it */
             <span className="text-cyan-400 drop-shadow-[0_0_3px_rgba(34,211,238,0.4)]">
               <svg
                 className="w-4 h-4"
@@ -48,14 +51,14 @@ const MessageTimestamp = ({ msg, isMe }) => {
               </svg>
             </span>
           ) : (
-            /* Single Tick (Sent) */
-            <span className="text-slate-600">
+            /* SINGLE TICK (Grey) - Sent but no one has seen it yet */
+            <span className="text-slate-500">
               <svg
                 className="w-3.5 h-3.5"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="3"
+                strokeWidth="3.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >

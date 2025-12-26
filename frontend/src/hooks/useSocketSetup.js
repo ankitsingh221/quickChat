@@ -18,7 +18,7 @@ export const useSocketSetup = () => {
     
     // Ensure we only subscribe once the socket is actually connected
     const handleConnect = () => {
-      console.log("✅ Socket connected, attaching listeners");
+      console.log("Socket connected, attaching listeners");
       subscribeToMessages?.();
       subscribeToGroupEvents?.();
     };
@@ -30,7 +30,7 @@ export const useSocketSetup = () => {
     }
 
     return () => {
-      console.log("🌐 Cleaning up global socket listeners");
+      console.log("Cleaning up global socket listeners");
       socket.off("connect", handleConnect);
       unsubscribeFromMessages?.();
       unsubscribeFromGroupEvents?.();
