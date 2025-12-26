@@ -6,6 +6,7 @@ import MessageActionMenu from "./MessageActionMenu";
 import ReactionPickerMenu from "./ReactionPickerMenu";
 import { MoreVertical, CheckCircle2 } from "lucide-react";
 import { useChatStore } from "../../store/useChatStore";
+import MessageInfoDrawer from "../groups/MessageInfoDrawer";
 
 const MessageItem = ({
   msg,
@@ -42,6 +43,7 @@ const MessageItem = ({
   const canEdit = isMe && canModify(msg.createdAt);
   const msgReactions = msg.reactions || [];
   const [showFullPicker, setShowFullPicker] = useState(false);
+  const [showInfoDrawer, setShowInfoDrawer] = useState(false);
 
   // Helper to get sender info safely
   const senderName = isMe
@@ -175,6 +177,10 @@ const MessageItem = ({
                   }
                   handleReactionButtonClick={handleReactionButtonClick}
                   enterSelectionMode={() => toggleMessageSelection(msg._id)}
+                  onInfoClick={() => {
+                    setShowInfoDrawer(true);
+                    if (handleThreeDotClick) handleThreeDotClick(null);
+                  }}
                 />
               </div>
             )}
@@ -197,6 +203,10 @@ const MessageItem = ({
           </div>
         )}
       </div>
+        {showInfoDrawer && (
+        <MessageInfoDrawer msg={msg} onClose={() => setShowInfoDrawer(false)} />
+      )}
+      
     </div>
   );
 };

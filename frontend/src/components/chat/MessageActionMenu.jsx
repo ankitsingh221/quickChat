@@ -1,5 +1,5 @@
 import React from "react";
-import { Reply, Pencil, Smile, Trash2, Forward, CheckSquare } from "lucide-react";
+import { Reply, Pencil, Smile, Trash2, Forward, CheckSquare, Info } from "lucide-react";
 import { useChatStore } from "../../store/useChatStore";
 
 const MenuItem = ({ children, onClick, danger, icon: Icon }) => (
@@ -28,7 +28,8 @@ const MessageActionMenu = ({
   startEdit,
   handleDelete,
   handleReactionButtonClick,
-  isGroup, 
+  isGroup,
+  onInfoClick, 
 }) => {
   const { setForwardingMessages, toggleMessageSelection, toggleSelectionMode } = useChatStore();
 
@@ -42,6 +43,22 @@ const MessageActionMenu = ({
       `}
     >
       <div className="flex flex-col py-1">
+        {/* Only show "Info" if I am the sender and it's a group message */}
+        {isMe && isGroup && (
+          <>
+            <MenuItem 
+              icon={Info} 
+              onClick={(e) => {
+                e.stopPropagation();
+                onInfoClick();
+              }}
+            >
+              Message info
+            </MenuItem>
+            <div className="border-t border-base-content/5 my-1" />
+          </>
+        )}
+
         {/* Contextual Reply Label */}
         <MenuItem icon={Reply} onClick={() => handleReply(msg)}>
           {isGroup ? "Reply to group" : "Reply"}
@@ -82,9 +99,6 @@ const MessageActionMenu = ({
           Delete for me
         </MenuItem>
 
-        {/* Using isGroup here to clarify that "Delete for everyone" 
-           removes the message for all members of the group.
-        */}
         {isMe && canEdit && (
           <MenuItem 
             icon={Trash2} 
