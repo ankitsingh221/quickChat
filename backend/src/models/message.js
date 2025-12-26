@@ -15,7 +15,6 @@ const reactionSchema = new mongoose.Schema(
   { _id: false }
 );
 
-
 const messageSchema = new mongoose.Schema(
   {
     senderId: {
@@ -23,13 +22,11 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-   // UPDATE 1: receiverId is no longer required because of groups
     receiverId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: function() { return !this.groupId; } // Required only if not a group message
+      required: function() { return !this.groupId; }
     },
-    // UPDATE 2: Add groupId field
     groupId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Group",
@@ -73,6 +70,23 @@ const messageSchema = new mongoose.Schema(
       senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     },
     isForwarded: { type: Boolean, default: false },
+    
+    // NEW: System message fields
+    isSystemMessage: {
+      type: Boolean,
+      default: false,
+    },
+    systemMessageType: {
+      type: String,
+      enum: ['member_added', 'member_removed', 'member_left', 'admin_promoted', 'group_created', 'settings_changed'],
+      default: null,
+    },
+    systemMessageData: {
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      userName: String,
+      addedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      addedByName: String,
+    },
   },
   { timestamps: true }
 );
@@ -80,5 +94,6 @@ const messageSchema = new mongoose.Schema(
 messageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
 messageSchema.index({ groupId: 1, createdAt: -1 });
 messageSchema.index({ deletedFor: 1 });
+messageSchema.index({ isSystemMessage: 1 });
 
 export default mongoose.model("Message", messageSchema);

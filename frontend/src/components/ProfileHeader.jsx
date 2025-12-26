@@ -71,12 +71,12 @@ function ProfileHeader() {
           {/* RIGHT BUTTONS */}
           <div className="flex gap-4 items-center">
             {/* LOGOUT */}
-            <button
-              className="text-slate-400 hover:text-slate-200 transition-colors"
-              onClick={() => setShowLogoutConfirm(true)}
-            >
-              <LogOutIcon className="size-5" />
-            </button>
+           <button
+  onClick={() => setShowLogoutConfirm(true)}
+  className="group flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
+>
+  <LogOutIcon className="size-5 group-hover:-translate-x-1 transition-transform" />
+</button>
 
             {/* SOUND TOGGLE */}
             <button

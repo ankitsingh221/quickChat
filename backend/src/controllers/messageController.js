@@ -578,50 +578,51 @@ export const sendMessageToGroup = async (req, res) => {
   }
 };
 
-// Get group messages
 export const getGroupMessages = async (req, res) => {
   try {
     const { id: groupId } = req.params;
     const userId = req.user._id;
 
     if (!mongoose.Types.ObjectId.isValid(groupId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid group ID" });
+      return res.status(400).json({ success: false, message: "Invalid group ID" });
     }
 
     const group = await Group.findById(groupId);
     if (!group) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Group not found" });
+      return res.status(404).json({ success: false, message: "Group not found" });
     }
 
-    // SAFE CHECK: Check membership
-    const isMember = group.members?.some(
-      (m) => m.toString() === userId.toString()
-    );
+    const isMember = group.members?.some((m) => m.toString() === userId.toString());
     if (!isMember) {
       return res.status(403).json({ success: false, message: "Access denied" });
     }
 
+    // 1. Get user's join time from memberJoinInfo
+    const memberInfo = group.memberJoinInfo?.find(
+      (info) => info.userId.toString() === userId.toString()
+    );
+
+    const joinedAt = memberInfo ? memberInfo.joinedAt : group.createdAt;
+
+    // 2. Fetch messages with the date filter
     const messages = await Message.find({
       groupId,
-      // Ensure deletedFor is an array in your Model!
+      createdAt: { $gte: joinedAt }, 
       deletedFor: { $ne: userId },
     })
       .sort({ createdAt: 1 })
       .populate("senderId", "fullName profilePic")
       .lean();
 
-    // MATCH FRONTEND: return { success: true, messages: [...] }
-    res.status(200).json({ success: true, messages });
+    res.status(200).json({ 
+      success: true, 
+      messages: messages || [] 
+    });
   } catch (error) {
     console.error("getGroupMessages error:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 // Mark group messages as seen
 export const markGroupMessagesAsSeen = async (req, res) => {
   try {

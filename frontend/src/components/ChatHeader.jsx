@@ -172,7 +172,9 @@ function ChatHeader({ children }) {
                 selectedGroup.groupPic ? (
                   <img src={selectedGroup.groupPic} alt="group" />
                 ) : (
-                  <Users className="w-6 h-6 text-slate-500" />
+                  <div className="w-full h-full bg-slate-700 flex items-center justify-center">
+                    <Users className="w-5 h-5 md:w-6 md:h-6 text-slate-400" />
+                  </div>
                 )
               ) : (
                 <img

@@ -1,10 +1,15 @@
 import Group from "../models/group.js";
 import User from "../models/user.js";
 import cloudinary from "../lib/cloudinary.js";
-import { getReceiverSocketIds, io,emitToGroup,emitToUser } from "../lib/socket.js";
+import {
+  getReceiverSocketIds,
+  io,
+  emitToGroup,
+  emitToUser,
+} from "../lib/socket.js";
 import mongoose from "mongoose";
 import { isValidObjectId } from "mongoose";
-
+import { createSystemMessage } from "../lib/systemMessages.js";
 
 // 1. Create a New Group
 export const createGroup = async (req, res) => {
@@ -13,8 +18,8 @@ export const createGroup = async (req, res) => {
   try {
     const { groupName, groupDescription, memberIds, groupPic } = req.body;
     const creatorId = req.user._id.toString();
+    const creator = req.user;
 
-    // 1. Validation
     if (
       !groupName ||
       !memberIds ||
@@ -27,12 +32,10 @@ export const createGroup = async (req, res) => {
       });
     }
 
-    // 2. Ensure only unique IDs and exclude creator (we add them manually)
     const uniqueMemberIds = [...new Set(memberIds)].filter(
       (id) => id.toString() !== creatorId.toString()
     );
 
-    // 3. Verify users exist
     const validMembers = await User.find({ _id: { $in: uniqueMemberIds } });
     if (validMembers.length !== uniqueMemberIds.length) {
       return res
@@ -42,7 +45,12 @@ export const createGroup = async (req, res) => {
 
     const allMembers = [creatorId, ...uniqueMemberIds];
 
-    // 4. Handle Image Upload
+    //  Create memberJoinInfo for all initial members
+    const memberJoinInfo = allMembers.map((memberId) => ({
+      userId: memberId,
+      joinedAt: new Date(),
+    }));
+
     let imageUrl = "";
     if (groupPic && groupPic.startsWith("data:image")) {
       const uploadRes = await cloudinary.uploader.upload(groupPic, {
@@ -58,6 +66,7 @@ export const createGroup = async (req, res) => {
           groupDescription: groupDescription || "",
           groupPic: imageUrl,
           members: allMembers,
+          memberJoinInfo, 
           admins: [creatorId],
           createdBy: creatorId,
         },
@@ -73,8 +82,20 @@ export const createGroup = async (req, res) => {
 
     await session.commitTransaction();
 
-    // Notify all members via Socket
-    (allMembers, "group:created", populatedGroup);
+    //Create system message
+    await createSystemMessage({
+      groupId: newGroup._id,
+      type: "group_created",
+      userId: creatorId,
+      userName: creator.fullName,
+    });
+
+    // Change this part in your backend createGroup controller
+allMembers.forEach((memberId) => {
+  if (memberId.toString() === creatorId.toString()) return; 
+
+  emitToUser(memberId, "group:created", populatedGroup);
+});
 
     res.status(201).json({
       success: true,
@@ -89,6 +110,7 @@ export const createGroup = async (req, res) => {
     session.endSession();
   }
 };
+
 // 2. Get All User Groups (with Sidebar Preview)
 export const getMyGroups = async (req, res) => {
   try {
@@ -139,8 +161,6 @@ export const updateGroupInfo = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Group not found" });
 
-    // 1. STRENGTHENED ROLE CHECK
-    // Use .toString() on both sides to ensure we aren't comparing an Object to a String
     const isCreator = group.createdBy.toString() === userId.toString();
     const isAdmin = group.admins.some(
       (a) => a.toString() === userId.toString()
@@ -155,12 +175,10 @@ export const updateGroupInfo = async (req, res) => {
 
     // 3. SETTINGS PROTECTION (Only Creator)
     if (settings && !isCreator) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Only the creator can change settings",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Only the creator can change settings",
+      });
     }
 
     // 4. PREPARE UPDATE OBJECT
@@ -191,7 +209,7 @@ export const updateGroupInfo = async (req, res) => {
       { new: true }
     ).populate("members admins createdBy", "fullName profilePic isOnline");
 
-   emitToGroup(id, "group:updated", updated);
+    emitToGroup(id, "group:updated", updated);
 
     res.status(200).json({ success: true, data: updated });
   } catch (error) {
@@ -200,11 +218,11 @@ export const updateGroupInfo = async (req, res) => {
   }
 };
 
-// 5. Add Members (Safe ID handling)
 export const addMembersToGroup = async (req, res) => {
   try {
     const { id } = req.params;
-    const { memberIds } = req.body; // Array of IDs
+    const { memberIds } = req.body;
+    const addedBy = req.user;
 
     if (!memberIds || !Array.isArray(memberIds)) {
       return res
@@ -212,25 +230,45 @@ export const addMembersToGroup = async (req, res) => {
         .json({ success: false, message: "memberIds array is required" });
     }
 
+    // Create memberJoinInfo for new members
+    const newMemberJoinInfo = memberIds.map((memberId) => ({
+      userId: memberId,
+      joinedAt: new Date(),
+    }));
+
     const updated = await Group.findByIdAndUpdate(
       id,
       {
         $addToSet: {
-          members: { $each: memberIds }, // Ensures no duplicates
+          members: { $each: memberIds },
+          memberJoinInfo: { $each: newMemberJoinInfo }, // ✅ Add join info
         },
       },
-      { new: true } // Returns the group AFTER the update
+      { new: true }
     ).populate("members admins", "fullName profilePic isOnline");
 
-    if (!updated)
+    if (!updated) {
       return res
         .status(404)
         .json({ success: false, message: "Group not found" });
+    }
 
-   emitToGroup(id, "group:updated", updated);
+    // ✅ Create system messages for each added member
+    const addedUsers = await User.find({ _id: { $in: memberIds } });
 
-    // 2. NOTIFY NEW MEMBERS: Since they weren't in the "Room" yet, we send them 
-    // a direct event so the group pops up in their sidebar instantly.
+    for (const user of addedUsers) {
+      await createSystemMessage({
+        groupId: id,
+        type: "member_added",
+        userId: user._id,
+        userName: user.fullName,
+        addedBy: addedBy._id,
+        addedByName: addedBy.fullName,
+      });
+    }
+
+    emitToGroup(id, "group:updated", updated);
+
     memberIds.forEach((mId) => {
       emitToUser(mId, "group:created", updated);
     });
@@ -241,41 +279,62 @@ export const addMembersToGroup = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
-// 6. Remove Member / Leave Group (Uses $pull)
+
+// Update removeMemberFromGroup
 export const removeMemberFromGroup = async (req, res) => {
   try {
     const { id, memberId } = req.params;
     const userId = req.user._id;
+    const removedBy = req.user;
 
-    // Validation: Prevent crash if IDs are malformed
     if (!isValidObjectId(id) || !isValidObjectId(memberId)) {
-      return res.status(400).json({ success: false, message: "Invalid IDs provided" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid IDs provided" });
     }
 
     const group = await Group.findById(id);
-    if (!group) return res.status(404).json({ success: false, message: "Group not found" });
+    if (!group) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
+    }
 
-    // Check permissions
     const isAdmin = group.admins.some((a) => a.equals(userId));
     const isSelf = userId.equals(memberId);
 
     if (!isAdmin && !isSelf) {
-      return res.status(403).json({ success: false, message: "Unauthorized to remove member" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Unauthorized to remove member" });
     }
 
-    // Perform removal
+    // Get removed user info
+    const removedUser = await User.findById(memberId);
+
     const updated = await Group.findByIdAndUpdate(
       id,
-      { $pull: { members: memberId, admins: memberId } },
+      {
+        $pull: {
+          members: memberId,
+          admins: memberId,
+          memberJoinInfo: { userId: memberId }, // ✅ Remove join info
+        },
+      },
       { new: true }
     ).populate("members admins", "fullName profilePic");
 
-    // --- REAL-TIME NOTIFICATIONS ---
-    
-    // 1. Tell the person being removed (Directly)
-    emitToUser(memberId, "group:updated", updated);
+    // ✅Create system message
+    await createSystemMessage({
+      groupId: id,
+      type: isSelf ? "member_left" : "member_removed",
+      userId: removedUser._id,
+      userName: removedUser.fullName,
+      addedBy: isSelf ? null : removedBy._id,
+      addedByName: isSelf ? null : removedBy.fullName,
+    });
 
-    // 2. Tell the rest of the group room (Broadcast)
+    emitToUser(memberId, "group:updated", updated);
     emitToGroup(id, "group:updated", updated);
 
     res.status(200).json({ success: true, data: updated });
@@ -284,35 +343,59 @@ export const removeMemberFromGroup = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-// 7. Promote to Admin
+
+// Update makeAdmin
 export const makeAdmin = async (req, res) => {
   try {
     const { id, memberId } = req.params;
+    const promotedBy = req.user;
 
-    // 1. Find group and check permissions
     const group = await Group.findById(id);
-    if (!group) return res.status(404).json({ success: false, message: "Group not found" });
-
-    if (!group.admins.some((a) => a.equals(req.user._id))) {
-      return res.status(403).json({ success: false, message: "Admin privileges required" });
+    if (!group) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
     }
 
-    // 2. Perform the update and store the result in 'updated'
+    if (!group.admins.some((a) => a.equals(req.user._id))) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Admin privileges required" });
+    }
+
     const updated = await Group.findByIdAndUpdate(
       id,
       { $addToSet: { admins: memberId } },
       { new: true }
     ).populate("members admins", "fullName profilePic isOnline");
 
-    if (!updated) return res.status(404).json({ success: false, message: "Group not found" });
+    if (!updated) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
+    }
 
-    // 3. Emit the 'updated' variable to the room 'id'
+    // Get promoted user info
+    const promotedUser = await User.findById(memberId);
+
+    // Create system message
+    await createSystemMessage({
+      groupId: id,
+      type: "admin_promoted",
+      userId: promotedUser._id,
+      userName: promotedUser.fullName,
+      addedBy: promotedBy._id,
+      addedByName: promotedBy.fullName,
+    });
+
     emitToGroup(id, "group:updated", updated);
 
     res.status(200).json({ success: true, data: updated });
   } catch (error) {
     console.error("makeAdmin error:", error);
-    res.status(500).json({ success: false, message: "Failed to promote admin" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to promote admin" });
   }
 };
 export const leaveGroup = async (req, res) => {
@@ -322,7 +405,9 @@ export const leaveGroup = async (req, res) => {
 
     const group = await Group.findById(id);
     if (!group) {
-      return res.status(404).json({ success: false, message: "Group not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
     }
 
     if (group.createdBy.equals(userId)) {
@@ -332,17 +417,22 @@ export const leaveGroup = async (req, res) => {
       });
     }
 
-    // 1. Remove user from members and admins
+    //  Remove user from members and admins
     group.members = group.members.filter((m) => !m.equals(userId));
     group.admins = group.admins.filter((a) => !a.equals(userId));
     await group.save();
 
-    // 2. Define 'updated' (Crucial: named 'updated' so emit functions work)
+    //  Define 'updated' (Crucial: named 'updated' so emit functions work)
     const updated = await Group.findById(id)
       .populate("members", "fullName profilePic isOnline")
       .populate("admins", "fullName profilePic");
 
-    // 3. Socket Notifications
+    await createSystemMessage({
+  groupId: id,
+  type: "member_left",
+  userId: userId,
+  userName: req.user.fullName,
+});
     // Tell the person who left to clear their screen
     emitToUser(userId.toString(), "group:updated", updated);
 

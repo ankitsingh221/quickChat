@@ -17,8 +17,7 @@ const MessageItem = ({
   messageActions,
   setSelectedImg,
 }) => {
-  const { isSelectionMode, selectedMessages, toggleMessageSelection } =
-    useChatStore();
+  const { isSelectionMode, selectedMessages, toggleMessageSelection } = useChatStore();
   const isSelected = selectedMessages.includes(msg._id);
 
   const {
@@ -45,10 +44,23 @@ const MessageItem = ({
   const [showFullPicker, setShowFullPicker] = useState(false);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
 
-  // Helper to get sender info safely
+  // Helper to generate unique colors for group members
+  const getSenderColor = (name = "") => {
+    const colors = [
+      "text-blue-400", "text-emerald-400", "text-amber-400", 
+      "text-rose-400", "text-violet-400", "text-cyan-400", "text-orange-400"
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
   const senderName = isMe
     ? "You"
     : msg.senderId?.fullName || selectedUser?.fullName || "Unknown";
+    
   const senderPic = isMe
     ? authUser?.profilePic
     : msg.senderId?.profilePic || selectedUser?.profilePic || "/avatar.png";
@@ -70,7 +82,7 @@ const MessageItem = ({
       } mb-2 px-2 md:px-6 py-0.5 relative`}
     >
       <div
-        className={`flex items-end gap-2 max-w-[85%] md:max-w-[70%] group ${
+        className={`flex items-end gap-2 max-w-[85%] md:max-w-[75%] group ${
           isMe ? "flex-row-reverse" : "flex-row"
         }`}
         onClick={(e) => !isSelectionMode && e.stopPropagation()}
@@ -89,24 +101,23 @@ const MessageItem = ({
           </div>
         )}
 
-        {/* 2. AVATAR: Show for others in group, and for you (optional, matching WhatsApp) */}
-        <div className="flex-shrink-0 mb-3">
-          <img
-            src={senderPic}
-            alt={senderName}
-            className="size-8 rounded-full object-cover border border-slate-800 shadow-sm"
-          />
-        </div>
+        {/* 2. AVATAR */}
+        {!isSelectionMode && (
+          <div className="flex-shrink-0 mb-3 hidden sm:block">
+            <img
+              src={senderPic}
+              alt={senderName}
+              className="size-8 rounded-full object-cover border border-slate-800 shadow-sm"
+            />
+          </div>
+        )}
 
         {/* 3. BUBBLE CONTENT */}
-        <div
-          className={`flex flex-col ${
-            isMe ? "items-end" : "items-start"
-          } min-w-0`}
-        >
-          {/* SENDER NAME: Only show in groups for other people's messages */}
+        <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} min-w-0`}>
+          
+          {/* SENDER NAME (Groups Only) */}
           {!isMe && isGroup && (
-            <span className="text-[11px] font-medium text-cyan-500/80 ml-3 mb-1 uppercase tracking-tight">
+            <span className={`text-[11px] font-bold ml-3 mb-0.5 uppercase tracking-wide ${getSenderColor(senderName)}`}>
               {senderName}
             </span>
           )}
@@ -126,6 +137,7 @@ const MessageItem = ({
             />
           </div>
 
+          {/* REACTIONS ROW */}
           {msgReactions.length > 0 && (
             <div className={`-mt-3 z-10 ${isMe ? "mr-2" : "ml-2"}`}>
               <MessageReactions
@@ -141,30 +153,23 @@ const MessageItem = ({
           <MessageTimestamp msg={msg} isMe={isMe} />
         </div>
 
-        {/* 4. ACTION BUTTONS */}
+        {/* 4. ACTION BUTTONS (THREE DOTS) */}
         {!msg.isDeleted && !isSelectionMode && (
-          <div
-            className={`relative self-center z-20 ${isMe ? "mr-1" : "ml-1"}`}
-          >
+          <div className={`relative self-center z-20 ${isMe ? "mr-1" : "ml-1"}`}>
             <button
               className={`p-2 rounded-full transition-all duration-200 
-                ${
-                  activeMsgId === msg._id
-                    ? "bg-slate-800 opacity-100"
-                    : "opacity-0 group-hover:opacity-100 hover:bg-slate-800/50"
-                }
-                text-slate-500 hover:text-white`}
+                ${activeMsgId === msg._id
+                  ? "bg-slate-800 opacity-100"
+                  : "opacity-0 group-hover:opacity-100 hover:bg-slate-800/50"
+                } text-slate-500 hover:text-white`}
               onClick={(e) => handleThreeDotClick(msg._id, e)}
             >
               <MoreVertical size={16} />
             </button>
 
+            {/* ACTION MENU */}
             {activeMsgId === msg._id && (
-              <div
-                className={`absolute bottom-full mb-2 z-[100] ${
-                  isMe ? "right-0" : "left-0"
-                }`}
-              >
+              <div className={`absolute bottom-full mb-2 z-[100] ${isMe ? "right-0" : "left-0"}`}>
                 <MessageActionMenu
                   msg={msg}
                   isMe={isMe}
@@ -172,25 +177,20 @@ const MessageItem = ({
                   handleReply={handleReply}
                   startEdit={startEdit}
                   isGroup={isGroup}
-                  handleDelete={(id, type) =>
-                    handleDelete(id, type, msg.createdAt)
-                  }
+                  handleDelete={(id, type) => handleDelete(id, type, msg.createdAt)}
                   handleReactionButtonClick={handleReactionButtonClick}
                   enterSelectionMode={() => toggleMessageSelection(msg._id)}
                   onInfoClick={() => {
                     setShowInfoDrawer(true);
-                    if (handleThreeDotClick) handleThreeDotClick(null);
+                    handleThreeDotClick(null);
                   }}
                 />
               </div>
             )}
 
+            {/* REACTION PICKER */}
             {showReactionsMenu === msg._id && (
-              <div
-                className={`reactions-menu absolute bottom-full mb-2 z-[110] ${
-                  isMe ? "right-0" : "left-0"
-                }`}
-              >
+              <div className={`absolute bottom-full mb-2 z-[110] ${isMe ? "right-0" : "left-0"}`}>
                 <ReactionPickerMenu
                   msgId={msg._id}
                   isMe={isMe}
@@ -203,10 +203,16 @@ const MessageItem = ({
           </div>
         )}
       </div>
-        {showInfoDrawer && (
-        <MessageInfoDrawer msg={msg} onClose={() => setShowInfoDrawer(false)} />
+
+      {/* 5. GROUP MESSAGE INFO DRAWER (READ BY / DELIVERED TO) */}
+      {showInfoDrawer && (
+        <MessageInfoDrawer 
+          msg={msg} 
+          onClose={() => setShowInfoDrawer(false)} 
+          isGroup={isGroup}
+          selectedGroup={selectedGroup}
+        />
       )}
-      
     </div>
   );
 };

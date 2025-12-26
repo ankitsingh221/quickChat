@@ -285,32 +285,38 @@ export const createGroupSlice = (set, get) => ({
 
   getGroupMessages: async (groupId) => {
     if (!groupId) return;
-    set({ isGroupMessagesLoading: true });
+
+    // Reset state for the new group to prevent seeing old data
+    set({
+      groupMessages: [],
+      isGroupMessagesLoading: true,
+    });
 
     const socket = useAuthStore.getState().socket;
-    if (socket) {
-      // Join the socket room for this group so you can receive typing events
-      socket.emit("joinChat", groupId);
-    }
-    // ----------------------
 
     try {
-      const res = await axiosInstance.get(`/messages/group/${groupId}`);
-      const messages = Array.isArray(res.data?.messages)
-        ? res.data.messages
-        : [];
+      // 2. Join the chat room via socket immediately
+      if (socket) {
+        socket.emit("joinChat", groupId);
+      }
 
-      const normalized = messages.map((m) => ({
-        ...m,
-        reactions: m.reactions || [],
-        replyTo: m.replyTo || null,
-      }));
+      const res = await axiosInstance.get(`/messages/group/${groupId}`);
+
+      // 3. Normalize data (handling different possible response structures)
+      const rawMessages = res.data?.messages || res.data?.data || [];
+
+      const normalized = Array.isArray(rawMessages)
+        ? rawMessages.map((m) => ({
+            ...m,
+            reactions: m.reactions || [],
+            replyTo: m.replyTo || null,
+          }))
+        : [];
 
       set({ groupMessages: normalized });
     } catch (error) {
-      console.error(error);
+      console.error("Store Fetch Error:", error);
       set({ groupMessages: [] });
-      toast.error(error.response?.data?.message || "Failed to load messages");
     } finally {
       set({ isGroupMessagesLoading: false });
     }
@@ -630,7 +636,6 @@ export const createGroupSlice = (set, get) => ({
       socket.emit("joinGroup", group._id);
       toast.success(`You were added to "${group.groupName}"`);
     });
-
 
     socket.on("group:updated", (updatedGroup) => {
       const { authUser } = useAuthStore.getState();
