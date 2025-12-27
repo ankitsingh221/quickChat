@@ -6,18 +6,19 @@ import NoChatsFound from "./NoChatsFound";
 import UserCard from "./UserCard";
 
 function ChatList() {
-  const {
-    getMyChatPartners,
-    chats,
-    isUserLoading,
-    setSelectedUser,
-    selectedUser,
-    selectedGroup,
-    setSelectedGroup,
-    searchQuery,
-    typingUsers,        
-    groupTypingUsers,    
-  } = useChatStore();
+  const chats = useChatStore((s) => s.chats);
+  const isUserLoading = useChatStore((s) => s.isUserLoading);
+  const searchQuery = useChatStore((s) => s.searchQuery);
+  const getMyChatPartners = useChatStore((s) => s.getMyChatPartners);
+
+  const selectedUser = useChatStore((s) => s.selectedUser);
+  const selectedGroup = useChatStore((s) => s.selectedGroup);
+
+  const setSelectedUser = useChatStore((s) => s.setSelectedUser);
+  const setSelectedGroup = useChatStore((s) => s.setSelectedGroup);
+
+  const typingUsers = useChatStore((s) => s.typingUsers);
+  const groupTypingUsers = useChatStore((s) => s.groupTypingUsers);
 
   const { onlineUsers, authUser } = useAuthStore();
 
@@ -25,7 +26,7 @@ function ChatList() {
     getMyChatPartners();
   }, [getMyChatPartners]);
 
-  // ✅ Memoize filtered chats with proper dependencies
+  //  Memoize filtered chats with proper dependencies
   const filteredChats = useMemo(() => {
     const chatArray = Array.isArray(chats) ? chats : [];
 
@@ -37,7 +38,8 @@ function ChatList() {
           .includes(searchQuery.toLowerCase());
 
         const hasMessages = !!chat.lastMessage;
-        const isSelected = selectedGroup?._id === chat._id || selectedUser?._id === chat._id;
+        const isSelected =
+          selectedGroup?._id === chat._id || selectedUser?._id === chat._id;
 
         return matchesSearch && (hasMessages || isSelected);
       })
@@ -52,7 +54,7 @@ function ChatList() {
       });
   }, [chats, searchQuery, selectedGroup?._id, selectedUser?._id]);
 
-  // ✅ NEW: Separate function to calculate typing status (not memoized so it updates reactively)
+  //  Separate function to calculate typing status (not memoized so it updates reactively)
   const getTypingStatus = (chat) => {
     const stringId = chat._id.toString();
     const isGroup = !!chat.groupName;
@@ -60,7 +62,7 @@ function ChatList() {
     if (isGroup) {
       const groupTypers = groupTypingUsers[stringId] || [];
       // Filter out current user and check if anyone else is typing
-      return groupTypers.some(u => u.userId !== authUser?._id);
+      return groupTypers.some((u) => u.userId !== authUser?._id);
     } else {
       return !!typingUsers[stringId];
     }
@@ -73,8 +75,8 @@ function ChatList() {
     <div className="flex flex-col gap-1 overflow-y-auto max-h-full custom-scrollbar py-2">
       {filteredChats.map((chat) => {
         const isGroup = !!chat.groupName;
-        
-        // ✅ Calculate typing status for each render (reactive to state changes)
+
+        //  Calculate typing status for each render (reactive to state changes)
         const isTyping = getTypingStatus(chat);
 
         const handleChatClick = () => {
@@ -85,8 +87,8 @@ function ChatList() {
           }
         };
 
-        const isActive = isGroup 
-          ? selectedGroup?._id === chat._id 
+        const isActive = isGroup
+          ? selectedGroup?._id === chat._id
           : selectedUser?._id === chat._id;
 
         return (
@@ -95,7 +97,7 @@ function ChatList() {
             user={chat}
             isOnline={!isGroup && onlineUsers.includes(chat._id)}
             isActive={isActive}
-            isTyping={isTyping} 
+            isTyping={isTyping}
             onClick={handleChatClick}
           />
         );

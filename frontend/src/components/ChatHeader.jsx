@@ -15,22 +15,28 @@ import GroupInfoModal from "./groups/GroupInfoModal";
 import toast from "react-hot-toast";
 
 function ChatHeader({ children }) {
-  const {
-    selectedUser,
-    setSelectedUser,
-    selectedGroup,
-    setSelectedGroup,
-    clearChat,
-    typingUsers,
-    groupTypingUsers,
-    messages,
-    isSelectionMode,
-    selectedMessages = [],
-    toggleSelectionMode,
-    deleteSelectedMessages,
-    setForwardingMessages,
-    groupMessages,
-  } = useChatStore();
+  const selectedUser = useChatStore((state) => state.selectedUser);
+  const setSelectedUser = useChatStore((state) => state.setSelectedUser);
+  const selectedGroup = useChatStore((state) => state.selectedGroup);
+  const setSelectedGroup = useChatStore((state) => state.setSelectedGroup);
+  const clearChat = useChatStore((state) => state.clearChat);
+  const typingUsers = useChatStore((state) => state.typingUsers);
+  const groupTypingUsers = useChatStore((state) => state.groupTypingUsers);
+  const messages = useChatStore((state) => state.messages);
+  const isSelectionMode = useChatStore((state) => state.isSelectionMode);
+  const toggleSelectionMode = useChatStore(
+    (state) => state.toggleSelectionMode
+  );
+  const deleteSelectedMessages = useChatStore(
+    (state) => state.deleteSelectedMessages
+  );
+  const setForwardingMessages = useChatStore(
+    (state) => state.setForwardingMessages
+  );
+  const groupMessages = useChatStore((state) => state.groupMessages);
+  const selectedMessages = useChatStore(
+    (state) => state.selectedMessages || []
+  );
 
   const { onlineUsers, authUser } = useAuthStore();
 
