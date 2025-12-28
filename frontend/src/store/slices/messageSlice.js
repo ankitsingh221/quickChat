@@ -28,6 +28,7 @@ export const createMessageSlice = (set, get) => ({
       msg.text?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   },
+
   getMessagesByUserId: async (userId) => {
     if (!userId) return;
     set({ isMessagesLoading: true, groupMessages: [] });
@@ -213,7 +214,7 @@ export const createMessageSlice = (set, get) => ({
     }
 
     try {
-      // 1. Optimistic UI Update
+      //  Optimistic UI Update
       set((state) => ({
         messages: state.messages.map((m) => {
           const senderId = m.senderId?._id || m.senderId;
@@ -225,10 +226,10 @@ export const createMessageSlice = (set, get) => ({
         },
       }));
 
-      // 2. Database Update
+      //  Database Update
       await axiosInstance.put(`/messages/read/${userId}`);
 
-      // 3. Socket Emit
+      //  Socket Emit
       if (socket) {
         socket.emit("markRead", {
           userId: userId,
@@ -334,7 +335,7 @@ export const createMessageSlice = (set, get) => ({
     try {
       await axiosInstance.patch(`/messages/reaction/${messageId}`, { emoji });
     } catch (error) {
-      toast.error("Failed to update reaction");
+      toast.error("Failed to update reaction",error);
     }
   },
 
@@ -377,6 +378,7 @@ export const createMessageSlice = (set, get) => ({
       toast.error(error.response?.data?.message || "Failed to delete messages");
     }
   },
+
   clearChat: async (id, isGroup = false) => {
     try {
       await axiosInstance.delete(`/messages/clear/${id}?isGroup=${isGroup}`);
@@ -422,12 +424,12 @@ export const createMessageSlice = (set, get) => ({
     if (!forwardingMessages?.length) return false;
 
     try {
-      // 1. Define the endpoint once since the targetId is the same for all messages
+      //  Define the endpoint once since the targetId is the same for all messages
       const endpoint = isTargetGroup
         ? `/messages/group/${targetId}/send`
         : `/messages/send/${targetId}`;
 
-      // 2. Map promises using the clean endpoint
+      //  Map promises using the clean endpoint
       const promises = forwardingMessages.map((msg) =>
         axiosInstance.post(endpoint, {
           text: msg.text,
@@ -438,7 +440,7 @@ export const createMessageSlice = (set, get) => ({
 
       const responses = await Promise.all(promises);
 
-      // 3. Process the last message for the Sidebar/UI
+      // Process the last message for the Sidebar/UI
       if (responses.length > 0) {
         const lastSentMsg = responses[responses.length - 1].data?.data;
         if (!lastSentMsg) return true;
@@ -540,37 +542,49 @@ export const createMessageSlice = (set, get) => ({
     socket.off("userTyping");
     socket.off("userStopTyping");
 
-  socket.on("newMessage", (msg) => {
-  const { selectedUser, messages, unreadCounts, updateUnreadCount, updateChatWithNewMessage } = get();
-  const { authUser } = useAuthStore.getState();
+    socket.on("newMessage", (msg) => {
+      const {
+        selectedUser,
+        messages,
+        unreadCounts,
+        updateUnreadCount,
+        updateChatWithNewMessage,
+      } = get();
+      const { authUser } = useAuthStore.getState();
 
-  const senderId = typeof msg.senderId === "object" ? msg.senderId._id : msg.senderId;
-  if (senderId === authUser?._id) return;
-  if (messages.some((m) => m._id === msg._id)) return;
+      const senderId =
+        typeof msg.senderId === "object" ? msg.senderId._id : msg.senderId;
+      if (senderId === authUser?._id) return;
+      if (messages.some((m) => m._id === msg._id)) return;
 
-  const isChatOpen = selectedUser?._id === senderId;
-  const isPageVisible = !document.hidden;
+      const isChatOpen = selectedUser?._id === senderId;
+      const isPageVisible = !document.hidden;
 
-  if (isChatOpen) {
-    set((state) => ({
-      messages: [...state.messages, { ...msg, reactions: msg.reactions || [], replyTo: msg.replyTo || null }],
-    }));
+      if (isChatOpen) {
+        set((state) => ({
+          messages: [
+            ...state.messages,
+            {
+              ...msg,
+              reactions: msg.reactions || [],
+              replyTo: msg.replyTo || null,
+            },
+          ],
+        }));
 
-    //  If tab is hidden, increment count even if chat is "open"
-    if (!isPageVisible) {
-      const currentCount = unreadCounts[senderId] || 0;
-      updateUnreadCount(senderId, currentCount + 1);
-    }
-   
-  } else {
-    const currentCount = unreadCounts[senderId] || 0;
-    updateUnreadCount(senderId, currentCount + 1);
-  }
+        //  If tab is hidden, increment count even if chat is "open"
+        if (!isPageVisible) {
+          const currentCount = unreadCounts[senderId] || 0;
+          updateUnreadCount(senderId, currentCount + 1);
+        }
+      } else {
+        const currentCount = unreadCounts[senderId] || 0;
+        updateUnreadCount(senderId, currentCount + 1);
+      }
 
-  updateChatWithNewMessage(msg);
-});
+      updateChatWithNewMessage(msg);
+    });
     socket.on("messagesRead", ({ userId, chatId }) => {
-      console.log("📨 Messages read by:", userId);
       const { authUser } = useAuthStore.getState();
       if (authUser._id === chatId) {
         set((state) => ({
@@ -583,34 +597,42 @@ export const createMessageSlice = (set, get) => ({
       }
     });
 
-   socket.on("message:edited", (msg) => {
-  set((state) => ({
-    //  Update Private Messages (Keep your existing logic)
-    messages: state.messages.map((m) =>
-      m._id === msg._id
-        ? { ...msg, reactions: msg.reactions || [], replyTo: m.replyTo || null }
-        : m
-    ),
+    socket.on("message:edited", (msg) => {
+      set((state) => ({
+        //  Update Private Messages 
+        messages: state.messages.map((m) =>
+          m._id === msg._id
+            ? {
+                ...msg,
+                reactions: msg.reactions || [],
+                replyTo: m.replyTo || null,
+              }
+            : m
+        ),
 
-    //  Update Group Messages (The missing part)
-    groupMessages: state.groupMessages.map((m) =>
-      m._id === msg._id
-        ? { ...msg, reactions: msg.reactions || [], replyTo: m.replyTo || null }
-        : m
-    ),
+        //  Update Group Messages 
+        groupMessages: state.groupMessages.map((m) =>
+          m._id === msg._id
+            ? {
+                ...msg,
+                reactions: msg.reactions || [],
+                replyTo: m.replyTo || null,
+              }
+            : m
+        ),
 
-    // Update Sidebar Preview (So the last message text updates too)
-    groups: state.groups.map((group) => {
-      if (group.lastMessage?._id === msg._id) {
-        return {
-          ...group,
-          lastMessage: { ...group.lastMessage, text: msg.text },
-        };
-      }
-      return group;
-    }),
-  }));
-});
+        // Update Sidebar Preview (So the last message text updates too)
+        groups: state.groups.map((group) => {
+          if (group.lastMessage?._id === msg._id) {
+            return {
+              ...group,
+              lastMessage: { ...group.lastMessage, text: msg.text },
+            };
+          }
+          return group;
+        }),
+      }));
+    });
 
     socket.on("message:deleted", ({ messageId }) => {
       set((state) => ({
@@ -652,7 +674,7 @@ export const createMessageSlice = (set, get) => ({
         set((state) => ({
           typingUsers: {
             ...state.typingUsers,
-            [chatId]: true, 
+            [chatId]: true,
           },
         }));
       }

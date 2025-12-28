@@ -8,7 +8,7 @@ const MessageInfoDrawer = ({ msg, onClose }) => {
 
   if (!selectedGroup || !selectedGroup.members) return null;
 
-  // 1. Refined Filtering logic
+  //  Refined Filtering logic
   const readBy = selectedGroup.members.filter((m) => {
     const memberId = m._id || m;
     // Check if member is in seenBy array and is NOT the sender
@@ -21,7 +21,7 @@ const MessageInfoDrawer = ({ msg, onClose }) => {
     return !msg.seenBy?.some(id => String(id) === String(memberId)) && String(memberId) !== String(msg.senderId);
   });
 
-  //Helper to format WhatsApp-style timestamps
+  //Helper to format timestamps
   const formatTime = (date) => {
     if (!date) return "Just now";
     const d = dayjs(date);
@@ -38,7 +38,7 @@ const MessageInfoDrawer = ({ msg, onClose }) => {
       {/* Drawer Content */}
       <div className="relative w-full max-w-[400px] bg-[#0b141a] h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-800">
         
-        {/* Header (WhatsApp Dark Mode Style) */}
+        {/* Header  */}
         <div className="h-[110px] bg-[#202c33] flex flex-col justify-end p-4 gap-4">
           <div className="flex items-center gap-6">
             <button onClick={onClose} className="p-1 hover:bg-slate-700/50 rounded-full transition-colors">

@@ -25,7 +25,7 @@ const MessageList = ({
     return d.toLocaleDateString("en-GB");
   }, []);
 
-  // 1. Only set the "New Message" marker when the chat FIRST loads
+  //  Only set the "New Message" marker when the chat FIRST loads
   useEffect(() => {
     const activeId = selectedGroup?._id || selectedUser?._id;
 
@@ -83,7 +83,7 @@ const MessageList = ({
 
         return (
           <React.Fragment key={msg._id || index}>
-            {/* 1. DATE HEADER (Today, Yesterday, or Date) */}
+            {/*  DATE HEADER (Today, Yesterday, or Date) */}
             {curDate !== prevDate && (
               <div className="flex items-center justify-center my-6 opacity-60">
                 <span className="text-[11px] font-bold text-slate-400 bg-slate-800/80 px-3 py-1 rounded-md border border-slate-700">
@@ -92,7 +92,7 @@ const MessageList = ({
               </div>
             )}
 
-            {/* 2. THE RED "NEW MESSAGES" LINE */}
+            {/*  THE RED "NEW MESSAGES" LINE */}
             {msg._id === initialUnreadId && (
               <div className="flex items-center justify-center my-4 animate-in fade-in zoom-in duration-500">
                 <div className="h-[1px] bg-error/30 flex-grow"></div>
@@ -103,7 +103,7 @@ const MessageList = ({
               </div>
             )}
 
-            {/* 3. CONDITIONAL RENDERING: System Notification vs Regular Message Item */}
+            {/*  CONDITIONAL RENDERING: System Notification vs Regular Message Item */}
             {msg.isSystemMessage ? (
               <SystemMessage text={msg.text} />
             ) : (

@@ -39,7 +39,6 @@ const ForwardModal = () => {
       ...u,
       _id: u._id,
       name: u.fullName || "Unknown",
-      // User image is profilePic
       displayPic: u.profilePic,
       isGroup: false,
     }));
@@ -48,7 +47,6 @@ const ForwardModal = () => {
       ...g,
       _id: g._id,
       name: g.groupName || "Unknown Group",
-      // Group image is groupPic
       displayPic: g.groupPic,
       isGroup: true,
     }));

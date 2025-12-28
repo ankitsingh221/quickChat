@@ -1,24 +1,23 @@
 import { useState, useEffect } from "react";
 import { useChatStore } from "../../store/useChatStore";
 import { X, Search, UserPlus, Check, Loader2, Users } from "lucide-react";
-import toast from "react-hot-toast";
 
 function AddMembersModal({ group, onClose }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
-  
-  // Pull contacts and functions from store
-  const { allContacts, getAllContacts, addMembersToGroup, isUpdatingGroup } = useChatStore();
 
-  // 1. Fetch contacts if the list is empty when modal opens
+  const { allContacts, getAllContacts, addMembersToGroup, isUpdatingGroup } =
+    useChatStore();
+
+  //  Fetch contacts if the list is empty when modal opens
   useEffect(() => {
     if (allContacts.length === 0) {
-      getAllContacts(); // Ensure this function exists in your store to fetch all users
+      getAllContacts();
     }
   }, [allContacts.length, getAllContacts]);
 
-  // 2. Filter: Remove contacts who are already members of this group
-  // We use .toString() to compare IDs safely
+  //  Filter: Remove contacts who are already members of this group
+  //  use .toString() to compare IDs safely
   const availableContacts = allContacts.filter((contact) => {
     const isAlreadyMember = group.members?.some((m) => {
       const memberId = typeof m === "string" ? m : m._id;
@@ -27,7 +26,7 @@ function AddMembersModal({ group, onClose }) {
     return !isAlreadyMember;
   });
 
-  // 3. Search: Filter the available contacts by name
+  //  Search: Filter the available contacts by name
   const filteredContacts = availableContacts.filter((contact) =>
     contact.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -42,7 +41,7 @@ function AddMembersModal({ group, onClose }) {
 
   const handleAddSubmit = async () => {
     if (selectedIds.length === 0) return;
-    
+
     // Pass the array of selected IDs to the store
     const success = await addMembersToGroup(group._id, selectedIds);
     if (success) {
@@ -53,7 +52,6 @@ function AddMembersModal({ group, onClose }) {
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in zoom-in-95 duration-200">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
-        
         {/* Header */}
         <div className="p-5 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -67,7 +65,10 @@ function AddMembersModal({ group, onClose }) {
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 transition-colors">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-800 rounded-full text-slate-400 transition-colors"
+          >
             <X size={20} />
           </button>
         </div>
@@ -75,7 +76,10 @@ function AddMembersModal({ group, onClose }) {
         {/* Search Input */}
         <div className="p-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+              size={18}
+            />
             <input
               type="text"
               className="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white focus:border-cyan-500 outline-none transition-all"
@@ -108,20 +112,36 @@ function AddMembersModal({ group, onClose }) {
                     />
                     {selectedIds.includes(contact._id) && (
                       <div className="absolute -top-1 -right-1 bg-cyan-500 rounded-full p-0.5 border-2 border-slate-900">
-                        <Check size={10} className="text-slate-900" strokeWidth={4} />
+                        <Check
+                          size={10}
+                          className="text-slate-900"
+                          strokeWidth={4}
+                        />
                       </div>
                     )}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-200">{contact.fullName}</p>
+                    <p className="text-sm font-semibold text-slate-200">
+                      {contact.fullName}
+                    </p>
                     <p className="text-[11px] text-slate-500">Available</p>
                   </div>
                 </div>
 
-                <div className={`size-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                  selectedIds.includes(contact._id) ? "bg-cyan-500 border-cyan-500" : "border-slate-700"
-                }`}>
-                  {selectedIds.includes(contact._id) && <Check size={12} className="text-slate-900" strokeWidth={3} />}
+                <div
+                  className={`size-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                    selectedIds.includes(contact._id)
+                      ? "bg-cyan-500 border-cyan-500"
+                      : "border-slate-700"
+                  }`}
+                >
+                  {selectedIds.includes(contact._id) && (
+                    <Check
+                      size={12}
+                      className="text-slate-900"
+                      strokeWidth={3}
+                    />
+                  )}
                 </div>
               </div>
             ))

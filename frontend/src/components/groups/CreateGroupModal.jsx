@@ -11,10 +11,10 @@ function CreateGroupModal({ isOpen, onClose }) {
   const [searchQuery, setSearchQuery] = useState("");
   const fileInputRef = useRef(null);
 
-  // 1. Destructure based on your specific slice names
+ 
   const { createGroup, getAllContacts, allContacts, isUsersLoading, isCreatingGroup } = useChatStore();
 
-  // 2. Automatically fetch contacts when modal opens
+  // Automatically fetch contacts when modal opens
   useEffect(() => {
     if (isOpen) {
       getAllContacts();
@@ -23,7 +23,7 @@ function CreateGroupModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  // 3. Filter contacts based on search
+  //  Filter contacts based on search
   const filteredContacts = (allContacts || []).filter((contact) =>
     contact.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -48,7 +48,6 @@ function CreateGroupModal({ isOpen, onClose }) {
     if (!groupName.trim()) return toast.error("Please enter a group name");
     if (selectedMembers.length < 1) return toast.error("Select at least 1 member");
 
-    // 4. Payload matches your backend: groupName, groupDescription, memberIds, groupPic
     const success = await createGroup({
       groupName: groupName.trim(),
       groupDescription: groupDescription.trim(),

@@ -22,30 +22,30 @@ function GroupInfoModal({ onClose }) {
   useEffect(() => {
     if (selectedGroup) {
       setGroupName(selectedGroup.groupName || "");
-      setGroupDescription(selectedGroup.groupDescription || ""); // Changed from .description to match common schemas
+      setGroupDescription(selectedGroup.groupDescription || ""); 
     }
   }, [selectedGroup]);
 
   if (!selectedGroup) return null;
 
-  // --- PERMISSIONS LOGIC ---
+  // Permission logics 
   
-  // 1. Check if user is the Creator (Super Admin)
+  //  Check if user is the Creator (Super Admin)
   const isCreator = (
     typeof selectedGroup.createdBy === "string" 
       ? selectedGroup.createdBy === authUser._id 
       : (selectedGroup.createdBy?._id || selectedGroup.createdBy) === authUser._id
   );
 
-  // 2. Check if user is an Admin
+  //  Check if user is an Admin
   const isAdmin = selectedGroup.admins?.some(id => 
     typeof id === "string" ? id === authUser._id : id._id === authUser._id
   );
 
-  // 3. Creator can do ANYTHING, Admins can do most things
+  //  Creator can do ANYTHING, Admins can do most things
   const hasAdminPowers = isCreator || isAdmin;
 
-  // 4. Logic for editing Name/Description based on your schema settings
+  //  Logic for editing Name/Description 
   const canEditInfo = isCreator || isAdmin || !selectedGroup.settings?.onlyAdminsCanEditGroupInfo;
 
   const handleImageUpload = async (e) => {
@@ -134,7 +134,7 @@ function GroupInfoModal({ onClose }) {
                   <>
                     <div className="flex items-center justify-center gap-2">
                       <h3 className="text-2xl font-bold text-white truncate max-w-[280px]">{selectedGroup.groupName}</h3>
-                      {/* Respects 'onlyAdminsCanEditGroupInfo' setting but Creator bypasses it */}
+                      {/*  'onlyAdminsCanEditGroupInfo' setting but Creator bypasses it */}
                       {canEditInfo && (
                         <button onClick={() => setIsEditing(true)} className="p-1 text-slate-500 hover:text-cyan-400 transition-colors">
                           <Edit2 size={16} />

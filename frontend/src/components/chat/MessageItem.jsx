@@ -87,7 +87,7 @@ const MessageItem = ({
         }`}
         onClick={(e) => !isSelectionMode && e.stopPropagation()}
       >
-        {/* 1. SELECTION CHECKBOX */}
+        {/*  SELECTION CHECKBOX */}
         {isSelectionMode && (
           <div className="self-center flex-shrink-0 px-2">
             {isSelected ? (
@@ -101,7 +101,7 @@ const MessageItem = ({
           </div>
         )}
 
-        {/* 2. AVATAR */}
+        {/*  AVATAR */}
         {!isSelectionMode && (
           <div className="flex-shrink-0 mb-3 hidden sm:block">
             <img
@@ -112,7 +112,7 @@ const MessageItem = ({
           </div>
         )}
 
-        {/* 3. BUBBLE CONTENT */}
+        {/*  BUBBLE CONTENT */}
         <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} min-w-0`}>
           
           {/* SENDER NAME (Groups Only) */}
@@ -153,7 +153,7 @@ const MessageItem = ({
           <MessageTimestamp msg={msg} isMe={isMe} />
         </div>
 
-        {/* 4. ACTION BUTTONS (THREE DOTS) */}
+        {/*  ACTION BUTTONS (THREE DOTS) */}
         {!msg.isDeleted && !isSelectionMode && (
           <div className={`relative self-center z-20 ${isMe ? "mr-1" : "ml-1"}`}>
             <button
@@ -204,7 +204,7 @@ const MessageItem = ({
         )}
       </div>
 
-      {/* 5. GROUP MESSAGE INFO DRAWER (READ BY / DELIVERED TO) */}
+      {/* GROUP MESSAGE INFO DRAWER (READ BY / DELIVERED TO) */}
       {showInfoDrawer && (
         <MessageInfoDrawer 
           msg={msg} 

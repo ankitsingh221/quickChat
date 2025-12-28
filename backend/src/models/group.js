@@ -25,7 +25,7 @@ const groupSchema = new mongoose.Schema(
       },
     ],
     
-    // NEW: Track when each member joined
+    // Track when each member joined
     memberJoinInfo: [memberJoinInfoSchema],
     
     admins: [

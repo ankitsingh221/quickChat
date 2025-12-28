@@ -1,5 +1,5 @@
 import express from "express";
-import  protectRoute  from "../middleware/authMiddleware.js";
+import protectRoute from "../middleware/authMiddleware.js";
 import {
   createGroup,
   getMyGroups,
@@ -14,14 +14,16 @@ import {
 
 const router = express.Router();
 
-router.post("/create", protectRoute, createGroup);
-router.get("/my-groups", protectRoute, getMyGroups);
-router.get("/:id", protectRoute, getGroupById);
-router.put("/:id", protectRoute, updateGroupInfo);
-router.post("/:id/add-members", protectRoute, addMembersToGroup);
-router.delete("/:id/remove/:memberId", protectRoute, removeMemberFromGroup);
-router.post("/:id/make-admin/:memberId", protectRoute, makeAdmin);
-router.post("/:id/leave", protectRoute, leaveGroup);
-router.delete("/:id", protectRoute, deleteGroup);
+router.use(protectRoute);
+
+router.post("/create", createGroup);
+router.get("/my-groups", getMyGroups);
+router.get("/:id", getGroupById);
+router.put("/:id", updateGroupInfo);
+router.post("/:id/add-members", addMembersToGroup);
+router.delete("/:id/remove/:memberId", removeMemberFromGroup);
+router.post("/:id/make-admin/:memberId", makeAdmin);
+router.post("/:id/leave", leaveGroup);
+router.delete("/:id", deleteGroup);
 
 export default router;

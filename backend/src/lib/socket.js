@@ -48,7 +48,7 @@ io.on("connection", async (socket) => {
 
   //
 
-  // 1. Join Group Room (Manual - for when user creates/joins a new group)
+  //  Join Group Room (Manual - for when user creates/joins a new group)
   socket.on("joinGroup", (groupId) => {
     socket.join(groupId);
     console.log(`User ${user.fullName} joined group room: ${groupId}`);

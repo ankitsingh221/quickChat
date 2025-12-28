@@ -31,20 +31,19 @@ function GroupMembersModal({ group, isAdmin, onClose }) {
       return adminId.toString() === memberId.toString();
     });
   };
-  // Inside GroupMembersModal.jsx
+ 
   const handleRemoveMember = async (memberId) => {
-    // 1. WhatsApp style confirmation
     const confirmMessage = `Remove ${
       filteredMembers.find((m) => m._id === memberId)?.fullName
     } from the group?`;
 
     if (window.confirm(confirmMessage)) {
       try {
-        // 2. Call the store
+        //  Call the store
         const success = await removeMemberFromGroup(group._id, memberId);
 
-        // 3. Optional: If your store doesn't auto-update the 'group' object,
-        // you might need to manually close or refresh.
+        //  Optional: If store doesn't auto-update the 'group' object,
+        //  might need to manually close or refresh.
         if (!success) {
           toast.error("Failed to remove member");
         }

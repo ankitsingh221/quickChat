@@ -36,7 +36,7 @@ const MessageInput = ({ replyTo, setReplyTo, isGroup: isGroupProp }) => {
       (admin) => (admin._id || admin) === authUser?._id
     );
 
-  //  Final decision: Creator bypasses all restrictions
+  //  Final decision: to send a message in a g (Creator bypasses all restrictions)
   const canSend =
     !isGroup ||
     !selectedGroup?.settings?.onlyAdminsCanSend ||
@@ -51,7 +51,7 @@ const MessageInput = ({ replyTo, setReplyTo, isGroup: isGroupProp }) => {
       const event = status === "typing" ? "typing" : "stopTyping";
 
       console.log(
-        `📤 Emitting ${isGroup ? "group" : "private"} typing:`,
+        ` Emitting ${isGroup ? "group" : "private"} typing:`,
         event,
         {
           chatId: activeChatId,
@@ -92,7 +92,7 @@ const MessageInput = ({ replyTo, setReplyTo, isGroup: isGroupProp }) => {
     return () => {
       if (socket && activeChatId) {
         console.log(
-          `🧹 Cleanup: Stopping ${isGroup ? "group" : "private"} typing for`,
+          ` Cleanup: Stopping ${isGroup ? "group" : "private"} typing for`,
           activeChatId
         );
         socket.emit("stopTyping", {

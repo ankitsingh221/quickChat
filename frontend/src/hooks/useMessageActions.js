@@ -19,13 +19,13 @@ const useMessageActions = ({
   const [showReactionsMenu, setShowReactionsMenu] = useState(null);
   const [now, setNow] = useState(Date.now());
 
-  // 1. Timer to keep logic accurate
+  //  Timer to keep logic accurate
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // 2. Reset state on chat switch
+  //  Reset state on chat switch
   useEffect(() => {
     setActiveMsgId(null);
     setEditingId(null);
@@ -33,7 +33,7 @@ const useMessageActions = ({
     setShowReactionsMenu(null);
   }, [activeChatId]);
 
-  // 3. Click outside handler
+  //  Click outside handler
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (activeMsgId && !e.target.closest(".action-menu") && !e.target.closest(".three-dot-button")) {
@@ -47,7 +47,7 @@ const useMessageActions = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [activeMsgId, showReactionsMenu]);
 
-  // 4. FIXED LOGIC HELPERS: Handling Clock Drift
+  //   helper : Handling Clock Drift
   const canModify = useCallback((createdAt) => {
     const messageTime = new Date(createdAt).getTime();
     const currentTime = now;
@@ -65,7 +65,7 @@ const useMessageActions = ({
     setShowReactionsMenu(null);
   }, []);
 
-  // 5. Action Handlers
+  //  Action Handlers
   const startEdit = (msg) => {
     if (!canModify(msg.createdAt)) {
       toast.error("Editing window (5m) has passed");

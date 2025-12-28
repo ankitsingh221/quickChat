@@ -36,8 +36,8 @@ const ChatContainer = () => {
     getFilteredMessages,
     searchTerm,
     clearSearch,
-    updateGroupUnreadCount, 
-    groupUnreadCounts, 
+    updateGroupUnreadCount,
+    groupUnreadCounts,
     forwardingMessages,
     groupTypingUsers,
   } = useChatStore();
@@ -66,7 +66,7 @@ const ChatContainer = () => {
     toggleReaction,
     isSoundEnabled,
     playRandomKeyStrokeSound,
-     isGroup: isGroup,
+    isGroup: isGroup,
     activeChatId: activeChatId,
   });
 
@@ -83,7 +83,7 @@ const ChatContainer = () => {
     isGroup && selectedGroup?.settings?.onlyAdminsCanSend;
   const canSendMessage = !isGroup || !onlyAdminsCanSend || isAdmin || isCreator;
 
-  // 1. Room Joining & Fetching
+  //  Room Joining & Fetching
   useEffect(() => {
     if (!activeChatId) return;
 
@@ -108,7 +108,7 @@ const ChatContainer = () => {
     };
   }, [activeChatId, isGroup, socket, getMessagesByUserId, getGroupMessages]);
 
-  // 2. Read Receipts Hook (Private only)
+  //  Read Receipts Hook (Private only)
   useReadReceipts(
     isGroup ? null : selectedUser,
     messages,
@@ -116,7 +116,7 @@ const ChatContainer = () => {
     getMessagesByUserId
   );
 
-  // 3. Mark Read Logic
+  //  Mark Read Logic
   useEffect(() => {
     if (!activeChatId || !authUser?._id || isLoading) return;
 
@@ -138,7 +138,7 @@ const ChatContainer = () => {
       }
     };
 
-    // Start the 3-second timer
+    // Start the 2-second timer
     let timeoutId = setTimeout(() => {
       shouldMarkAsRead = true;
       performMarkAsRead();
@@ -179,7 +179,7 @@ const ChatContainer = () => {
     updateGroupUnreadCount,
   ]);
 
-  // 4. Scrolling Logic
+  //  Scrolling Logic
   useEffect(() => {
     if (isLoading || activeMessages.length === 0) return;
     const isFirstLoad = prevMessagesLengthRef.current === 0;

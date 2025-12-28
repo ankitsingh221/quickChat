@@ -9,7 +9,7 @@ function GroupCard({ group, onClick, isActive }) {
   const gName = group.groupName || "Unnamed Group";
   const lastMessage = group.lastMessage;
 
-  // Prioritize real-time unread count from store
+ 
   const unreadCount = groupUnreadCounts[group._id] !== undefined 
     ? groupUnreadCounts[group._id] 
     : (group.unreadCount || 0);

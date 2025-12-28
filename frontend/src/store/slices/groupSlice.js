@@ -95,7 +95,7 @@ export const createGroupSlice = (set, get) => ({
 
       set({
         groups,
-        // Using groupUnreadCounts to match your state naming
+        // Using groupUnreadCounts to match state naming
         groupUnreadCounts: mergedUnreadCounts,
       });
     } catch (error) {
@@ -204,7 +204,7 @@ export const createGroupSlice = (set, get) => ({
             ? updatedGroup
             : state.selectedChat,
 
-        isUpdatingGroup: false, // Stop loading
+        isUpdatingGroup: false,
       }));
 
       toast.success("Member removed");
@@ -212,7 +212,7 @@ export const createGroupSlice = (set, get) => ({
     } catch (error) {
       console.error("Remove member error:", error);
       toast.error(error.response?.data?.message || "Failed to remove member");
-      set({ isUpdatingGroup: false }); // Stop loading even on error
+      set({ isUpdatingGroup: false });
       return null;
     }
   },
@@ -295,14 +295,14 @@ export const createGroupSlice = (set, get) => ({
     const socket = useAuthStore.getState().socket;
 
     try {
-      // 2. Join the chat room via socket immediately
+      //  Join the chat room via socket immediately
       if (socket) {
         socket.emit("joinChat", groupId);
       }
 
       const res = await axiosInstance.get(`/messages/group/${groupId}`);
 
-      // 3. Normalize data (handling different possible response structures)
+      //  Normalize data (handling different possible response structures)
       const rawMessages = res.data?.messages || res.data?.data || [];
 
       const normalized = Array.isArray(rawMessages)
@@ -327,13 +327,13 @@ export const createGroupSlice = (set, get) => ({
       get();
     const { authUser } = useAuthStore.getState();
 
-    // 1. Determine Target (Forwarding vs. Current Chat)
+    // Determine Target (Forwarding vs. Current Chat)
     const targetGroupId = overrideId || selectedGroup?._id;
     const isForwarding = !!overrideId;
 
     if (!targetGroupId) return toast.error("No group selected.");
 
-    // 2. Permission Check (Only if we have group data available)
+    //  Permission Check (Only if we have group data available)
     // If forwarding, we might not have 'selectedGroup' settings, so we let the backend handle it
     if (!isForwarding && selectedGroup) {
       const isCreator =
@@ -349,7 +349,7 @@ export const createGroupSlice = (set, get) => ({
       }
     }
 
-    // 3. Optimistic UI Logic (SKIP IF FORWARDING)
+    //  Optimistic UI Logic (SKIP IF FORWARDING)
     const tempId = `temp-${Date.now()}-${Math.random()}`;
     if (!isForwarding) {
       const optimisticMessage = {
@@ -383,7 +383,7 @@ export const createGroupSlice = (set, get) => ({
       }
     }
 
-    // 4. API Call
+    //  API Call
     try {
       const payload = { text, image };
       if (replyTo) {
@@ -400,7 +400,7 @@ export const createGroupSlice = (set, get) => ({
         payload
       );
 
-      // 5. Success Logic (Only update UI if NOT forwarding)
+      //  Success Logic (Only update UI if NOT forwarding)
       if (res.data?.data) {
         if (!isForwarding) {
           set((state) => ({
@@ -584,7 +584,7 @@ export const createGroupSlice = (set, get) => ({
       const isMessageForCurrentGroup = selectedGroup?._id === msg.groupId;
       const isPageVisible = !document.hidden;
 
-      // 1. Add message to the list if the group is open
+      //  Add message to the list if the group is open
       if (isMessageForCurrentGroup) {
         const exists = groupMessages.some((m) => m._id === msg._id);
         if (!exists) {
@@ -613,10 +613,7 @@ export const createGroupSlice = (set, get) => ({
       updateGroupWithNewMessage(msg);
     });
 
-    //  FIX FOR PROBLEM 2: Add duplicate check
     socket.on("group:created", (group) => {
-      console.log("📥 Received group:created", group.groupName);
-
       set((state) => {
         //  Check if group already exists (prevents duplicates)
         const groupExists = state.groups.some((g) => g._id === group._id);
@@ -625,8 +622,6 @@ export const createGroupSlice = (set, get) => ({
           console.log("Group already exists, skipping");
           return state; // Return unchanged state
         }
-
-        console.log("Adding new group");
         return {
           groups: [group, ...state.groups],
         };
@@ -654,7 +649,6 @@ export const createGroupSlice = (set, get) => ({
 
         // If not a member anymore, remove it
         if (!isStillMember) {
-          console.log("❌ No longer a member, removing group");
           return {
             groups: state.groups.filter((g) => g._id !== updatedGroup._id),
             selectedGroup:
@@ -670,7 +664,6 @@ export const createGroupSlice = (set, get) => ({
 
         //  If group exists, update it
         if (groupExists) {
-          console.log("Updating existing group");
           return {
             groups: state.groups.map((g) =>
               g._id === updatedGroup._id ? updatedGroup : g
@@ -687,9 +680,6 @@ export const createGroupSlice = (set, get) => ({
         }
 
         // If group doesn't exist but we're a member (shouldn't happen with proper backend)
-        console.log(
-          " Group doesn't exist, adding it (backup for missing group:created)"
-        );
         return {
           groups: [updatedGroup, ...state.groups],
           selectedGroup: currentSelectedGroup,
@@ -699,7 +689,6 @@ export const createGroupSlice = (set, get) => ({
     });
 
     socket.on("group:membersAdded", ({ group }) => {
-      console.log(" Received group:membersAdded");
       set((state) => ({
         groups: state.groups.map((g) => (g._id === group._id ? group : g)),
         selectedGroup:
@@ -708,7 +697,6 @@ export const createGroupSlice = (set, get) => ({
     });
 
     socket.on("group:memberRemoved", ({ groupId, removedMemberId, group }) => {
-      console.log("Received group:memberRemoved");
       const { authUser } = useAuthStore.getState();
 
       if (removedMemberId === authUser._id) {
@@ -855,8 +843,12 @@ export const createGroupSlice = (set, get) => ({
     socket.off("group:memberLeft");
     socket.off("group:adminAdded");
     socket.off("group:deleted");
-    socket.off("groupMessagesRead");
+    socket.off("groupMessageReadUpdate");
     socket.off("userTyping");
     socket.off("userStopTyping");
+    socket.off("message:deleted");
+    socket.off("message:reactionUpdated");
+    socket.off("message:deletedForMe");
+    socket.off("messages:bulkDeleted");
   },
 });

@@ -15,7 +15,7 @@ import { app, server } from "./lib/socket.js";
 const port = process.env.PORT || 3000;
 
 // Middleware
-app.use(express.json({ limit: "15mb" }));
+app.use(express.json({ limit: "20mb" }));
  
 app.use(cors({
   origin: ENV.CLIENT_URL,

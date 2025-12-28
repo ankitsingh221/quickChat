@@ -96,7 +96,7 @@ export const useAuthStore = create((set, get) => ({
     });
 
     newSocket.on("connect", () => {
-      console.log("✅ Socket connected");
+      console.log(" Socket connected");
 
       import("./useChatStore").then(({ useChatStore }) => {
         console.log("🔌 Setting up chat socket listeners");
@@ -107,7 +107,7 @@ export const useAuthStore = create((set, get) => ({
     });
 
     newSocket.on("disconnect", () => {
-      console.log("❌ Socket disconnected");
+      console.log(" Socket disconnected");
     });
 
     newSocket.on("getOnlineUsers", (userIds) => {

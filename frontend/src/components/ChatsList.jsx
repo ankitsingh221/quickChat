@@ -26,7 +26,7 @@ function ChatList() {
     getMyChatPartners();
   }, [getMyChatPartners]);
 
-  //  Memoize filtered chats with proper dependencies
+  // filtered chats with proper dependencies
   const filteredChats = useMemo(() => {
     const chatArray = Array.isArray(chats) ? chats : [];
 
@@ -54,7 +54,7 @@ function ChatList() {
       });
   }, [chats, searchQuery, selectedGroup?._id, selectedUser?._id]);
 
-  //  Separate function to calculate typing status (not memoized so it updates reactively)
+  //  Separate function to calculate typing status 
   const getTypingStatus = (chat) => {
     const stringId = chat._id.toString();
     const isGroup = !!chat.groupName;
@@ -76,7 +76,7 @@ function ChatList() {
       {filteredChats.map((chat) => {
         const isGroup = !!chat.groupName;
 
-        //  Calculate typing status for each render (reactive to state changes)
+        //  Calculate typing status for each render 
         const isTyping = getTypingStatus(chat);
 
         const handleChatClick = () => {

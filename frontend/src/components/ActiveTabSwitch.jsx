@@ -3,12 +3,8 @@ import { useChatStore } from "../store/useChatStore";
 import { Search, Plus } from "lucide-react";
 
 function ActiveTabSwitch({ onOpenCreateGroup }) {
-  const {
-    activeTab,
-    setActiveTab,
-    searchQuery,
-    setSearchQuery,
-  } = useChatStore();
+  const { activeTab, setActiveTab, searchQuery, setSearchQuery } =
+    useChatStore();
 
   return (
     <div className="p-2 space-y-3">
@@ -25,9 +21,7 @@ function ActiveTabSwitch({ onOpenCreateGroup }) {
           >
             Chats
           </button>
-       
 
-       
           <button
             onClick={() => setActiveTab("groups")}
             className={`tab flex-1 transition-all duration-200 ${
@@ -39,8 +33,6 @@ function ActiveTabSwitch({ onOpenCreateGroup }) {
             Groups
           </button>
 
-
-
           <button
             onClick={() => setActiveTab("contacts")}
             className={`tab flex-1 transition-all duration-200 ${
@@ -51,7 +43,6 @@ function ActiveTabSwitch({ onOpenCreateGroup }) {
           >
             Contacts
           </button>
-
         </div>
 
         {/* PLUS BUTTON TRIGGER */}

@@ -33,7 +33,7 @@ const MessageBubble = ({
     );
   };
 
-  // NEW: Function to scroll to the replied message
+  //  Function to scroll to the replied message
   const scrollToOriginalMessage = (replyId) => {
     const element = document.getElementById(`msg-${replyId}`);
     if (element) {
@@ -45,7 +45,7 @@ const MessageBubble = ({
     }
   };
 
-  // NEW: Improved Reply Name Logic for Groups
+  //  Improved Reply Name Logic for Groups
   const getReplyDisplayName = () => {
     const replySenderId = msg.replyTo?.senderId?.toString();
     if (replySenderId === authUser._id?.toString()) return "You";

@@ -5,7 +5,7 @@ import MessageTimestamp from "../chat/MessageTimestamp";
 import MessageReactions from "../chat/MessageReactions";
 import MessageActionMenu from "../chat/MessageActionMenu";
 import ReactionPickerMenu from "../chat/ReactionPickerMenu";
-import ImageLightBox from "../chat/ImageLightBox";
+import ImageLightbox from "../chat/ImageLightbox";
 import { Check, CheckCheck } from "lucide-react";
 
 function GroupMessageItem({ message, isOwnMessage, showAvatar }) {
@@ -17,7 +17,6 @@ function GroupMessageItem({ message, isOwnMessage, showAvatar }) {
   const senderAvatar = message.senderId?.profilePic || "/avatar.png";
 
   // Check if message is seen by anyone
-  const seenByCount = message.seenBy?.length || 0;
   const isSeenByOthers = message.seenBy?.some(
     (userId) => userId !== authUser._id
   );
@@ -38,7 +37,7 @@ function GroupMessageItem({ message, isOwnMessage, showAvatar }) {
               </div>
             </div>
           ) : (
-            <div className="w-8" /> // Spacer
+            <div className="w-8" /> 
           )}
         </div>
       )}

@@ -4,7 +4,7 @@ import { X, Settings, ShieldAlert, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 function GroupSettingsModal({ group, isCreator, onClose }) {
-  // 1. Initialize state safely
+
   const [settings, setSettings] = useState({
     onlyAdminsCanSend: group?.settings?.onlyAdminsCanSend ?? false,
     onlyAdminsCanEditGroupInfo: group?.settings?.onlyAdminsCanEditGroupInfo ?? true,
@@ -13,7 +13,7 @@ function GroupSettingsModal({ group, isCreator, onClose }) {
   const { updateGroupInfo, isUpdatingGroup } = useChatStore();
 
   const handleSaveSettings = async () => {
-    // SECURITY: Only the Creator should be able to change these core settings
+    // Only the Creator should be able to change these core settings
     if (!isCreator) {
       return toast.error("Only the group creator can modify these settings");
     }

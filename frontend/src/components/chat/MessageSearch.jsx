@@ -10,9 +10,9 @@ const MessageSearch = () => {
     searchIndex, 
     nextSearchResult, 
     prevSearchResult,
-    isSearchIconOpen, // Using store state
-    setIsSearchIconOpen, // Using store action
-    clearSearch // Added clearSearch to handle resetting everything
+    isSearchIconOpen, 
+    setIsSearchIconOpen, 
+    clearSearch 
   } = useChatStore();
   
   // Error-proofed matches calculation
@@ -29,7 +29,7 @@ const MessageSearch = () => {
   // Scroll logic
   useEffect(() => {
     if (matches.length > 0) {
-      // WhatsApp logic: Index 0 is the most recent match (bottom of chat)
+      //  Index 0 is the most recent match (bottom of chat)
       const activeId = matches[matches.length - 1 - searchIndex];
       const element = document.getElementById(`msg-${activeId}`);
       if (element) {

@@ -66,7 +66,7 @@ export const createGroup = async (req, res) => {
           groupDescription: groupDescription || "",
           groupPic: imageUrl,
           members: allMembers,
-          memberJoinInfo, 
+          memberJoinInfo,
           admins: [creatorId],
           createdBy: creatorId,
         },
@@ -90,12 +90,11 @@ export const createGroup = async (req, res) => {
       userName: creator.fullName,
     });
 
-    // Change this part in your backend createGroup controller
-allMembers.forEach((memberId) => {
-  if (memberId.toString() === creatorId.toString()) return; 
+    allMembers.forEach((memberId) => {
+      if (memberId.toString() === creatorId.toString()) return;
 
-  emitToUser(memberId, "group:created", populatedGroup);
-});
+      emitToUser(memberId, "group:created", populatedGroup);
+    });
 
     res.status(201).json({
       success: true,
@@ -111,7 +110,7 @@ allMembers.forEach((memberId) => {
   }
 };
 
-// 2. Get All User Groups (with Sidebar Preview)
+// 2. Get All User Groups
 export const getMyGroups = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -148,7 +147,7 @@ export const getGroupById = async (req, res) => {
   }
 };
 
-// 4. Update Group Info (Now includes SETTINGS support)
+// 4. Update Group Info
 export const updateGroupInfo = async (req, res) => {
   try {
     const { id } = req.params;
@@ -166,14 +165,14 @@ export const updateGroupInfo = async (req, res) => {
       (a) => a.toString() === userId.toString()
     );
 
-    // 2. PERMISSION CHECK
+    //  PERMISSION CHECK
     if (group.settings?.onlyAdminsCanEditGroupInfo && !isAdmin && !isCreator) {
       return res
         .status(403)
         .json({ success: false, message: "Only admins can edit info" });
     }
 
-    // 3. SETTINGS PROTECTION (Only Creator)
+    //  settings protection (Only Creator)
     if (settings && !isCreator) {
       return res.status(403).json({
         success: false,
@@ -181,7 +180,7 @@ export const updateGroupInfo = async (req, res) => {
       });
     }
 
-    // 4. PREPARE UPDATE OBJECT
+    // project updation object
     const updateData = {};
     if (groupName) updateData.groupName = groupName.trim();
     if (groupDescription !== undefined)
@@ -202,7 +201,6 @@ export const updateGroupInfo = async (req, res) => {
       updateData.groupPic = uploadResult.secure_url;
     }
 
-    // 5. USE findByIdAndUpdate (More reliable for nested fields)
     const updated = await Group.findByIdAndUpdate(
       id,
       { $set: updateData },
@@ -218,6 +216,7 @@ export const updateGroupInfo = async (req, res) => {
   }
 };
 
+//  addmembers to group
 export const addMembersToGroup = async (req, res) => {
   try {
     const { id } = req.params;
@@ -241,7 +240,7 @@ export const addMembersToGroup = async (req, res) => {
       {
         $addToSet: {
           members: { $each: memberIds },
-          memberJoinInfo: { $each: newMemberJoinInfo }, // ✅ Add join info
+          memberJoinInfo: { $each: newMemberJoinInfo },
         },
       },
       { new: true }
@@ -253,7 +252,7 @@ export const addMembersToGroup = async (req, res) => {
         .json({ success: false, message: "Group not found" });
     }
 
-    // ✅ Create system messages for each added member
+    // Create system messages for each added member
     const addedUsers = await User.find({ _id: { $in: memberIds } });
 
     for (const user of addedUsers) {
@@ -318,13 +317,13 @@ export const removeMemberFromGroup = async (req, res) => {
         $pull: {
           members: memberId,
           admins: memberId,
-          memberJoinInfo: { userId: memberId }, // ✅ Remove join info
+          memberJoinInfo: { userId: memberId },
         },
       },
       { new: true }
     ).populate("members admins", "fullName profilePic");
 
-    // ✅Create system message
+    // Create system message
     await createSystemMessage({
       groupId: id,
       type: isSelf ? "member_left" : "member_removed",
@@ -398,6 +397,8 @@ export const makeAdmin = async (req, res) => {
       .json({ success: false, message: "Failed to promote admin" });
   }
 };
+
+// leave group
 export const leaveGroup = async (req, res) => {
   try {
     const { id } = req.params;
@@ -422,17 +423,17 @@ export const leaveGroup = async (req, res) => {
     group.admins = group.admins.filter((a) => !a.equals(userId));
     await group.save();
 
-    //  Define 'updated' (Crucial: named 'updated' so emit functions work)
+    //  Define 'updated'  ( named :'updated' so emit functions work)
     const updated = await Group.findById(id)
       .populate("members", "fullName profilePic isOnline")
       .populate("admins", "fullName profilePic");
 
     await createSystemMessage({
-  groupId: id,
-  type: "member_left",
-  userId: userId,
-  userName: req.user.fullName,
-});
+      groupId: id,
+      type: "member_left",
+      userId: userId,
+      userName: req.user.fullName,
+    });
     // Tell the person who left to clear their screen
     emitToUser(userId.toString(), "group:updated", updated);
 

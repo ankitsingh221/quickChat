@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route , Navigate } from "react-router";
+import { Routes, Route, Navigate } from "react-router";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import ChatPage from "./pages/ChatPage";
@@ -21,12 +21,21 @@ const App = () => {
 
   return (
     <div className="min-h-screen  bg-slate-900   flex items-center justify-center p-4 overflow-hidden">
-      {/* decorating grid shape and bg effects */ }
+      <Routes>
+        <Route
+          path="/"
+          element={authUser ? <ChatPage /> : <Navigate to={"/login"} />}
+        />
+        <Route
+          path="/login"
+          element={!authUser ? <LoginPage /> : <Navigate to={"/"} />}
+        />
+        <Route
+          path="/signup"
+          element={!authUser ? <SignupPage /> : <Navigate to={"/"} />}
+        />
 
-         <Routes>
-        <Route path="/" element={authUser ? <ChatPage /> : <Navigate to={"/login"} />} />
-        <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to={"/"} />} />
-        <Route path="/signup" element={!authUser ? <SignupPage /> : <Navigate to={"/"} />} />
+        <Route path="*" element={<Navigate to={"/"} />} />
       </Routes>
 
       <Toaster />

@@ -216,9 +216,9 @@ export const editMessage = async (req, res) => {
     message.isEdited = true;
     await message.save();
 
-    // REAL-TIME BROADCAST
+    // real-time broadcast
     if (message.groupId) {
-      // Use your helper from socket.js to notify the whole group room
+      // using helper from  socket.js to notify the whole group room
       io.to(message.groupId.toString()).emit("message:edited", message);
     } else {
       // Private chat logic
@@ -311,7 +311,7 @@ export const clearChat = async (req, res) => {
       };
     }
 
-    // CRITICAL: We don't delete the message, we add the user to the "hidden" list
+    // Important : We don't delete the message, we add the user to the "hidden" list
     await Message.updateMany(filter, {
       $addToSet: { deletedFor: userId },
     });
@@ -359,7 +359,7 @@ export const toggleReaction = async (req, res) => {
       groupId: message.groupId || null,
     };
 
-    // BROADCAST
+    // broadcast
     if (message.groupId) {
       io.to(message.groupId.toString()).emit(
         "message:reactionUpdated",
@@ -457,7 +457,7 @@ export const deleteBulkMessages = async (req, res) => {
         );
       }
     } else {
-      // Logic: "Delete for Me" - works for any message in the chat
+      // "Delete for Me" ->> works for any message in the chat
       await Message.updateMany(
         { _id: { $in: messageIds } },
         { $addToSet: { deletedFor: userId } }
@@ -473,7 +473,6 @@ export const deleteBulkMessages = async (req, res) => {
   }
 };
 
-// Send message to group
 export const sendMessageToGroup = async (req, res) => {
   try {
     const senderId = req.user._id;
@@ -584,15 +583,21 @@ export const getGroupMessages = async (req, res) => {
     const userId = req.user._id;
 
     if (!mongoose.Types.ObjectId.isValid(groupId)) {
-      return res.status(400).json({ success: false, message: "Invalid group ID" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid group ID" });
     }
 
     const group = await Group.findById(groupId);
     if (!group) {
-      return res.status(404).json({ success: false, message: "Group not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
     }
 
-    const isMember = group.members?.some((m) => m.toString() === userId.toString());
+    const isMember = group.members?.some(
+      (m) => m.toString() === userId.toString()
+    );
     if (!isMember) {
       return res.status(403).json({ success: false, message: "Access denied" });
     }
@@ -607,23 +612,23 @@ export const getGroupMessages = async (req, res) => {
     // 2. Fetch messages with the date filter
     const messages = await Message.find({
       groupId,
-      createdAt: { $gte: joinedAt }, 
+      createdAt: { $gte: joinedAt },
       deletedFor: { $ne: userId },
     })
       .sort({ createdAt: 1 })
       .populate("senderId", "fullName profilePic")
       .lean();
 
-    res.status(200).json({ 
-      success: true, 
-      messages: messages || [] 
+    res.status(200).json({
+      success: true,
+      messages: messages || [],
     });
   } catch (error) {
     console.error("getGroupMessages error:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-// Mark group messages as seen
+
 export const markGroupMessagesAsSeen = async (req, res) => {
   try {
     const { id: groupId } = req.params;

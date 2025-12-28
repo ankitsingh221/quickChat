@@ -9,26 +9,25 @@ export const createContactSlice = (set, get) => ({
   isUsersLoading: false,
   unreadCounts: {},
 
+  setSelectedUser: (user) => {
+    set({
+      selectedUser: user,
+      selectedGroup: null,
+      messages: [],
+      typingUsers: {},
+    });
 
-setSelectedUser: (user) => {
-  set({ 
-    selectedUser: user, 
-    selectedGroup: null, 
-    messages: [],
-    typingUsers: {} 
-  });
-
-  if (user) {
-    //  Fetch History
-    get().getMessagesByUserId(user._id);
-    const socket = useAuthStore.getState().socket;
-    if (socket) {
-      // Tell backend to join the recipient's room
-      socket.emit("joinChat", user._id); 
+    if (user) {
+      //  Fetch History
+      get().getMessagesByUserId(user._id);
+      const socket = useAuthStore.getState().socket;
+      if (socket) {
+        // Tell backend to join the recipient's room
+        socket.emit("joinChat", user._id);
+      }
+      get().subscribeToMessages?.();
     }
-    get().subscribeToMessages?.();
-  }
-},
+  },
 
   getAllContacts: async () => {
     set({ isUsersLoading: true });

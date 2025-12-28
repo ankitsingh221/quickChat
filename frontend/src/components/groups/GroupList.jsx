@@ -15,12 +15,12 @@ function GroupList() {
     getGroups,
   } = useChatStore();
 
-  // 1. Fetch groups on mount
+  //  Fetch groups on mount
   useEffect(() => {
     if (getGroups) getGroups();
   }, [getGroups]);
 
-  // 2. Memoized filter and sort logic
+  //  Memoized filter and sort logic
   const filteredGroups = useMemo(() => {
     // Ensure groups is an array to prevent .filter errors
     const groupArray = Array.isArray(groups) ? groups : [];
@@ -46,10 +46,10 @@ function GroupList() {
       });
   }, [groups, searchQuery]);
 
-  // 3. Loading State
+  //  Loading State
   if (isGroupsLoading) return <UsersLoadingSkeleton />;
 
-  // 4. Empty State
+  //  Empty State
   if (filteredGroups.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center mt-10 px-4 text-center">
@@ -66,7 +66,7 @@ function GroupList() {
     );
   }
 
-  // 5. Main Render
+  //  Main Render
   return (
     <div className="flex flex-col gap-1 overflow-y-auto max-h-full custom-scrollbar">
       {filteredGroups.map((group) => (

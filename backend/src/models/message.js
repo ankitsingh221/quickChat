@@ -71,7 +71,7 @@ const messageSchema = new mongoose.Schema(
     },
     isForwarded: { type: Boolean, default: false },
     
-    // NEW: System message fields
+    // System message fields
     isSystemMessage: {
       type: Boolean,
       default: false,
