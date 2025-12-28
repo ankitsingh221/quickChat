@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import EmojiPicker from "emoji-picker-react";
 
 const ReactionPickerMenu = ({
@@ -10,66 +10,71 @@ const ReactionPickerMenu = ({
 }) => {
   const quickEmojis = ["👍", "❤️", "😂", "😮", "👋", "🙏"];
 
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === "Escape") setShowFullPicker(false);
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [setShowFullPicker]);
+
   return (
-    <>
-      {/* Quick reactions */}
-      <div
-        className={`
-          reactions-menu absolute z-[110]
-          bg-slate-800 border border-slate-700
-          shadow-xl rounded-full px-2 py-1
-          flex items-center gap-1
-          top-10
-          ${isMe ? "right-0" : "left-0"}
-        `}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
+      {/* Quick Bar */}
+      <div className={`reactions-menu absolute z-[150] bg-slate-800 border border-slate-700 shadow-2xl rounded-full px-2 py-1 flex items-center gap-1 bottom-full mb-2 ${isMe ? "right-0" : "left-0"}`}>
         {quickEmojis.map((emoji) => (
           <button
             key={emoji}
-            onClick={() => handleReactionClick(msgId, emoji)}
-            className="p-2 text-xl hover:bg-slate-700 rounded-full"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleReactionClick(msgId, emoji);
+            }}
+            className="p-2 text-xl hover:bg-slate-700 rounded-full transition-transform active:scale-125"
           >
             {emoji}
           </button>
         ))}
-
         <button
-          className="p-2 text-lg text-slate-300 hover:text-white"
-          onClick={() => setShowFullPicker(true)}
+          type="button"
+          className="p-2 text-lg text-slate-300 hover:text-white font-bold"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowFullPicker(true);
+          }}
         >
           +
         </button>
       </div>
 
-      {/* Full emoji picker (FIXED + CONSTRAINED) */}
+      {/* Full Picker Modal */}
       {showFullPicker && (
-        <div
-          className="fixed inset-0 z-[200] bg-black/40 flex items-end sm:items-center justify-center"
-          onClick={() => setShowFullPicker(false)}
+        <div 
+          className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowFullPicker(false);
+          }}
         >
-          <div
-            className="
-              bg-slate-900 rounded-t-xl sm:rounded-xl
-              w-full sm:w-[380px]
-              max-h-[70vh]
-              overflow-hidden
-            "
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="bg-slate-900 rounded-t-xl sm:rounded-xl w-full sm:w-[350px] overflow-hidden shadow-2xl border border-slate-700" onClick={(e) => e.stopPropagation()}>
             <EmojiPicker
               theme="dark"
-              height="60vh"
+              height="400px"
               width="100%"
-              onEmojiClick={(emoji) => {
-                handleReactionClick(msgId, emoji.emoji);
+              onEmojiClick={(emojiData, event) => {
+                // Critical: Stop library event from triggering global mousedown
+                if (event) {
+                  event.stopPropagation();
+                  if (event.nativeEvent) event.nativeEvent.stopImmediatePropagation();
+                }
+                handleReactionClick(msgId, emojiData.emoji);
                 setShowFullPicker(false);
               }}
             />
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 

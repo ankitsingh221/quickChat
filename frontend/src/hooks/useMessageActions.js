@@ -19,13 +19,13 @@ const useMessageActions = ({
   const [showReactionsMenu, setShowReactionsMenu] = useState(null);
   const [now, setNow] = useState(Date.now());
 
-  //  Timer to keep logic accurate
+  // Timer to keep canModify logic accurate
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 10000);
     return () => clearInterval(interval);
   }, []);
 
-  //  Reset state on chat switch
+  // Reset state on chat switch
   useEffect(() => {
     setActiveMsgId(null);
     setEditingId(null);
@@ -33,13 +33,19 @@ const useMessageActions = ({
     setShowReactionsMenu(null);
   }, [activeChatId]);
 
-  //  Click outside handler
+  // Click outside handler  Emoji Picker
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (activeMsgId && !e.target.closest(".action-menu") && !e.target.closest(".three-dot-button")) {
         setActiveMsgId(null);
       }
-      if (showReactionsMenu && !e.target.closest(".reactions-menu") && !e.target.closest(".react-button")) {
+      
+      const isPickerClick = e.target.closest(".EmojiPickerReact") || e.target.closest(".epr-main");
+      
+      if (showReactionsMenu && 
+          !e.target.closest(".reactions-menu") && 
+          !e.target.closest(".react-button") && 
+          !isPickerClick) {
         setShowReactionsMenu(null);
       }
     };
@@ -47,17 +53,9 @@ const useMessageActions = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [activeMsgId, showReactionsMenu]);
 
-  //   helper : Handling Clock Drift
   const canModify = useCallback((createdAt) => {
-    const messageTime = new Date(createdAt).getTime();
-    const currentTime = now;
-    const diff = currentTime - messageTime;
-
-    // If diff is negative, it means the server clock is ahead of the client.
-    // We treat messages from the "future" as brand new (0ms old).
-    const adjustedAge = diff < 0 ? 0 : diff;
-
-    return adjustedAge < FIVE_MIN;
+    const diff = now - new Date(createdAt).getTime();
+    return (diff < 0 ? 0 : diff) < FIVE_MIN;
   }, [now]);
 
   const closeAllMenus = useCallback(() => {
@@ -65,7 +63,7 @@ const useMessageActions = ({
     setShowReactionsMenu(null);
   }, []);
 
-  //  Action Handlers
+  // Action Handlers
   const startEdit = (msg) => {
     if (!canModify(msg.createdAt)) {
       toast.error("Editing window (5m) has passed");
@@ -77,39 +75,11 @@ const useMessageActions = ({
     closeAllMenus();
   };
 
-  const submitEdit = (id, createdAt) => {
-    if (!editText.trim()) return;
-    if (!canModify(createdAt)) {
-      toast.error("Too late to edit!");
-      setEditingId(null);
-      return;
-    }
-    
-    try {
-      editMessage(id, editText);
-      setEditingId(null);
-      setEditText("");
-    } catch (err) {
-      console.error("Edit failed:", err);
-    }
-  };
-
-  const handleDelete = (id, type, createdAt) => {
-    try {
-      if (type === "me") {
-        deleteForMe(id);
-      } else {
-        if (!canModify(createdAt)) {
-          toast.error("Too late to delete for everyone");
-          return;
-        }
-        deleteForEveryone(id);
-      }
-      closeAllMenus();
-    } catch (err) {
-      console.error("Delete failed:", err);
-    }
-  };
+  const handleReactionClick = useCallback((messageId, emoji) => {
+    if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
+    toggleReaction(messageId, emoji);
+    closeAllMenus();
+  }, [toggleReaction, closeAllMenus, isSoundEnabled, playRandomKeyStrokeSound]);
 
   return {
     canModify,
@@ -119,37 +89,56 @@ const useMessageActions = ({
     replyTo,
     showReactionsMenu,
     handleThreeDotClick: (msgId, e) => {
-      e?.preventDefault();
       e?.stopPropagation();
+      if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
       setActiveMsgId(prev => prev === msgId ? null : msgId);
       setShowReactionsMenu(null);
     },
+
     handleReactionButtonClick: (msgId, e) => {
-      e?.preventDefault();
       e?.stopPropagation();
+      if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
       setShowReactionsMenu(prev => prev === msgId ? null : msgId);
       setActiveMsgId(null);
     },
+
     startEdit,
+
     handleEditTextChange: (e) => {
       setEditText(e.target.value);
       if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
     },
-    submitEdit,
-    handleDelete,
-    handleReactionClick: (messageId, emoji) => {
-      toggleReaction(messageId, emoji);
+
+    submitEdit: (id, createdAt) => {
+      if (!editText.trim() || !canModify(createdAt)) return;
+      if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
+      editMessage(id, editText);
+      setEditingId(null);
+    },
+
+    handleDelete: (id, type, createdAt) => {
+      if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
+      if (type === "everyone" && !canModify(createdAt)) {
+        toast.error("Too late to delete for everyone");
+        return;
+      }
+      type === "me" ? deleteForMe(id) : deleteForEveryone(id);
       closeAllMenus();
     },
+
+    handleReactionClick,
+
     handleExistingReactionClick: (messageId, emoji) => {
-      // Logic for removing/toggling from the badge directly
+      if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
       toggleReaction(messageId, emoji);
     },
+
     handleReply: (msg) => {
       if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
       setReplyTo(msg);
       closeAllMenus();
     },
+    
     closeAllMenus,
     setReplyTo,
     setEditingId,

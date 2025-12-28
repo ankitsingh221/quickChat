@@ -17,7 +17,8 @@ const MessageItem = ({
   messageActions,
   setSelectedImg,
 }) => {
-  const { isSelectionMode, selectedMessages, toggleMessageSelection } = useChatStore();
+  const { isSelectionMode, selectedMessages, toggleMessageSelection } =
+    useChatStore();
   const isSelected = selectedMessages.includes(msg._id);
 
   const {
@@ -44,11 +45,15 @@ const MessageItem = ({
   const [showFullPicker, setShowFullPicker] = useState(false);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
 
-  // Helper to generate unique colors for group members
   const getSenderColor = (name = "") => {
     const colors = [
-      "text-blue-400", "text-emerald-400", "text-amber-400", 
-      "text-rose-400", "text-violet-400", "text-cyan-400", "text-orange-400"
+      "text-blue-400",
+      "text-emerald-400",
+      "text-amber-400",
+      "text-rose-400",
+      "text-violet-400",
+      "text-cyan-400",
+      "text-orange-400",
     ];
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
@@ -60,7 +65,6 @@ const MessageItem = ({
   const senderName = isMe
     ? "You"
     : msg.senderId?.fullName || selectedUser?.fullName || "Unknown";
-    
   const senderPic = isMe
     ? authUser?.profilePic
     : msg.senderId?.profilePic || selectedUser?.profilePic || "/avatar.png";
@@ -87,7 +91,7 @@ const MessageItem = ({
         }`}
         onClick={(e) => !isSelectionMode && e.stopPropagation()}
       >
-        {/*  SELECTION CHECKBOX */}
+        {/* SELECTION CHECKBOX */}
         {isSelectionMode && (
           <div className="self-center flex-shrink-0 px-2">
             {isSelected ? (
@@ -101,7 +105,7 @@ const MessageItem = ({
           </div>
         )}
 
-        {/*  AVATAR */}
+        {/* AVATAR */}
         {!isSelectionMode && (
           <div className="flex-shrink-0 mb-3 hidden sm:block">
             <img
@@ -112,12 +116,18 @@ const MessageItem = ({
           </div>
         )}
 
-        {/*  BUBBLE CONTENT */}
-        <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} min-w-0`}>
-          
-          {/* SENDER NAME (Groups Only) */}
+        {/* BUBBLE CONTENT */}
+        <div
+          className={`flex flex-col ${
+            isMe ? "items-end" : "items-start"
+          } min-w-0`}
+        >
           {!isMe && isGroup && (
-            <span className={`text-[11px] font-bold ml-3 mb-0.5 uppercase tracking-wide ${getSenderColor(senderName)}`}>
+            <span
+              className={`text-[11px] font-bold ml-3 mb-0.5 uppercase tracking-wide ${getSenderColor(
+                senderName
+              )}`}
+            >
               {senderName}
             </span>
           )}
@@ -153,15 +163,19 @@ const MessageItem = ({
           <MessageTimestamp msg={msg} isMe={isMe} />
         </div>
 
-        {/*  ACTION BUTTONS (THREE DOTS) */}
+        {/* ACTION BUTTONS (THREE DOTS) */}
         {!msg.isDeleted && !isSelectionMode && (
-          <div className={`relative self-center z-20 ${isMe ? "mr-1" : "ml-1"}`}>
+          <div
+            className={`relative self-center z-20 ${isMe ? "mr-1" : "ml-1"}`}
+          >
             <button
               className={`p-2 rounded-full transition-all duration-200 
-                ${activeMsgId === msg._id
-                  ? "bg-slate-800 opacity-100"
-                  : "opacity-0 group-hover:opacity-100 hover:bg-slate-800/50"
-                } text-slate-500 hover:text-white`}
+                ${
+                  activeMsgId === msg._id
+                    ? "bg-slate-800 opacity-100"
+                    : "opacity-0 group-hover:opacity-100 hover:bg-slate-800/50"
+                } 
+                text-slate-500 hover:text-white`}
               onClick={(e) => handleThreeDotClick(msg._id, e)}
             >
               <MoreVertical size={16} />
@@ -169,7 +183,12 @@ const MessageItem = ({
 
             {/* ACTION MENU */}
             {activeMsgId === msg._id && (
-              <div className={`absolute bottom-full mb-2 z-[100] ${isMe ? "right-0" : "left-0"}`}>
+              <div
+                className={`absolute bottom-full mb-2 z-[100] ${
+                  isMe ? "right-0" : "left-0"
+                }`}
+                onClick={(e) => e.stopPropagation()}
+              >
                 <MessageActionMenu
                   msg={msg}
                   isMe={isMe}
@@ -177,7 +196,9 @@ const MessageItem = ({
                   handleReply={handleReply}
                   startEdit={startEdit}
                   isGroup={isGroup}
-                  handleDelete={(id, type) => handleDelete(id, type, msg.createdAt)}
+                  handleDelete={(id, type) =>
+                    handleDelete(id, type, msg.createdAt)
+                  }
                   handleReactionButtonClick={handleReactionButtonClick}
                   enterSelectionMode={() => toggleMessageSelection(msg._id)}
                   onInfoClick={() => {
@@ -188,9 +209,13 @@ const MessageItem = ({
               </div>
             )}
 
-            {/* REACTION PICKER */}
             {showReactionsMenu === msg._id && (
-              <div className={`absolute bottom-full mb-2 z-[110] ${isMe ? "right-0" : "left-0"}`}>
+              <div
+                className={`absolute bottom-full mb-2 z-[150] pointer-events-auto ${
+                  isMe ? "right-0" : "left-0"
+                }`}
+                onClick={(e) => e.stopPropagation()}
+              >
                 <ReactionPickerMenu
                   msgId={msg._id}
                   isMe={isMe}
@@ -204,11 +229,11 @@ const MessageItem = ({
         )}
       </div>
 
-      {/* GROUP MESSAGE INFO DRAWER (READ BY / DELIVERED TO) */}
+      {/* GROUP MESSAGE INFO DRAWER */}
       {showInfoDrawer && (
-        <MessageInfoDrawer 
-          msg={msg} 
-          onClose={() => setShowInfoDrawer(false)} 
+        <MessageInfoDrawer
+          msg={msg}
+          onClose={() => setShowInfoDrawer(false)}
           isGroup={isGroup}
           selectedGroup={selectedGroup}
         />
