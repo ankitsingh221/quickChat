@@ -144,6 +144,8 @@ const MessageItem = ({
               submitEdit={submitEdit}
               setEditingId={setEditingId}
               setSelectedImg={setSelectedImg}
+              onDelete={handleDelete}
+              onReply={handleReply}
             />
           </div>
 

@@ -19,7 +19,7 @@ function Sidebar() {
   
   const { socket } = useAuthStore();
 
-  // THE KEY: Centralized Modal State
+  //  Centralized Modal State
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
 
   useEffect(() => {

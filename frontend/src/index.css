@@ -73,3 +73,20 @@
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
+
+
+@keyframes progress-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.animate-progress-fill {
+  /* Match this duration to your delay (500ms) */
+  animation: progress-fill 0.5s linear forwards;
+}
+/* Prevent system context menu and text selection during long press */
+.select-none {
+  -webkit-user-select: none;
+  -webkit-touch-callout: none; 
+  user-select: none;
+}

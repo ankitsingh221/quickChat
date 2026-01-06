@@ -9,7 +9,7 @@ function UserCard({ user, isOnline, onClick, isActive, isTyping }) {
   
   const isGroup = !!user.groupName;
   
-  // unread logic (Check correct slice based on chat type)
+  // unread logic 
   const unreadCount = isGroup 
     ? (groupUnreadCounts[user._id] ?? 0) 
     : (unreadCounts[user._id] ?? user.unreadCount ?? 0);
@@ -21,7 +21,7 @@ function UserCard({ user, isOnline, onClick, isActive, isTyping }) {
   const senderId = lastMessage?.senderId?._id || lastMessage?.senderId;
   const isSentByMe = senderId === authUser?._id;
 
-  // 2. TYPER NAME (For Groups)
+  //  TYPER NAME (For Groups)
   const getTyperText = () => {
     if (!isGroup) return "typing";
     const typers = groupTypingUsers[user._id] || [];
