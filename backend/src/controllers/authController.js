@@ -103,7 +103,7 @@ export const getMe = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { fullName, profilePic } = req.body;
+    const { fullName, profilePic, bio } = req.body;
 
     const updates = {};
 
@@ -116,6 +116,10 @@ export const updateProfile = async (req, res) => {
         folder: "chat-app/profiles",
       });
       updates.profilePic = upload.secure_url;
+    }
+     
+    if(bio != undefined){
+      updates.bio = bio;
     }
 
     if (Object.keys(updates).length === 0) {

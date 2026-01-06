@@ -20,7 +20,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    lastSeen:{type:Date, default: Date.now},
+
+    bio: { type: String, default: "Hey there I am using QuickChat!", maxlength: 500 },
+
+    lastSeen: { type: Date, default: Date.now },
   },
   { timestamps: true } // createdAt & updatedAt
 );

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import GroupInfoModal from "./groups/GroupInfoModal";
+import UserInfoModal from "./UserInfoModal";
 import toast from "react-hot-toast";
 
 function ChatHeader({ children }) {
@@ -24,6 +25,7 @@ function ChatHeader({ children }) {
   const groupTypingUsers = useChatStore((state) => state.groupTypingUsers);
   const messages = useChatStore((state) => state.messages);
   const isSelectionMode = useChatStore((state) => state.isSelectionMode);
+
   const toggleSelectionMode = useChatStore(
     (state) => state.toggleSelectionMode
   );
@@ -42,6 +44,7 @@ function ChatHeader({ children }) {
 
   const [showMenu, setShowMenu] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [showUserInfo, setShowUserInfo] = useState(false);
   const menuRef = useRef(null);
 
   const isGroup = !!selectedGroup;
@@ -171,7 +174,10 @@ function ChatHeader({ children }) {
             className={`avatar ${
               !isGroup && isOnline ? "online" : ""
             } cursor-pointer active:scale-95 transition-transform`}
-            onClick={() => isGroup && setShowGroupInfo(true)}
+            onClick={() => {
+              if (isGroup) setShowGroupInfo(true);
+              else setShowUserInfo(true);
+            }}
           >
             <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-slate-700 overflow-hidden bg-slate-800 flex items-center justify-center">
               {isGroup ? (
@@ -194,7 +200,10 @@ function ChatHeader({ children }) {
           {/* NAME AND STATUS SECTION */}
           <div
             className="cursor-pointer overflow-hidden"
-            onClick={() => isGroup && setShowGroupInfo(true)}
+            onClick={() => {
+              if (isGroup) setShowGroupInfo(true);
+              else setShowUserInfo(true);
+            }}
           >
             <h3 className="text-slate-200 font-semibold text-base md:text-lg leading-tight truncate max-w-[140px] md:max-w-[300px]">
               {isGroup
@@ -213,15 +222,21 @@ function ChatHeader({ children }) {
                   {!isGroup && (
                     <span
                       className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                        isOnline ? "bg-green-500" : "bg-slate-500"
+                        isOnline ? "bg-cyan-500" : "bg-slate-500"
                       }`}
                     ></span>
                   )}
-                  <span className="truncate lowercase">
+                  <span
+                    className={`truncate  transition-colors duration-300 ${
+                      !isGroup && isOnline
+                        ? "text-cyan-400 font-medium"
+                        : "text-slate-400"
+                    }`}
+                  >
                     {isGroup
                       ? `${selectedGroup.members?.length || 0} members`
                       : isOnline
-                      ? "online"
+                      ? "Online"
                       : formatLastSeen(selectedUser?.lastSeen)}
                   </span>
                 </div>
@@ -302,6 +317,12 @@ function ChatHeader({ children }) {
         <GroupInfoModal
           group={selectedGroup}
           onClose={() => setShowGroupInfo(false)}
+        />
+      )}
+      {!isGroup && showUserInfo && (
+        <UserInfoModal
+          user={selectedUser}
+          onClose={() => setShowUserInfo(false)}
         />
       )}
     </>
