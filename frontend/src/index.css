@@ -96,7 +96,5 @@
   box-shadow: 0 0 5px rgba(34, 211, 238, 0.6);
 }
 
-.avatar.offline:before {
-  background-color: #6b7280 !important; /* Slate-500 */
-  box-shadow: none;
-}
+
+

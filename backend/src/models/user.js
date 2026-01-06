@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
-    bio: { type: String, default: "Hey there I am using QuickChat!", maxlength: 500 },
+    bio: { type: String, default: "Hiii there I am using QuickChat!", maxlength: 500 },
 
     lastSeen: { type: Date, default: Date.now },
   },

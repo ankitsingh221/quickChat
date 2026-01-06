@@ -97,7 +97,8 @@ function ChatHeader({ children }) {
       : `last seen ${date.toLocaleDateString()}`;
   };
 
-  // Close menu on click outside
+ 
+  //  Close menu on click outside (Keep your existing one)
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -108,8 +109,19 @@ function ChatHeader({ children }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Reset selection mode when chat changes
+  //  Reset modals safely when chat changes
   useEffect(() => {
+    // We check if any modal is open FIRST to avoid unnecessary updates
+    if (showUserInfo || showGroupInfo || showMenu) {
+      // We defer the update to the next tick to prevent "cascading renders"
+      Promise.resolve().then(() => {
+        setShowUserInfo(false);
+        setShowGroupInfo(false);
+        setShowMenu(false);
+      });
+    }
+
+    // cleanup selection mode when switching
     return () => toggleSelectionMode(false);
   }, [activeChatId, toggleSelectionMode]);
 
