@@ -240,8 +240,23 @@ const ChatContainer = () => {
       <div
         className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar relative"
         style={{
-          backgroundColor: "#0b141a",
-          backgroundImage: `linear-gradient(rgba(18, 25, 31, 0.94), rgba(18, 25, 31, 0.94)), url("https://www.transparenttextures.com/patterns/cubes.png")`,
+          background: `
+    radial-gradient(
+      circle at top center,
+      rgba(37, 211, 102, 0.08),
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(0, 136, 255, 0.04),
+      transparent 50%
+    ),
+    linear-gradient(
+      180deg,
+      #0b141a 0%,
+      #0d1b22 100%
+    )
+  `,
         }}
         onClick={(e) =>
           e.target === e.currentTarget && messageActions.closeAllMenus()

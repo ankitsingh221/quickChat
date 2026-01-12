@@ -5,19 +5,22 @@ const MessageTimestamp = ({ msg, isMe }) => {
   const { selectedGroup, authUser } = useChatStore();
   const isGroup = !!selectedGroup;
 
-  const timeString = new Date(msg.createdAt).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  }).toLowerCase();
+  const date = new Date(msg.createdAt);
 
- 
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+
+  const ampm = hours >= 12 ? "pm" : "am";
+  hours = hours % 12 || 12;
+
+  const timeString = `${hours}:${minutes.toString().padStart(2, "0")} ${ampm}`;
+
   // Check if at least one other person in the group has seen the message
-  const hasOthersSeen = isGroup 
-    ? msg.seenBy?.filter(id => id !== authUser?._id).length > 0 
+  const hasOthersSeen = isGroup
+    ? msg.seenBy?.some((id) => id.toString() !== authUser?._id?.toString())
     : msg.seen;
 
-  // We only show double ticks if someone has seen it. 
+  // We only show double ticks if someone has seen it.
   // Otherwise, it stays as a single grey tick (Sent).
   const showDoubleTick = hasOthersSeen;
 
@@ -27,7 +30,7 @@ const MessageTimestamp = ({ msg, isMe }) => {
         isMe ? "flex-row justify-end" : "flex-row-reverse justify-end"
       }`}
     >
-      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-tighter">
+      <p className="text-[10px] font-semibold text-slate-500 lowercase ">
         {timeString}
       </p>
 
