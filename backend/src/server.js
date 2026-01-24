@@ -34,12 +34,17 @@ app.use("/api/auth", authRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/groups", groupRoutes)
 
-if(ENV.NODE_ENV === "production"){
-  app.use(express.static(Path.join(__dirname, "public")));
-  app.get("*", (req, res) => {
-    res.sendFile(Path.join(__dirname, "public", "index.html"));
+if (ENV.NODE_ENV === "production") {
+  app.use(express.static(Path.join(__dirname, "../frontend/dist")));
+
+  app.get(/.*/, (req, res) => {
+    res.sendFile(
+      Path.join(__dirname, "../frontend/dist", "index.html")
+    );
   });
 }
+
+
 
 
 // Connect to DB first
