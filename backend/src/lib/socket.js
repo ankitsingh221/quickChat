@@ -11,9 +11,14 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: [ENV.CLIENT_URL],
+    origin: ENV.NODE_ENV === 'production' 
+      ? [ENV.CLIENT_URL]
+      : [ENV.CLIENT_URL, "http://localhost:5173", "http://localhost:3000"],
     credentials: true,
   },
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  transports: ['websocket', 'polling'], 
 });
 
 const userSocketMap = new Map();

@@ -179,7 +179,7 @@ function ChatHeader({ children }) {
   // regular heder
   return (
     <>
-      <div className="flex justify-between items-center bg-slate-800/50 border-b border-slate-700/50 min-h-[70px] px-4 md:px-6">
+      <div className="flex justify-between items-center bg-slate-800 border-b border-slate-700/50 min-h-[70px] px-4 md:px-6">
         <div className="flex items-center gap-3">
           {/* AVATAR SECTION */}
           <div

@@ -1,6 +1,7 @@
 import express, { application } from "express";
 import dotenv from "dotenv";
 dotenv.config();
+import Path from "path";
 import { connectDB } from "./lib/db.js";
 import authRoute from "./routes/authRoute.js";
 import messageRoute from "./routes/messageRoute.js";
@@ -13,7 +14,7 @@ import { app, server } from "./lib/socket.js";
 
 
 const port = process.env.PORT || 3000;
-
+const  __dirname= Path.resolve();
 // Middleware
 app.use(express.json({ limit: "20mb" }));
  
@@ -32,6 +33,13 @@ app.use(globalLimiter);
 app.use("/api/auth", authRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/groups", groupRoutes)
+
+if(ENV.NODE_ENV === "production"){
+  app.use(express.static(Path.join(__dirname, "public")));
+  app.get("*", (req, res) => {
+    res.sendFile(Path.join(__dirname, "public", "index.html"));
+  });
+}
 
 
 // Connect to DB first
