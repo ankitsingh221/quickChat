@@ -7,7 +7,7 @@ import MessageInput from "../MessageInput";
 import MessagesLoadingSkeleton from "../MessagesLoadingSkeleton";
 import NoChatHistoryPlaceholder from "../NoChatHistoryPlaceholder";
 import MessageList from "./MessageList";
-import ImageLightbox from "./ImageLightbox";
+import ImageLightbox from "./ImageLightBox";
 import MessageSearch from "./MessageSearch";
 
 import useKeyboardSound from "../../hooks/useKeyboardSound";
