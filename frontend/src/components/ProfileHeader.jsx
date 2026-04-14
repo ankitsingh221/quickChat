@@ -4,15 +4,15 @@ import {
   VolumeOffIcon,
   Volume2Icon,
   Settings,
-  ArrowLeft,
   Camera,
   Pencil,
   X,
+  Crop,
 } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import toast from "react-hot-toast";
-import ImageCropper from "./ImageCropper"; // Import the cropper
+import ImageCropper from "./ImageCropper";
 
 const mouseClickSound = new Audio("/sounds/mouse-click.mp3");
 
@@ -24,6 +24,7 @@ function ProfileHeader() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [isEditingExisting, setIsEditingExisting] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: authUser?.fullName || "",
@@ -69,7 +70,7 @@ function ProfileHeader() {
     };
   }, [isSettingsOpen]);
 
-  // Handle image selection - Open cropper instead of uploading directly
+  // Handle new image selection
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -90,9 +91,23 @@ function ProfileHeader() {
     const reader = new FileReader();
     reader.onload = () => {
       setSelectedImage(reader.result);
+      setIsEditingExisting(false);
       setShowCropper(true);
     };
     reader.readAsDataURL(file);
+  };
+
+  // Handle editing existing profile picture
+  const handleEditExistingImage = () => {
+    playClickSound();
+    if (authUser?.profilePic && authUser.profilePic !== "/avatar.png") {
+      setSelectedImage(authUser.profilePic);
+      setIsEditingExisting(true);
+      setShowCropper(true);
+    } else {
+      // If no custom profile picture, open file picker
+      fileInputRef.current?.click();
+    }
   };
 
   // Handle cropped image upload
@@ -114,6 +129,7 @@ function ProfileHeader() {
       console.error("Upload error:", error);
     } finally {
       setSelectedImage(null);
+      setIsEditingExisting(false);
       // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -234,13 +250,32 @@ function ProfileHeader() {
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUpdatingProfile}
-                    className="absolute bottom-1 right-1 p-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg hover:scale-110 transition-transform duration-300 disabled:opacity-50"
-                  >
-                    <Camera size="16" />
-                  </button>
+                  
+                  {/* Action Buttons */}
+                  <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 flex gap-2">
+                    {/* Edit/Crop existing image button */}
+                    {authUser?.profilePic && authUser.profilePic !== "/avatar.png" && (
+                      <button
+                        onClick={handleEditExistingImage}
+                        disabled={isUpdatingProfile}
+                        className="p-2 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg hover:scale-110 transition-transform duration-300 disabled:opacity-50"
+                        title="Edit current picture"
+                      >
+                        <Crop size="14" />
+                      </button>
+                    )}
+                    
+                    {/* Upload new image button */}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUpdatingProfile}
+                      className="p-2 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg hover:scale-110 transition-transform duration-300 disabled:opacity-50"
+                      title="Upload new picture"
+                    >
+                      <Camera size="14" />
+                    </button>
+                  </div>
+                  
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -249,8 +284,8 @@ function ProfileHeader() {
                     onChange={handleImageSelect}
                   />
                 </div>
-                <p className="text-white/40 text-xs mt-3">
-                  Click camera icon to change profile picture
+                <p className="text-white/40 text-xs mt-6">
+                  Click camera to upload new • Click crop to edit current
                 </p>
               </div>
 
@@ -326,6 +361,7 @@ function ProfileHeader() {
           onClose={() => {
             setShowCropper(false);
             setSelectedImage(null);
+            setIsEditingExisting(false);
             if (fileInputRef.current) {
               fileInputRef.current.value = "";
             }
