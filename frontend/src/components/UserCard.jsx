@@ -6,12 +6,12 @@ import { Users } from "lucide-react";
 function UserCard({ user, isOnline, onClick, isActive, isTyping }) {
   const { unreadCounts, groupUnreadCounts, groupTypingUsers } = useChatStore();
   const { authUser } = useAuthStore();
-  
+
   const isGroup = !!user.groupName;
-  
-  // unread logic 
-  const unreadCount = isGroup 
-    ? (groupUnreadCounts[user._id] ?? 0) 
+
+  // unread logic
+  const unreadCount = isGroup
+    ? (groupUnreadCounts[user._id] ?? 0)
     : (unreadCounts[user._id] ?? user.unreadCount ?? 0);
 
   const lastMessage = user.lastMessage;
@@ -19,15 +19,16 @@ function UserCard({ user, isOnline, onClick, isActive, isTyping }) {
   const displayPic = isGroup ? user.groupPic : user.profilePic;
 
   const senderId = lastMessage?.senderId?._id || lastMessage?.senderId;
-  const isSentByMe = senderId === authUser?._id;
+  const isSentByMe = senderId?.toString() === authUser?._id?.toString();
 
-  //  TYPER NAME (For Groups)
+  // TYPER NAME (For Groups)
   const getTyperText = () => {
     if (!isGroup) return "typing";
     const typers = groupTypingUsers[user._id] || [];
-    const otherTypers = typers.filter(t => t.userId !== authUser?._id);
+    const otherTypers = typers.filter((t) => t.userId !== authUser?._id);
     if (otherTypers.length > 1) return "Multiple people typing";
-    if (otherTypers.length === 1) return `${otherTypers[0].userName.split(" ")[0]} is typing`;
+    if (otherTypers.length === 1)
+      return `${otherTypers[0].userName?.split(" ")[0] || "Someone"} is typing`;
     return "typing";
   };
 
@@ -35,9 +36,16 @@ function UserCard({ user, isOnline, onClick, isActive, isTyping }) {
     if (!lastMessage) return "No messages yet";
     if (lastMessage.isDeleted) return "Message was deleted";
 
-    let text = lastMessage.text || (lastMessage.image ? "📷 Photo" : "");
+    let text = "";
+    if (lastMessage.text) text = lastMessage.text;
+    else if (lastMessage.image) text = "📷 Photo";
+    else if (lastMessage.video) text = "🎥 Video";
+    else if (lastMessage.file) text = "📎 File";
+    else if (lastMessage.gif) text = "🎬 GIF";
+    else text = "No messages yet";
+
     if (isSentByMe) return `You: ${text}`;
-    
+
     if (isGroup && lastMessage.senderId?.fullName) {
       return `${lastMessage.senderId.fullName.split(" ")[0]}: ${text}`;
     }
@@ -51,7 +59,7 @@ function UserCard({ user, isOnline, onClick, isActive, isTyping }) {
     const now = dayjs();
     const messageDate = dayjs(date);
     const diffDays = now.diff(messageDate, "day");
-    if (diffDays === 0) return messageDate.format("HH:mm"); 
+    if (diffDays === 0) return messageDate.format("HH:mm");
     if (diffDays === 1) return "Yesterday";
     if (diffDays < 7) return messageDate.format("ddd");
     return messageDate.format("DD/MM/YY");
@@ -63,64 +71,93 @@ function UserCard({ user, isOnline, onClick, isActive, isTyping }) {
     <div
       onClick={onClick}
       className={`
-        flex items-center gap-4 px-4 py-3 rounded-2xl cursor-pointer
-        transition-all duration-300 relative mx-2 mb-1
-        ${isActive
-          ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/10 ring-1 ring-cyan-400/30 shadow-lg shadow-cyan-500/5"
-          : "hover:bg-slate-800/40"}
-        bg-slate-900/20 backdrop-blur
+        flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer
+        transition-all duration-200 relative
+        ${
+          isActive
+            ? "bg-white/10 border border-cyan-500/30 shadow-[0_0_15px_rgba(0,255,255,0.1)]"
+            : "hover:bg-white/5 border border-transparent"
+        }
+        bg-transparent backdrop-blur-sm
       `}
     >
       {/* AVATAR SECTION */}
-      <div className={`avatar ${!isGroup && isOnline ? "online" : ""}`}>
-        <div className="size-12 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700/50">
+      <div className={`relative ${!isGroup && isOnline ? "online" : ""}`}>
+        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center overflow-hidden border border-white/10">
           {displayPic ? (
-            <img src={displayPic} alt={displayName} className="object-cover w-full h-full" />
+            <img
+              src={displayPic}
+              alt={displayName}
+              className="object-cover w-full h-full"
+            />
           ) : isGroup ? (
-            <div className="bg-cyan-500/10 w-full h-full flex items-center justify-center">
-                <Users className="size-6 text-cyan-500" />
+            <div className="bg-white/10 w-full h-full flex items-center justify-center">
+              <Users className="w-5 h-5 text-cyan-400" />
             </div>
           ) : (
-            <img src="/avatar.png" alt="avatar" />
+            <img
+              src="/avatar.png"
+              alt="avatar"
+              className="object-cover w-full h-full"
+            />
           )}
         </div>
+        {/* Online indicator */}
+        {!isGroup && isOnline && (
+          <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-cyan-400 rounded-full ring-1 ring-black shadow-[0_0_5px_#00ffff]"></div>
+        )}
       </div>
 
       {/* CONTENT SECTION */}
       <div className="min-w-0 flex-1 flex flex-col justify-center">
         <div className="flex justify-between items-center mb-0.5">
-          <h4 className={`truncate text-[15px] ${unreadCount > 0 ? "text-white font-bold" : "text-slate-200 font-semibold"}`}>
+          <h4
+            className={`truncate text-sm ${unreadCount > 0 ? "text-cyan-400 font-bold" : "text-white/90 font-medium"}`}
+          >
             {displayName}
           </h4>
-          
-          <div className="flex flex-col items-end gap-1">
+
+          <div className="flex flex-col items-end gap-0.5">
             {time && (
-              <span className={`text-[10px] ${unreadCount > 0 ? "text-cyan-400 font-bold" : "text-slate-500"}`}>
+              <span
+                className={`text-[9px] ${unreadCount > 0 ? "text-cyan-400 font-medium" : "text-white/40"}`}
+              >
                 {time}
               </span>
             )}
-            
+
             {unreadCount > 0 && (
-              <div className="bg-cyan-500 text-slate-900 text-[10px] font-bold rounded-full h-4 min-w-[16px] px-1 flex items-center justify-center animate-in zoom-in">
-                {unreadCount > 99 ? '99+' : unreadCount}
+              <div className="bg-gradient-to-r from-cyan-500 to-cyan-400 text-black text-[9px] font-bold rounded-full h-4 min-w-[16px] px-1 flex items-center justify-center shadow-[0_0_8px_rgba(0,255,255,0.5)]">
+                {unreadCount > 99 ? "99+" : unreadCount}
               </div>
             )}
           </div>
         </div>
 
         {/* TYPING / MESSAGE PREVIEW */}
-        <div className="text-sm truncate h-5">
+        <div className="text-xs truncate h-4">
           {isTyping ? (
-            <span className="text-cyan-400 font-medium flex items-center gap-1 italic text-[11px]">
+            <span className="text-cyan-400 font-medium flex items-center gap-1">
               {getTyperText()}
-              <span className="flex gap-0.5 mt-1">
-                <span className="w-1 h-1 rounded-full bg-cyan-400 animate-bounce [animation-delay:-0.3s]"></span>
-                <span className="w-1 h-1 rounded-full bg-cyan-400 animate-bounce [animation-delay:-0.15s]"></span>
-                <span className="w-1 h-1 rounded-full bg-cyan-400 animate-bounce"></span>
+              <span className="flex gap-0.5">
+                <span
+                  className="w-1 h-1 rounded-full bg-cyan-400 animate-bounce"
+                  style={{ animationDelay: "0ms" }}
+                ></span>
+                <span
+                  className="w-1 h-1 rounded-full bg-cyan-400 animate-bounce"
+                  style={{ animationDelay: "300ms" }}
+                ></span>
+                <span
+                  className="w-1 h-1 rounded-full bg-cyan-400 animate-bounce"
+                  style={{ animationDelay: "600ms" }}
+                ></span>
               </span>
             </span>
           ) : (
-            <span className={`truncate text-xs ${unreadCount > 0 ? "text-slate-300 font-medium" : "text-slate-500"}`}>
+            <span
+              className={`truncate text-[11px] ${unreadCount > 0 ? "text-white/80 font-medium" : "text-white/40"}`}
+            >
               {displayMessage}
             </span>
           )}

@@ -8,7 +8,7 @@ function NoConversationPlaceholder() {
         <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-purple-500/5 rounded-full blur-3xl" />
         
         {/* Icon */}
-        <div className="relative mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-cyan-500/10 to-purple-500/10 flex items-center justify-center mb-6 border border-white/10 shadow-[0_0_40px_rgba(0,255,255,0.05)]">
+        <div className="relative mx-auto w-24 h-24 rounded-full bg-white/5 backdrop-blur-sm flex items-center justify-center mb-6 border border-white/20 shadow-[0_0_40px_rgba(0,255,255,0.05)]">
           <MessageSquare className="w-12 h-12 text-cyan-400/60" />
           <div className="absolute -top-2 -right-2">
             <Sparkles className="w-5 h-5 text-yellow-400/60 animate-pulse" />

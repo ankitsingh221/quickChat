@@ -26,6 +26,26 @@ function ChatList() {
     getMyChatPartners();
   }, [getMyChatPartners]);
 
+  // Format last message with "You:" prefix for outgoing messages
+  const formatLastMessage = (chat) => {
+    const lastMsg = chat.lastMessage;
+    if (!lastMsg) return "No messages yet";
+    
+    const senderId = lastMsg.senderId?._id || lastMsg.senderId;
+    const isOutgoing = senderId?.toString() === authUser?._id?.toString();
+    
+    let messageText = lastMsg.text || "";
+    if (lastMsg.image) messageText = "📷 Photo";
+    if (lastMsg.video) messageText = "🎥 Video";
+    if (lastMsg.file) messageText = "📎 File";
+    if (lastMsg.gif) messageText = "🎬 GIF";
+    
+    if (isOutgoing && messageText) {
+      return `You: ${messageText}`;
+    }
+    return messageText || "No messages yet";
+  };
+
   // filtered chats with proper dependencies
   const filteredChats = useMemo(() => {
     const chatArray = Array.isArray(chats) ? chats : [];
@@ -54,14 +74,13 @@ function ChatList() {
       });
   }, [chats, searchQuery, selectedGroup?._id, selectedUser?._id]);
 
-  //  Separate function to calculate typing status 
+  // Function to calculate typing status
   const getTypingStatus = (chat) => {
     const stringId = chat._id.toString();
     const isGroup = !!chat.groupName;
 
     if (isGroup) {
       const groupTypers = groupTypingUsers[stringId] || [];
-      // Filter out current user and check if anyone else is typing
       return groupTypers.some((u) => u.userId !== authUser?._id);
     } else {
       return !!typingUsers[stringId];
@@ -75,9 +94,13 @@ function ChatList() {
     <div className="flex flex-col gap-1 overflow-y-auto max-h-full custom-scrollbar py-2">
       {filteredChats.map((chat) => {
         const isGroup = !!chat.groupName;
-
-        //  Calculate typing status for each render 
         const isTyping = getTypingStatus(chat);
+        
+        // Add formatted last message to chat object
+        const chatWithFormattedMsg = {
+          ...chat,
+          formattedLastMessage: formatLastMessage(chat),
+        };
 
         const handleChatClick = () => {
           if (isGroup) {
@@ -94,7 +117,7 @@ function ChatList() {
         return (
           <UserCard
             key={chat._id}
-            user={chat}
+            user={chatWithFormattedMsg}
             isOnline={!isGroup && onlineUsers.includes(chat._id)}
             isActive={isActive}
             isTyping={isTyping}

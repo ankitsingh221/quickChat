@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { LogOutIcon, VolumeOffIcon, Volume2Icon, Settings, ArrowLeft, Camera, Pencil } from "lucide-react";
+import { LogOutIcon, VolumeOffIcon, Volume2Icon, Settings, ArrowLeft, Camera, Pencil, X } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import toast from "react-hot-toast";
@@ -26,6 +26,7 @@ function ProfileHeader() {
   }, [authUser]);
 
   const fileInputRef = useRef(null);
+  const sidebarRef = useRef(null);
 
   const playClickSound = () => {
     if (isSoundEnabled) {
@@ -34,65 +35,79 @@ function ProfileHeader() {
     }
   };
 
-  const handleImageUpload = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  playClickSound();
-
-  // Create a local Preview URL (Instant)
-  const previewUrl = URL.createObjectURL(file);
-  
-  //  Optimistically update the UI so the user sees the change immediately
-  // We temporarily update the authUser object in the store
-  const originalUser = { ...authUser };
-  useAuthStore.setState({ authUser: { ...authUser, profilePic: previewUrl } });
-
-  const reader = new FileReader();
-  reader.readAsDataURL(file);
-  reader.onloadend = async () => {
-    try {
-      await updateProfile({ profilePic: reader.result });
-    } catch (error) {
-      // If upload fails, roll back to the original image
-      useAuthStore.setState({ authUser: originalUser });
-      toast.error("Failed to upload image to server",error);
+  // Close sidebar when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isSettingsOpen && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
+        setIsSettingsOpen(false);
+      }
+    };
+    
+    if (isSettingsOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.body.style.overflow = "hidden";
     }
+    
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.body.style.overflow = "auto";
+    };
+  }, [isSettingsOpen]);
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    playClickSound();
+
+    const previewUrl = URL.createObjectURL(file);
+    const originalUser = { ...authUser };
+    useAuthStore.setState({ authUser: { ...authUser, profilePic: previewUrl } });
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadend = async () => {
+      try {
+        await updateProfile({ profilePic: reader.result });
+      } catch (error) {
+        useAuthStore.setState({ authUser: originalUser });
+        toast.error("Failed to upload image",error);
+      }
+    };
   };
-};
 
   const handleSaveInfo = async () => {
     playClickSound();
     if(!formData.fullName.trim()) return toast.error("Name cannot be empty");
     await updateProfile(formData);
+    setIsSettingsOpen(false);
   };
 
   return (
     <>
-      {/* --- MAIN HEADER --- */}
-      <div className="px-5 py-4 border-b border-slate-700/50 bg-slate-800/40 backdrop-blur-md sticky top-0 z-10">
+      {/* SIMPLE SIDEBAR HEADER */}
+      <div className="px-4 py-3 border-b border-white/10 bg-transparent">
         <div className="flex items-center justify-between">
-          
-          {/* LEFT: User Display (Read Only - Removed onClick) */}
-          <div className="flex items-center gap-3">
+          {/* User Info */}
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setIsSettingsOpen(true)}>
             <div className="relative">
-              <div className="size-11 rounded-full border-2 border-slate-700/50 overflow-hidden">
+              <div className="w-10 h-10 rounded-full border border-white/20 overflow-hidden bg-white/5">
                 <img 
-                  src={authUser.profilePic || "/avatar.png"} 
+                  src={authUser?.profilePic || "/avatar.png"} 
                   alt="avatar" 
-                  className="object-cover size-full" 
+                  className="object-cover w-full h-full" 
                 />
               </div>
-              <div className="absolute bottom-0 right-0 size-3 bg-cyan-500 border-2 border-slate-900 rounded-full"></div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-cyan-500 rounded-full ring-1 ring-black shadow-[0_0_5px_#00ffff]"></div>
             </div>
-            <div className="flex flex-col">
-              <h3 className="text-slate-100 font-semibold text-sm leading-tight">
-                {authUser.fullName}
+            <div>
+              <h3 className="text-white font-semibold text-sm">
+                {authUser?.fullName?.split(" ")[0] || "User"}
               </h3>
-              <span className="text-[11px] text-cyan-500 font-medium ">Online</span>
+              <span className="text-[10px] text-cyan-400">Online</span>
             </div>
           </div>
 
-          {/* RIGHT: Actions */}
+          {/* Action Buttons */}
           <div className="flex items-center gap-1">
             <button
               onClick={() => {
@@ -100,126 +115,154 @@ function ProfileHeader() {
                 mouseClickSound.play().catch(() => {});
                 toggleSound();
               }}
-              className={`p-2.5 rounded-full transition-all duration-200 ${
-                isSoundEnabled ? "text-cyan-400 bg-cyan-400/10" : "text-slate-400 hover:bg-slate-700/50"
+              className={`p-2 rounded-full transition-all ${
+                isSoundEnabled ? "text-cyan-400 bg-white/10" : "text-white/40 hover:bg-white/10"
               }`}
             >
-              {isSoundEnabled ? <Volume2Icon size={19} /> : <VolumeOffIcon size={19} />}
+              {isSoundEnabled ? <Volume2Icon size="16" /> : <VolumeOffIcon size="16" />}
             </button>
-
-            {/* ONLY this button opens Settings now */}
             <button
               onClick={() => { playClickSound(); setIsSettingsOpen(true); }}
-              className="p-2.5 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-full transition-all duration-200 active:scale-90"
-              title="Settings"
+              className="p-2 text-white/40 hover:text-cyan-400 hover:bg-white/10 rounded-full transition-all"
             >
-              <Settings size={20} />
+              <Settings size="16" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* --- SETTINGS SLIDE-OVER --- */}
+      {/* SETTINGS SIDEBAR - Slide out from right */}
       {isSettingsOpen && (
-        <div className="absolute inset-0 z-[100] bg-slate-950 flex flex-col animate-in slide-in-from-left duration-300">
-          <div className="h-[100px] bg-slate-900 flex items-end p-6 gap-6 border-b border-slate-800 shadow-lg">
-            <button 
-                onClick={() => { playClickSound(); setIsSettingsOpen(false); }} 
-                className="text-slate-200 hover:bg-slate-800 p-2 rounded-full transition-all hover:scale-110"
-            >
-              <ArrowLeft size={24} />
-            </button>
-            <h1 className="text-xl font-bold text-slate-100 mb-1">Profile</h1>
-          </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-gradient-to-b from-slate-900 to-slate-950">
-            <div className="flex flex-col items-center py-10">
-              <div className="relative group">
-                <div className="size-48 rounded-full overflow-hidden border-[6px] border-slate-800 shadow-2xl">
-                  <img 
-                    src={authUser.profilePic || "/avatar.png"} 
-                    className={`object-cover size-full transition-all duration-500 ${isUpdatingProfile ? "blur-sm opacity-50" : ""}`} 
-                    alt="Profile" 
-                  />
-                </div>
-                
-                <button 
-                  onClick={() => fileInputRef.current.click()}
-                  disabled={isUpdatingProfile}
-                  className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-full text-white"
-                >
-                  <Camera size={32} className="mb-2" />
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-center">Change <br/> Photo</span>
-                </button>
-                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
-                
-                {isUpdatingProfile && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="loading loading-ring loading-lg text-cyan-500"></span>
-                    </div>
-                )}
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 z-[150] bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setIsSettingsOpen(false)}
+          />
+          
+          {/* Sidebar Drawer */}
+          <div 
+            ref={sidebarRef}
+            className="fixed top-0 right-0 z-[151] h-full w-full max-w-md bg-black/80 backdrop-blur-xl border-l border-white/20 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/5">
+              <div>
+                <h2 className="text-lg font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                  Profile Settings
+                </h2>
+                <p className="text-xs text-white/40">Update your personal information</p>
               </div>
-            </div>
-
-            <div className="px-10 space-y-10">
-              <div className="space-y-3">
-                <label className="text-cyan-500 text-[11px] font-bold uppercase tracking-[2px]">Your Name</label>
-                <div className="flex items-center gap-4 border-b-2 border-slate-800 focus-within:border-cyan-500 transition-all pb-2 group">
-                  <input
-                    type="text"
-                    className="bg-transparent w-full outline-none text-slate-100 text-lg font-medium"
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  />
-                  <Pencil size={18} className="text-slate-500" />
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-cyan-500 text-[11px] font-bold uppercase tracking-[2px]">About</label>
-                <div className="flex items-center gap-4 border-b-2 border-slate-800 focus-within:border-cyan-500 transition-all pb-2 group">
-                  <input
-                    type="text"
-                    className="bg-transparent w-full outline-none text-slate-200 text-base"
-                    value={formData.bio}
-                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    placeholder="Set your status..."
-                  />
-                  <Pencil size={18} className="text-slate-500" />
-                </div>
-              </div>
-
-              <button
-                onClick={handleSaveInfo}
-                disabled={isUpdatingProfile}
-                className="w-full py-4 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white font-bold rounded-2xl shadow-xl transition-all active:scale-95"
+              <button 
+                onClick={() => setIsSettingsOpen(false)} 
+                className="p-2 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-colors"
               >
-                {isUpdatingProfile ? "SAVING..." : "SAVE PROFILE"}
+                <X size={20} />
               </button>
             </div>
 
-            <div className="mt-16 px-10 pb-12">
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              {/* Profile Image */}
+              <div className="flex flex-col items-center py-8">
+                <div className="relative group">
+                  <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-cyan-500/50 shadow-lg bg-white/5">
+                    <img 
+                      src={authUser?.profilePic || "/avatar.png"} 
+                      className={`object-cover w-full h-full transition-all ${isUpdatingProfile ? "blur-sm opacity-50" : ""}`} 
+                      alt="Profile" 
+                    />
+                  </div>
+                  <button 
+                    onClick={() => fileInputRef.current.click()}
+                    disabled={isUpdatingProfile}
+                    className="absolute bottom-0 right-0 p-2 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 text-black shadow-lg hover:scale-110 transition-transform"
+                  >
+                    <Camera size="16" />
+                  </button>
+                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+                </div>
+                {isUpdatingProfile && (
+                  <div className="mt-2 text-xs text-cyan-400 animate-pulse">Uploading...</div>
+                )}
+              </div>
+
+              {/* Form Fields */}
+              <div className="px-6 space-y-6 pb-8">
+                <div>
+                  <label className="text-cyan-400 text-[11px] font-bold uppercase tracking-wider block mb-2">
+                    Your Name
+                  </label>
+                  <div className="flex items-center gap-3 border-b border-white/20 focus-within:border-cyan-500 py-2 transition-all">
+                    <input
+                      type="text"
+                      className="bg-transparent flex-1 outline-none text-white text-base placeholder:text-white/30"
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                      placeholder="Enter your name"
+                    />
+                    <Pencil size="16" className="text-white/30" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-cyan-400 text-[11px] font-bold uppercase tracking-wider block mb-2">
+                    About
+                  </label>
+                  <div className="flex items-center gap-3 border-b border-white/20 focus-within:border-cyan-500 py-2 transition-all">
+                    <input
+                      type="text"
+                      className="bg-transparent flex-1 outline-none text-white/80 text-sm placeholder:text-white/30"
+                      value={formData.bio}
+                      onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                      placeholder="Set your status..."
+                    />
+                    <Pencil size="16" className="text-white/30" />
+                  </div>
+                </div>
+
                 <button
-                onClick={() => { playClickSound(); setShowLogoutConfirm(true); }}
-                className="w-full flex items-center justify-center gap-3 p-4 bg-red-500/5 hover:bg-red-500/10 text-red-500 rounded-2xl border border-red-500/10 transition-all group"
+                  onClick={handleSaveInfo}
+                  disabled={isUpdatingProfile}
+                  className="w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 disabled:from-gray-600 disabled:to-gray-600 text-black font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/25"
                 >
-                <LogOutIcon size={18} className="group-hover:-translate-x-1 transition-transform" />
-                <span className="font-bold text-sm tracking-wide uppercase">Logout</span>
+                  {isUpdatingProfile ? "SAVING..." : "SAVE PROFILE"}
                 </button>
+
+                <div className="pt-4">
+                  <button
+                    onClick={() => { playClickSound(); setShowLogoutConfirm(true); }}
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl border border-red-500/20 transition-all"
+                  >
+                    <LogOutIcon size="16" />
+                    <span className="text-sm font-medium">Logout</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
-      {/* --- LOGOUT MODAL --- */}
+      {/* LOGOUT MODAL */}
       {showLogoutConfirm && (
-        <div className="modal modal-open z-[110] backdrop-blur-sm">
-          <div className="modal-box bg-slate-900 border border-slate-800 shadow-2xl rounded-3xl">
-            <h3 className="font-bold text-xl text-slate-100">Sign Out?</h3>
-            <p className="text-slate-400 mt-3">You will be logged out of your account.</p>
-            <div className="modal-action gap-3">
-              <button className="btn btn-ghost rounded-xl" onClick={() => setShowLogoutConfirm(false)}>Cancel</button>
-              <button className="btn bg-red-600 hover:bg-red-500 border-none text-white px-8 rounded-xl" onClick={() => { playClickSound(); logout(); }}>Logout</button>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl max-w-sm w-full mx-4 p-6 animate-in zoom-in-95 duration-200">
+            <h3 className="font-bold text-xl text-cyan-400">Sign Out?</h3>
+            <p className="text-white/60 mt-2 text-sm">You will be logged out of your account.</p>
+            <div className="flex gap-3 mt-6">
+              <button 
+                className="flex-1 py-2 text-white/60 hover:text-white transition-colors" 
+                onClick={() => setShowLogoutConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all" 
+                onClick={() => { playClickSound(); logout(); }}
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>

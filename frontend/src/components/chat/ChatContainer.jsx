@@ -108,7 +108,7 @@ const ChatContainer = () => {
     };
   }, [activeChatId, isGroup, socket, getMessagesByUserId, getGroupMessages]);
 
-  //  Read Receipts Hook (Private only)
+  //  Read Receipts Hook 
   useReadReceipts(
     isGroup ? null : selectedUser,
     messages,
@@ -237,27 +237,9 @@ const ChatContainer = () => {
       <ChatHeader>
         <MessageSearch />
       </ChatHeader>
-      <div
+      {/* transparent background with blur effect */}
+     <div
         className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar relative"
-        style={{
-          background: `
-    radial-gradient(
-      circle at top center,
-      rgba(37, 211, 102, 0.08),
-      transparent 42%
-    ),
-    radial-gradient(
-      circle at bottom right,
-      rgba(0, 136, 255, 0.04),
-      transparent 50%
-    ),
-    linear-gradient(
-      180deg,
-      #0b141a 0%,
-      #0d1b22 100%
-    )
-  `,
-        }}
         onClick={(e) =>
           e.target === e.currentTarget && messageActions.closeAllMenus()
         }
@@ -278,9 +260,9 @@ const ChatContainer = () => {
           </div>
         ) : searchTerm ? (
           <div className="flex items-center justify-center h-full opacity-60">
-            <p className="text-base-content/60">
+            <p className="text-white/50">
               No messages found matching "
-              <span className="text-primary">{searchTerm}</span>"
+              <span className="text-cyan-400">{searchTerm}</span>"
             </p>
           </div>
         ) : (
@@ -298,14 +280,14 @@ const ChatContainer = () => {
         setSelectedImg={setSelectedImg}
       />
       {isGroup && otherTypingUsers.length > 0 && (
-        <div className="px-4 py-2 border-t border-slate-700/50 bg-slate-900/50 flex items-center gap-2">
+        <div className="px-4 py-2 border-t border-white/10 bg-black/20  backdrop-blur-sm flex items-center gap-2">
           {/* Typing dots animation */}
           <div className="flex gap-1">
-            <span className="size-1.5 rounded-full bg-[#5bc0de] animate-bounce [animation-delay:-0.3s]"></span>
-            <span className="size-1.5 rounded-full bg-[#5bc0de] animate-bounce [animation-delay:-0.15s]"></span>
-            <span className="size-1.5 rounded-full bg-[#5bc0de] animate-bounce"></span>
+           <span className="size-1.5 rounded-full bg-cyan-400 typing-dot" style={{ animationDelay: '0ms' }}></span>
+            <span className="size-1.5 rounded-full bg-cyan-400 typing-dot" style={{ animationDelay: '300ms' }}></span>
+            <span className="size-1.5 rounded-full bg-cyan-400 typing-dot" style={{ animationDelay: '600ms' }}></span>
           </div>
-          <p className="text-xs text-[#5bc0de] font-medium italic">
+          <p className="text-xs text-cyan-400 font-medium italic">
             {otherTypingUsers.map((u) => u.userName).join(", ")} is typing...
           </p>
         </div>
@@ -317,7 +299,7 @@ const ChatContainer = () => {
           isGroup={isGroup}
         />
       ) : (
-        <div className="p-4 text-center text-slate-500 text-xs">
+        <div className="p-4 text-center text-white/40 text-xs backdrop-blur-sm bg-black/50">
           Only admins can send messages.
         </div>
       )}

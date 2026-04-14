@@ -3,6 +3,7 @@ import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import UsersLoadingSkeleton from "./UsersLoadingSkeleton";
 import UserCard from "./UserCard";
+import { Users, UserPlus } from "lucide-react";
 
 function ContactList() {
   const {
@@ -43,14 +44,32 @@ function ContactList() {
 
   if (filteredContacts.length === 0) {
     return (
-      <p className="text-center text-base-content/50 mt-6">
-        No contacts found
-      </p>
+      <div className="flex flex-col items-center justify-center mt-12 px-4">
+        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-3 border border-white/10">
+          <Users className="w-8 h-8 text-white/30" />
+        </div>
+        <p className="text-white/40 text-sm text-center">
+          No contacts found
+        </p>
+        <p className="text-white/20 text-xs text-center mt-1">
+          Try searching for a different name
+        </p>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5 px-1">
+      {/* Header with contact count */}
+      <div className="flex items-center justify-between px-2 mb-2">
+        <span className="text-[10px] text-cyan-400/60 uppercase tracking-wider font-semibold">
+          All Contacts
+        </span>
+        <span className="text-[10px] text-white/30">
+          {filteredContacts.length} contacts
+        </span>
+      </div>
+      
       {filteredContacts.map((contact) => (
         <UserCard
           key={contact._id}
@@ -60,6 +79,7 @@ function ContactList() {
           onClick={() => setSelectedUser(contact)}
         />
       ))}
+      
     </div>
   );
 }

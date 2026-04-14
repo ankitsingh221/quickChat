@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import GroupInfoModal from "./groups/GroupInfoModal";
-import UserInfoModal from "./UserInfoModal";
 import toast from "react-hot-toast";
 
 function ChatHeader({ children }) {
@@ -27,24 +26,25 @@ function ChatHeader({ children }) {
   const isSelectionMode = useChatStore((state) => state.isSelectionMode);
 
   const toggleSelectionMode = useChatStore(
-    (state) => state.toggleSelectionMode
+    (state) => state.toggleSelectionMode,
   );
   const deleteSelectedMessages = useChatStore(
-    (state) => state.deleteSelectedMessages
+    (state) => state.deleteSelectedMessages,
   );
   const setForwardingMessages = useChatStore(
-    (state) => state.setForwardingMessages
+    (state) => state.setForwardingMessages,
   );
   const groupMessages = useChatStore((state) => state.groupMessages);
   const selectedMessages = useChatStore(
-    (state) => state.selectedMessages || []
+    (state) => state.selectedMessages || [],
   );
 
   const { onlineUsers, authUser } = useAuthStore();
 
   const [showMenu, setShowMenu] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
-  const [showUserInfo, setShowUserInfo] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const menuRef = useRef(null);
 
   const isGroup = !!selectedGroup;
@@ -56,16 +56,15 @@ function ChatHeader({ children }) {
 
   const getTypingStatusText = () => {
     if (isGroup) {
-      // Get array of users typing in THIS group from store
       const currentGroupTyping = groupTypingUsers[activeChatId] || [];
       const otherTypers = currentGroupTyping.filter(
-        (u) => u.userId !== authUser?._id
+        (u) => u.userId !== authUser?._id,
       );
 
       if (otherTypers.length === 0) return null;
 
       const names = otherTypers.map(
-        (u) => u.userName?.split(" ")[0] || "Someone"
+        (u) => u.userName?.split(" ")[0] || "Someone",
       );
 
       if (names.length === 1) return `${names[0]} is typing...`;
@@ -81,7 +80,6 @@ function ChatHeader({ children }) {
 
   const typingText = getTypingStatusText();
 
-  // formater
   const formatLastSeen = (dateString) => {
     if (!dateString) return "offline";
     const date = new Date(dateString);
@@ -97,8 +95,6 @@ function ChatHeader({ children }) {
       : `last seen ${date.toLocaleDateString()}`;
   };
 
- 
-  //  Close menu on click outside (Keep your existing one)
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -109,26 +105,63 @@ function ChatHeader({ children }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  //  Reset modals safely when chat changes
   useEffect(() => {
-    // We check if any modal is open FIRST to avoid unnecessary updates
-    if (showUserInfo || showGroupInfo || showMenu) {
-      // We defer the update to the next tick to prevent "cascading renders"
+    if (showGroupInfo || showMenu) {
       Promise.resolve().then(() => {
-        setShowUserInfo(false);
         setShowGroupInfo(false);
         setShowMenu(false);
       });
     }
+    return () => {
+      if (isSelectionMode) {
+        toggleSelectionMode(false);
+      }
+    };
+  }, [activeChatId, toggleSelectionMode, isSelectionMode]);
 
-    // cleanup selection mode when switching
-    return () => toggleSelectionMode(false);
-  }, [activeChatId, toggleSelectionMode]);
+  // Handle delete selected messages
+  const handleDeleteSelected = async () => {
+    if (selectedMessages.length === 0) {
+      toast.error("No messages selected");
+      return;
+    }
 
-  // slection mode header
+    setIsDeleting(true);
+    try {
+      await deleteSelectedMessages("forMe");
+      toast.success(`${selectedMessages.length} message(s) deleted`);
+      toggleSelectionMode(false);
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error("Failed to delete messages");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Handle clear chat
+  const handleClearChat = async () => {
+    if (!activeChatId) {
+      toast.error("Invalid chat");
+      return;
+    }
+
+    setIsClearing(true);
+    try {
+      await clearChat(activeChatId, isGroup);
+      toast.success("Chat cleared successfully");
+      setShowMenu(false);
+    } catch (error) {
+      console.error("Clear chat error:", error);
+      toast.error("Failed to clear chat");
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   if (isSelectionMode) {
     return (
-      <div className="flex justify-between items-center bg-slate-900 border-b border-cyan-500/50 min-h-[70px] px-6 animate-in slide-in-from-top duration-300 z-10">
+      <div className="flex justify-between items-center bg-black/40 backdrop-blur-xl border-b border-white/10 min-h-[70px] px-6 animate-in slide-in-from-top duration-300 z-10">
         <div className="flex items-center gap-4">
           <button
             onClick={() => toggleSelectionMode(false)}
@@ -136,20 +169,18 @@ function ChatHeader({ children }) {
           >
             <X className="w-6 h-6" />
           </button>
-          <span className="text-slate-200 font-bold text-lg">
+          <span className="text-white font-bold text-lg">
             {selectedMessages?.length || 0} selected
           </span>
         </div>
         <div className="flex items-center gap-2 md:gap-4">
           <button
             onClick={() => {
-              // Choose the correct source based on chat type
               const sourceMessages = isGroup ? groupMessages : messages;
-              // 3Filter using the correct source
               const msgsToForward = sourceMessages.filter((m) =>
                 selectedMessages.some(
-                  (id) => id.toString() === m._id.toString()
-                )
+                  (id) => id.toString() === m._id.toString(),
+                ),
               );
 
               if (msgsToForward.length > 0) {
@@ -159,16 +190,21 @@ function ChatHeader({ children }) {
                 toast.error("Could not find messages to forward");
               }
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-cyan-400 rounded-lg transition-all"
           >
             <Forward className="w-5 h-5" />
             <span className="hidden md:inline">Forward</span>
           </button>
           <button
-            onClick={deleteSelectedMessages}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all"
+            onClick={handleDeleteSelected}
+            disabled={isDeleting}
+            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all disabled:opacity-50"
           >
-            <Trash2 className="w-5 h-5" />
+            {isDeleting ? (
+              <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Trash2 className="w-5 h-5" />
+            )}
             <span className="hidden md:inline">Delete</span>
           </button>
         </div>
@@ -176,10 +212,9 @@ function ChatHeader({ children }) {
     );
   }
 
-  // regular heder
   return (
     <>
-      <div className="flex justify-between items-center bg-slate-800 border-b border-slate-700/50 min-h-[70px] px-4 md:px-6">
+      <div className="flex justify-between items-center bg-black/30 backdrop-blur-md border-b border-white/10 min-h-[70px] px-4 md:px-6">
         <div className="flex items-center gap-3">
           {/* AVATAR SECTION */}
           <div
@@ -188,22 +223,26 @@ function ChatHeader({ children }) {
             } cursor-pointer active:scale-95 transition-transform`}
             onClick={() => {
               if (isGroup) setShowGroupInfo(true);
-              else setShowUserInfo(true);
             }}
           >
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-slate-700 overflow-hidden bg-slate-800 flex items-center justify-center">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-white/20 overflow-hidden bg-white/5 flex items-center justify-center">
               {isGroup ? (
                 selectedGroup.groupPic ? (
-                  <img src={selectedGroup.groupPic} alt="group" />
+                  <img
+                    src={selectedGroup.groupPic}
+                    alt="group"
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <div className="w-full h-full bg-slate-700 flex items-center justify-center">
-                    <Users className="w-5 h-5 md:w-6 md:h-6 text-slate-400" />
+                  <div className="w-full h-full bg-white/10 flex items-center justify-center">
+                    <Users className="w-5 h-5 md:w-6 md:h-6 text-white/40" />
                   </div>
                 )
               ) : (
                 <img
                   src={selectedUser?.profilePic || "/avatar.png"}
                   alt="user"
+                  className="w-full h-full object-cover"
                 />
               )}
             </div>
@@ -214,42 +253,40 @@ function ChatHeader({ children }) {
             className="cursor-pointer overflow-hidden"
             onClick={() => {
               if (isGroup) setShowGroupInfo(true);
-              else setShowUserInfo(true);
             }}
           >
-            <h3 className="text-slate-200 font-semibold text-base md:text-lg leading-tight truncate max-w-[140px] md:max-w-[300px]">
+            <h3 className="text-white font-semibold text-base md:text-lg leading-tight truncate max-w-[140px] md:max-w-[300px]">
               {isGroup
                 ? selectedGroup.groupName || selectedGroup.name
                 : selectedUser?.fullName}
             </h3>
 
-            {/* Status Line: Shows Typing or Online Status */}
             <div className="text-[11px] md:text-xs flex items-center gap-1.5 h-4 mt-0.5">
               {typingText ? (
                 <span className="text-cyan-400 font-medium animate-pulse truncate italic">
                   {typingText}
                 </span>
               ) : (
-                <div className="flex items-center gap-1.5 text-slate-400 truncate">
+                <div className="flex items-center gap-1.5 text-white/40 truncate">
                   {!isGroup && (
                     <span
                       className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                        isOnline ? "bg-cyan-500" : "bg-slate-500"
+                        isOnline ? "bg-cyan-500" : "bg-white/30"
                       }`}
                     ></span>
                   )}
                   <span
-                    className={`truncate  transition-colors duration-300 ${
+                    className={`truncate transition-colors duration-300 ${
                       !isGroup && isOnline
                         ? "text-cyan-400 font-medium"
-                        : "text-slate-400"
+                        : "text-white/40"
                     }`}
                   >
                     {isGroup
                       ? `${selectedGroup.members?.length || 0} members`
                       : isOnline
-                      ? "Online"
-                      : formatLastSeen(selectedUser?.lastSeen)}
+                        ? "Online"
+                        : formatLastSeen(selectedUser?.lastSeen)}
                   </span>
                 </div>
               )}
@@ -268,21 +305,21 @@ function ChatHeader({ children }) {
               }}
               className={`p-2 rounded-full transition-colors ${
                 showMenu
-                  ? "bg-slate-700 text-white"
-                  : "text-slate-400 hover:bg-slate-700/50"
+                  ? "bg-white/10 text-white"
+                  : "text-white/40 hover:bg-white/10"
               }`}
             >
               <MoreVertical className="w-5 h-5" />
             </button>
 
             {showMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-slate-800 rounded-lg shadow-2xl border border-slate-700 z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 mt-2 w-48 bg-black/80 backdrop-blur-xl rounded-lg shadow-2xl border border-white/10 z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                 <button
                   onClick={() => {
                     toggleSelectionMode(true);
                     setShowMenu(false);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-slate-200 hover:bg-slate-700 transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-white/80 hover:bg-white/10 transition-colors"
                 >
                   <CheckSquare className="w-4 h-4 text-cyan-400" />{" "}
                   <span className="text-sm">Select Messages</span>
@@ -293,21 +330,24 @@ function ChatHeader({ children }) {
                       setShowGroupInfo(true);
                       setShowMenu(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-slate-200 hover:bg-slate-700 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-white/80 hover:bg-white/10 transition-colors"
                   >
                     <Info className="w-4 h-4 text-cyan-400" />{" "}
                     <span className="text-sm">Group Info</span>
                   </button>
                 )}
-                <div className="h-[1px] bg-slate-700 mx-2" />
+
+                <div className="h-[1px] bg-white/10 mx-2" />
                 <button
-                  onClick={() => {
-                    clearChat(activeChatId, isGroup);
-                    setShowMenu(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-600/10 transition-colors"
+                  onClick={handleClearChat}
+                  disabled={isClearing}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
                 >
-                  <Trash2 className="w-4 h-4" />{" "}
+                  {isClearing ? (
+                    <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
                   <span className="text-sm">Clear Chat</span>
                 </button>
               </div>
@@ -320,7 +360,7 @@ function ChatHeader({ children }) {
             }
             className="p-2 hover:bg-red-500/10 rounded-full transition-colors group"
           >
-            <XIcon className="w-5 h-5 text-slate-400 group-hover:text-red-400" />
+            <XIcon className="w-5 h-5 text-white/40 group-hover:text-red-400" />
           </button>
         </div>
       </div>
@@ -329,12 +369,6 @@ function ChatHeader({ children }) {
         <GroupInfoModal
           group={selectedGroup}
           onClose={() => setShowGroupInfo(false)}
-        />
-      )}
-      {!isGroup && showUserInfo && (
-        <UserInfoModal
-          user={selectedUser}
-          onClose={() => setShowUserInfo(false)}
         />
       )}
     </>

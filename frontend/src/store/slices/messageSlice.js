@@ -339,155 +339,202 @@ export const createMessageSlice = (set, get) => ({
     }
   },
 
-  deleteSelectedMessages: async (deleteType = "forMe") => {
-    const { selectedMessages } = get();
-    const isForEveryone = deleteType === "forEveryone";
+ deleteSelectedMessages: async (deleteType = "forMe") => {
+  const { selectedMessages, activeChatId, isGroup } = get();
+  
+  if (!selectedMessages || selectedMessages.length === 0) {
+    toast.error("No messages selected");
+    return false;
+  }
 
-    try {
-      await axiosInstance.post("/messages/delete-bulk", {
-        messageIds: selectedMessages,
-        isForEveryone: isForEveryone,
-      });
+  const isForEveryone = deleteType === "forEveryone";
 
-      set((state) => {
-        const updateList = (list) => {
-          if (isForEveryone) {
-            // Keep the message object but mark as deleted
-            return list.map((m) =>
-              selectedMessages.includes(m._id)
-                ? { ...m, isDeleted: true, text: null, image: null }
-                : m
-            );
-          } else {
-            // Remove from local view entirely
-            return list.filter((m) => !selectedMessages.includes(m._id));
-          }
-        };
+  try {
+    await axiosInstance.post("/messages/delete-bulk", {
+      messageIds: selectedMessages,
+      isForEveryone: isForEveryone,
+      chatId: activeChatId,
+      isGroup: isGroup,
+    });
 
-        return {
-          messages: updateList(state.messages),
-          groupMessages: updateList(state.groupMessages || []),
-          selectedMessages: [],
-          isSelectionMode: false,
-        };
-      });
-
-      toast.success(isForEveryone ? "Deleted for everyone" : "Deleted for me");
-    } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || "Failed to delete messages");
-    }
-  },
-
-  clearChat: async (id, isGroup = false) => {
-    try {
-      await axiosInstance.delete(`/messages/clear/${id}?isGroup=${isGroup}`);
-      set((state) => {
-        if (isGroup) {
-          return {
-            // Immediately empty the array
-            groupMessages: [],
-            // Update the sidebar preview
-            groups: (state.groups || []).map((g) =>
-              String(g._id) === String(id) ? { ...g, lastMessage: null } : g
-            ),
-          };
-        } else {
-          return {
-            // Immediately empty the array
-            messages: [],
-            // Update the sidebar preview
-            chats: (state.chats || []).map((c) =>
-              String(c._id) === String(id) ? { ...c, lastMessage: null } : c
-            ),
-          };
-        }
-      });
-
-      toast.success("Chat cleared");
-    } catch (error) {
-      console.error("Clear chat error:", error);
-      toast.error("Failed to clear chat");
-    }
-  },
-
-  forwardMessages: async (targetId, isTargetGroup = false) => {
-    const {
-      forwardingMessages,
-      updateChatWithNewMessage,
-      updateGroupWithNewMessage,
-      chats,
-      groups,
-      getMyChatPartners,
-    } = get();
-
-    if (!forwardingMessages?.length) return false;
-
-    try {
-      //  Define the endpoint once since the targetId is the same for all messages
-      const endpoint = isTargetGroup
-        ? `/messages/group/${targetId}/send`
-        : `/messages/send/${targetId}`;
-
-      //  Map promises using the clean endpoint
-      const promises = forwardingMessages.map((msg) =>
-        axiosInstance.post(endpoint, {
-          text: msg.text,
-          image: msg.image,
-          isForwarded: true,
-        })
-      );
-
-      const responses = await Promise.all(promises);
-
-      // Process the last message for the Sidebar/UI
-      if (responses.length > 0) {
-        const lastSentMsg = responses[responses.length - 1].data?.data;
-        if (!lastSentMsg) return true;
-
-        if (isTargetGroup) {
-          updateGroupWithNewMessage?.(lastSentMsg);
-          // Move group to top of sidebar
-          set({
-            groups: [
-              {
-                ...groups.find((g) => String(g._id) === String(targetId)),
-                lastMessage: lastSentMsg,
-              },
-              ...groups.filter((g) => String(g._id) !== String(targetId)),
-            ],
-          });
-        } else {
-          updateChatWithNewMessage?.(lastSentMsg);
-          // Move chat to top of sidebar
-          const chatExists = chats.some(
-            (c) => String(c._id) === String(targetId)
+    set((state) => {
+      const updateList = (list) => {
+        if (isForEveryone) {
+          // Keep the message object but mark as deleted
+          return list.map((m) =>
+            selectedMessages.includes(m._id)
+              ? { ...m, isDeleted: true, text: null, image: null, isEdited: false }
+              : m
           );
-          if (!chatExists) {
-            await getMyChatPartners();
-          } else {
-            set({
-              chats: [
-                {
-                  ...chats.find((c) => String(c._id) === String(targetId)),
-                  lastMessage: lastSentMsg,
-                },
-                ...chats.filter((c) => String(c._id) !== String(targetId)),
-              ],
-            });
-          }
+        } else {
+          // Remove from local view entirely
+          return list.filter((m) => !selectedMessages.includes(m._id));
         }
-      }
+      };
 
-      set({ forwardingMessages: [], isSelectionMode: false });
-      toast.success(`Forwarded ${forwardingMessages.length} messages`);
-      return true;
-    } catch (error) {
-      console.error("Forwarding error:", error);
+      return {
+        messages: isGroup ? state.messages : updateList(state.messages),
+        groupMessages: isGroup ? updateList(state.groupMessages || []) : state.groupMessages,
+        selectedMessages: [],
+        isSelectionMode: false,
+      };
+    });
+
+    toast.success(isForEveryone ? "Deleted for everyone" : "Deleted for me");
+    return true;
+  } catch (error) {
+    console.error(error);
+    toast.error(error.response?.data?.message || "Failed to delete messages");
+    return false;
+  }
+},
+
+ clearChat: async (id, isGroup = false) => {
+  if (!id) {
+    toast.error("Invalid chat ID");
+    return false;
+  }
+
+  try {
+    await axiosInstance.delete(`/messages/clear/${id}?isGroup=${isGroup}`);
+    
+    set((state) => {
+      if (isGroup) {
+        return {
+          groupMessages: [],
+          groups: (state.groups || []).map((g) =>
+            String(g._id) === String(id) 
+              ? { ...g, lastMessage: null, unreadCount: 0 } 
+              : g
+          ),
+        };
+      } else {
+        return {
+          messages: [],
+          chats: (state.chats || []).map((c) =>
+            String(c._id) === String(id) 
+              ? { ...c, lastMessage: null, unreadCount: 0 } 
+              : c
+          ),
+        };
+      }
+    });
+
+    toast.success("Chat cleared successfully");
+    return true;
+  } catch (error) {
+    console.error("Clear chat error:", error);
+    toast.error(error.response?.data?.message || "Failed to clear chat");
+    return false;
+  }
+},
+
+ forwardMessages: async (targetId, isTargetGroup = false, singleMessage = null) => {
+  const {
+    forwardingMessages,
+    updateChatWithNewMessage,
+    updateGroupWithNewMessage,
+    chats,
+    groups,
+    getMyChatPartners,
+  } = get();
+
+  // Determine which messages to forward
+  const messagesToForward = singleMessage 
+    ? [singleMessage] 
+    : (forwardingMessages || []);
+
+  if (!messagesToForward.length) {
+    toast.error("No messages to forward");
+    return false;
+  }
+
+  try {
+    const endpoint = isTargetGroup
+      ? `/messages/group/${targetId}/send`
+      : `/messages/send/${targetId}`;
+
+    // Send messages sequentially to avoid server overload
+    const sentMessages = [];
+    for (const msg of messagesToForward) {
+      try {
+        const response = await axiosInstance.post(endpoint, {
+          text: msg.text || "",
+          image: msg.image || null,
+          isForwarded: true,
+        });
+        
+        if (response.data?.data) {
+          sentMessages.push(response.data.data);
+        }
+        
+        // Small delay between messages to prevent rate limiting
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } catch (err) {
+        console.error("Failed to forward individual message:", err);
+        // Continue with next message even if one fails
+      }
+    }
+
+    if (sentMessages.length === 0) {
       toast.error("Failed to forward messages");
       return false;
     }
-  },
+
+    // Update UI with the last sent message for sidebar preview
+    const lastSentMsg = sentMessages[sentMessages.length - 1];
+    
+    if (lastSentMsg) {
+      if (isTargetGroup) {
+        if (updateGroupWithNewMessage) {
+          updateGroupWithNewMessage(lastSentMsg);
+        }
+        // Move group to top of sidebar
+        const existingGroup = groups?.find(g => String(g._id) === String(targetId));
+        if (existingGroup) {
+          set({
+            groups: [
+              { ...existingGroup, lastMessage: lastSentMsg },
+              ...(groups?.filter(g => String(g._id) !== String(targetId)) || []),
+            ],
+          });
+        }
+      } else {
+        if (updateChatWithNewMessage) {
+          updateChatWithNewMessage(lastSentMsg);
+        } else {
+          // Move chat to top of sidebar
+          const chatExists = chats?.some(c => String(c._id) === String(targetId));
+          if (!chatExists) {
+            await getMyChatPartners();
+          } else {
+            const existingChat = chats?.find(c => String(c._id) === String(targetId));
+            if (existingChat) {
+              set({
+                chats: [
+                  { ...existingChat, lastMessage: lastSentMsg },
+                  ...(chats?.filter(c => String(c._id) !== String(targetId)) || []),
+                ],
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Clear forwarding state only if this was a bulk forward (not single message)
+    if (!singleMessage) {
+      set({ forwardingMessages: [], isSelectionMode: false });
+    }
+    
+    toast.success(`Forwarded ${sentMessages.length} of ${messagesToForward.length} messages`);
+    return true;
+  } catch (error) {
+    console.error("Forwarding error:", error);
+    toast.error(error.response?.data?.message || "Failed to forward messages");
+    return false;
+  }
+},
 
   updateChatWithNewMessage: (msg) => {
     //  If this is a group message, let createGroupSlice handle it.
