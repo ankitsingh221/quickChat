@@ -36,16 +36,23 @@ const useMessageActions = ({
   // Click outside handler  Emoji Picker
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (activeMsgId && !e.target.closest(".action-menu") && !e.target.closest(".three-dot-button")) {
+      if (
+        activeMsgId &&
+        !e.target.closest(".action-menu") &&
+        !e.target.closest(".three-dot-button")
+      ) {
         setActiveMsgId(null);
       }
-      
-      const isPickerClick = e.target.closest(".EmojiPickerReact") || e.target.closest(".epr-main");
-      
-      if (showReactionsMenu && 
-          !e.target.closest(".reactions-menu") && 
-          !e.target.closest(".react-button") && 
-          !isPickerClick) {
+
+      const isPickerClick =
+        e.target.closest(".EmojiPickerReact") || e.target.closest(".epr-main");
+
+      if (
+        showReactionsMenu &&
+        !e.target.closest(".reactions-menu") &&
+        !e.target.closest(".react-button") &&
+        !isPickerClick
+      ) {
         setShowReactionsMenu(null);
       }
     };
@@ -53,10 +60,13 @@ const useMessageActions = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [activeMsgId, showReactionsMenu]);
 
-  const canModify = useCallback((createdAt) => {
-    const diff = now - new Date(createdAt).getTime();
-    return (diff < 0 ? 0 : diff) < FIVE_MIN;
-  }, [now]);
+  const canModify = useCallback(
+    (createdAt) => {
+      const diff = now - new Date(createdAt).getTime();
+      return (diff < 0 ? 0 : diff) < FIVE_MIN;
+    },
+    [now],
+  );
 
   const closeAllMenus = useCallback(() => {
     setActiveMsgId(null);
@@ -75,11 +85,15 @@ const useMessageActions = ({
     closeAllMenus();
   };
 
-  const handleReactionClick = useCallback((messageId, emoji) => {
-    if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
-    toggleReaction(messageId, emoji);
-    closeAllMenus();
-  }, [toggleReaction, closeAllMenus, isSoundEnabled, playRandomKeyStrokeSound]);
+  const handleReactionClick = useCallback(
+    (messageId, emoji) => {
+      if (isSoundEnabled && playRandomKeyStrokeSound)
+        playRandomKeyStrokeSound();
+      toggleReaction(messageId, emoji);
+      closeAllMenus();
+    },
+    [toggleReaction, closeAllMenus, isSoundEnabled, playRandomKeyStrokeSound],
+  );
 
   return {
     canModify,
@@ -90,15 +104,17 @@ const useMessageActions = ({
     showReactionsMenu,
     handleThreeDotClick: (msgId, e) => {
       e?.stopPropagation();
-      if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
-      setActiveMsgId(prev => prev === msgId ? null : msgId);
+      if (isSoundEnabled && playRandomKeyStrokeSound)
+        playRandomKeyStrokeSound();
+      setActiveMsgId((prev) => (prev === msgId ? null : msgId));
       setShowReactionsMenu(null);
     },
 
     handleReactionButtonClick: (msgId, e) => {
       e?.stopPropagation();
-      if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
-      setShowReactionsMenu(prev => prev === msgId ? null : msgId);
+      if (isSoundEnabled && playRandomKeyStrokeSound)
+        playRandomKeyStrokeSound();
+      setShowReactionsMenu((prev) => (prev === msgId ? null : msgId));
       setActiveMsgId(null);
     },
 
@@ -106,18 +122,21 @@ const useMessageActions = ({
 
     handleEditTextChange: (e) => {
       setEditText(e.target.value);
-      if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
+      if (isSoundEnabled && playRandomKeyStrokeSound)
+        playRandomKeyStrokeSound();
     },
 
     submitEdit: (id, createdAt) => {
       if (!editText.trim() || !canModify(createdAt)) return;
-      if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
+      if (isSoundEnabled && playRandomKeyStrokeSound)
+        playRandomKeyStrokeSound();
       editMessage(id, editText);
       setEditingId(null);
     },
 
     handleDelete: (id, type, createdAt) => {
-      if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
+      if (isSoundEnabled && playRandomKeyStrokeSound)
+        playRandomKeyStrokeSound();
       if (type === "everyone" && !canModify(createdAt)) {
         toast.error("Too late to delete for everyone");
         return;
@@ -129,16 +148,18 @@ const useMessageActions = ({
     handleReactionClick,
 
     handleExistingReactionClick: (messageId, emoji) => {
-      if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
+      if (isSoundEnabled && playRandomKeyStrokeSound)
+        playRandomKeyStrokeSound();
       toggleReaction(messageId, emoji);
     },
 
     handleReply: (msg) => {
-      if (isSoundEnabled && playRandomKeyStrokeSound) playRandomKeyStrokeSound();
+      if (isSoundEnabled && playRandomKeyStrokeSound)
+        playRandomKeyStrokeSound();
       setReplyTo(msg);
       closeAllMenus();
     },
-    
+
     closeAllMenus,
     setReplyTo,
     setEditingId,

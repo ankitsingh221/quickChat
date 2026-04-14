@@ -1,14 +1,14 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import {
   XIcon,
-  MoreVertical,
   Trash2,
   X,
   CheckSquare,
   Forward,
   Users,
   Info,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import GroupInfoModal from "./groups/GroupInfoModal";
@@ -24,7 +24,6 @@ function ChatHeader({ children }) {
   const groupTypingUsers = useChatStore((state) => state.groupTypingUsers);
   const messages = useChatStore((state) => state.messages);
   const isSelectionMode = useChatStore((state) => state.isSelectionMode);
-
   const toggleSelectionMode = useChatStore(
     (state) => state.toggleSelectionMode,
   );
@@ -41,14 +40,12 @@ function ChatHeader({ children }) {
 
   const { onlineUsers, authUser } = useAuthStore();
 
-  const [showMenu, setShowMenu] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [showClearChatModal, setShowClearChatModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  const menuRef = useRef(null);
 
   const isGroup = !!selectedGroup;
-
   const activeChatId = isGroup
     ? selectedGroup?._id?.toString()
     : selectedUser?._id?.toString();
@@ -95,68 +92,81 @@ function ChatHeader({ children }) {
       : `last seen ${date.toLocaleDateString()}`;
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setShowMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (showGroupInfo || showMenu) {
-      Promise.resolve().then(() => {
-        setShowGroupInfo(false);
-        setShowMenu(false);
-      });
-    }
-    return () => {
-      if (isSelectionMode) {
-        toggleSelectionMode(false);
-      }
-    };
-  }, [activeChatId, toggleSelectionMode, isSelectionMode]);
-
   // Handle delete selected messages
   const handleDeleteSelected = async () => {
-    if (selectedMessages.length === 0) {
+    if (!activeChatId) {
+      toast.error("No active chat selected");
+      return;
+    }
+
+    if (!selectedMessages || selectedMessages.length === 0) {
       toast.error("No messages selected");
       return;
     }
 
     setIsDeleting(true);
     try {
-      await deleteSelectedMessages("forMe");
-      toast.success(`${selectedMessages.length} message(s) deleted`);
+      await deleteSelectedMessages(activeChatId, isGroup, "forMe");
+      toast.success(
+        `${selectedMessages.length} message(s) deleted successfully`,
+      );
       toggleSelectionMode(false);
     } catch (error) {
-      console.error("Delete error:", error);
-      toast.error("Failed to delete messages");
+      toast.error(error?.message || "Failed to delete messages");
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Handle clear chat
-  const handleClearChat = async () => {
+  // Handle clear chat - opens modal instead of direct action
+  const handleClearChatClick = () => {
+    setShowClearChatModal(true);
+  };
+
+  // Confirm clear chat
+  const confirmClearChat = async () => {
     if (!activeChatId) {
       toast.error("Invalid chat");
       return;
     }
 
     setIsClearing(true);
+    setShowClearChatModal(false);
+
     try {
       await clearChat(activeChatId, isGroup);
       toast.success("Chat cleared successfully");
-      setShowMenu(false);
     } catch (error) {
-      console.error("Clear chat error:", error);
-      toast.error("Failed to clear chat");
+      toast.error(error?.message || "Failed to clear chat");
     } finally {
       setIsClearing(false);
     }
+  };
+
+  // Cancel clear chat
+  const cancelClearChat = () => {
+    setShowClearChatModal(false);
+  };
+
+  // Handle forward messages
+  const handleForwardMessages = () => {
+    const sourceMessages = isGroup ? groupMessages : messages;
+    const msgsToForward = sourceMessages.filter((m) =>
+      selectedMessages.some((id) => id.toString() === m._id.toString()),
+    );
+
+    if (msgsToForward.length > 0) {
+      setForwardingMessages(msgsToForward);
+      toggleSelectionMode(false);
+      toast.success(`${msgsToForward.length} message(s) ready to forward`);
+    } else {
+      toast.error("Could not find messages to forward");
+    }
+  };
+
+  // Handle select messages
+  const handleSelectMessages = () => {
+    toggleSelectionMode(true);
   };
 
   if (isSelectionMode) {
@@ -164,8 +174,11 @@ function ChatHeader({ children }) {
       <div className="flex justify-between items-center bg-black/40 backdrop-blur-xl border-b border-white/10 min-h-[70px] px-6 animate-in slide-in-from-top duration-300 z-10">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => toggleSelectionMode(false)}
+            onClick={() => {
+              toggleSelectionMode(false);
+            }}
             className="p-2 hover:bg-white/10 rounded-full text-cyan-400 transition-colors"
+            title="Cancel selection"
           >
             <X className="w-6 h-6" />
           </button>
@@ -175,22 +188,9 @@ function ChatHeader({ children }) {
         </div>
         <div className="flex items-center gap-2 md:gap-4">
           <button
-            onClick={() => {
-              const sourceMessages = isGroup ? groupMessages : messages;
-              const msgsToForward = sourceMessages.filter((m) =>
-                selectedMessages.some(
-                  (id) => id.toString() === m._id.toString(),
-                ),
-              );
-
-              if (msgsToForward.length > 0) {
-                setForwardingMessages(msgsToForward);
-                toggleSelectionMode(false);
-              } else {
-                toast.error("Could not find messages to forward");
-              }
-            }}
+            onClick={handleForwardMessages}
             className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-cyan-400 rounded-lg transition-all"
+            title="Forward selected messages"
           >
             <Forward className="w-5 h-5" />
             <span className="hidden md:inline">Forward</span>
@@ -199,6 +199,7 @@ function ChatHeader({ children }) {
             onClick={handleDeleteSelected}
             disabled={isDeleting}
             className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all disabled:opacity-50"
+            title="Delete selected messages"
           >
             {isDeleting ? (
               <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
@@ -224,6 +225,7 @@ function ChatHeader({ children }) {
             onClick={() => {
               if (isGroup) setShowGroupInfo(true);
             }}
+            title={isGroup ? "Group info" : selectedUser?.fullName}
           >
             <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-white/20 overflow-hidden bg-white/5 flex items-center justify-center">
               {isGroup ? (
@@ -294,76 +296,115 @@ function ChatHeader({ children }) {
           </div>
         </div>
 
-        {/* ACTIONS SECTION */}
+        {/* ACTIONS SECTION - DIRECT BUTTONS WITH TOOLTIPS */}
         <div className="flex items-center gap-1 md:gap-2">
           {children}
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu(!showMenu);
-              }}
-              className={`p-2 rounded-full transition-colors ${
-                showMenu
-                  ? "bg-white/10 text-white"
-                  : "text-white/40 hover:bg-white/10"
-              }`}
-            >
-              <MoreVertical className="w-5 h-5" />
-            </button>
 
-            {showMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-black/80 backdrop-blur-xl rounded-lg shadow-2xl border border-white/10 z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                <button
-                  onClick={() => {
-                    toggleSelectionMode(true);
-                    setShowMenu(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-white/80 hover:bg-white/10 transition-colors"
-                >
-                  <CheckSquare className="w-4 h-4 text-cyan-400" />{" "}
-                  <span className="text-sm">Select Messages</span>
-                </button>
-                {isGroup && (
-                  <button
-                    onClick={() => {
-                      setShowGroupInfo(true);
-                      setShowMenu(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-white/80 hover:bg-white/10 transition-colors"
-                  >
-                    <Info className="w-4 h-4 text-cyan-400" />{" "}
-                    <span className="text-sm">Group Info</span>
-                  </button>
-                )}
-
-                <div className="h-[1px] bg-white/10 mx-2" />
-                <button
-                  onClick={handleClearChat}
-                  disabled={isClearing}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                >
-                  {isClearing ? (
-                    <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Trash2 className="w-4 h-4" />
-                  )}
-                  <span className="text-sm">Clear Chat</span>
-                </button>
-              </div>
-            )}
-          </div>
-
+          {/* SELECT MESSAGES BUTTON */}
           <button
-            onClick={() =>
-              isGroup ? setSelectedGroup(null) : setSelectedUser(null)
-            }
-            className="p-2 hover:bg-red-500/10 rounded-full transition-colors group"
+            onClick={handleSelectMessages}
+            className="group relative p-2 rounded-full transition-all duration-200 text-white/40 hover:bg-white/10 hover:text-cyan-400"
+            title="Select messages"
           >
-            <XIcon className="w-5 h-5 text-white/40 group-hover:text-red-400" />
+            <CheckSquare className="w-5 h-5" />
+            <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+              Select Messages
+            </span>
+          </button>
+
+          {/* GROUP INFO BUTTON (only for groups) */}
+          {isGroup && (
+            <button
+              onClick={() => setShowGroupInfo(true)}
+              className="group relative p-2 rounded-full transition-all duration-200 text-white/40 hover:bg-white/10 hover:text-cyan-400"
+              title="Group information"
+            >
+              <Info className="w-5 h-5" />
+              <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                Group Info
+              </span>
+            </button>
+          )}
+
+          {/* CLEAR CHAT BUTTON */}
+          <button
+            onClick={handleClearChatClick}
+            disabled={isClearing}
+            className="group relative p-2 rounded-full transition-all duration-200 text-white/40 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+            title="Clear all messages"
+          >
+            {isClearing ? (
+              <div className="w-5 h-5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Trash2 className="w-5 h-5" />
+            )}
+            <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+              Clear Chat
+            </span>
+          </button>
+
+          {/* CLOSE CHAT BUTTON */}
+          <button
+            onClick={() => {
+              isGroup ? setSelectedGroup(null) : setSelectedUser(null);
+            }}
+            className="group relative p-2 rounded-full transition-all duration-200 text-white/40 hover:bg-red-500/10 hover:text-red-400"
+            title="Close chat"
+          >
+            <XIcon className="w-5 h-5" />
+            <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+              Close Chat
+            </span>
           </button>
         </div>
       </div>
+
+      {/* CUSTOM CLEAR CHAT CONFIRMATION MODAL */}
+      {showClearChatModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-black/90 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center gap-3 p-6 border-b border-white/10">
+              <div className="p-2 bg-red-500/10 rounded-full">
+                <AlertTriangle className="w-6 h-6 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-white">Clear Chat</h3>
+                <p className="text-sm text-white/40">
+                  This action cannot be undone
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              <p className="text-white/80">
+                Are you sure you want to clear all messages in this{" "}
+                {isGroup ? "group" : "chat"}?
+              </p>
+              <p className="text-sm text-red-400/60 mt-2">
+                ⚠️ This will permanently delete all messages from your view.
+              </p>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex gap-3 p-6 pt-0">
+              <button
+                onClick={cancelClearChat}
+                className="flex-1 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmClearChat}
+                className="flex-1 px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors font-medium"
+              >
+                Yes, Clear Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isGroup && showGroupInfo && (
         <GroupInfoModal
