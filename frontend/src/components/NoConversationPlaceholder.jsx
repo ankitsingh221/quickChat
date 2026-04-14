@@ -17,7 +17,7 @@ function NoConversationPlaceholder() {
         
         {/* Text */}
         <h3 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent mb-2">
-          Welcome to FuturChat
+          Welcome to QuickChat
         </h3>
         <p className="text-white/40 text-sm">
           Select a conversation from the sidebar to start messaging
