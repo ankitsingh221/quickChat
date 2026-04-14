@@ -8,21 +8,73 @@
   syntax: "<angle>";
 }
 
-
+/* ========== BASE STYLES ========== */
 html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
+  width: 100%;
+}
+
+/* Mobile viewport fix */
+html {
+  height: -webkit-fill-available;
 }
 
 body {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
   background-image: url('/background_image.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
+  overflow-x: hidden;
 }
 
+#root {
+  height: 100vh;
+  height: -webkit-fill-available;
+  height: 100dvh; /* Dynamic viewport for modern browsers */
+}
+
+/* ========== AVATAR STYLES - FIXED FOR MOBILE ========== */
+/* Ensure avatars are always visible */
+img[alt*="avatar"],
+img[alt*="profile"],
+.rounded-full img,
+.avatar img {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Avatar container fixes */
+.flex-shrink-0 {
+  flex-shrink: 0 !important;
+}
+
+/* Message avatar sizes - Responsive */
+.message-avatar {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+@media (min-width: 768px) {
+  .message-avatar {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+}
+
+/* ========== INPUT STYLES ========== */
 .input {
   @apply w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-white placeholder-white/30 focus:ring-2 focus:ring-cyan-500 focus:border-transparent;
 }
@@ -125,46 +177,55 @@ body {
   100% { width: 100%; }
 }
 
-
+/* ========== SCROLLBAR STYLES ========== */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(0, 255, 255, 0.3);
-  border-radius: 10px;
-}
+
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 255, 0.3);
+  border-radius: 10px;
+}
 
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 255, 0.5);
+}
+
+/* Global scrollbar */
 ::-webkit-scrollbar {
   width: 4px;
 }
+
 ::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 10px;
 }
+
 ::-webkit-scrollbar-thumb {
   background: rgba(0, 255, 255, 0.3);
   border-radius: 10px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 255, 255, 0.5);
 }
 
-
+/* ========== UTILITY CLASSES ========== */
 .select-none {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   user-select: none;
 }
 
+/* ========== COMPONENT STYLES ========== */
 .avatar.online:before {
   background-color: #22d3ee !important;
   box-shadow: 0 0 5px rgba(34, 211, 238, 0.6);
 }
-
 
 .glass-panel {
   background: rgba(15, 25, 35, 0.6);
@@ -172,7 +233,6 @@ body {
   border: 1px solid rgba(0, 255, 255, 0.15);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
-
 
 .neon-border {
   border: 1px solid rgba(0, 255, 255, 0.3);
@@ -186,7 +246,6 @@ body {
 .neon-pulse {
   animation: neonPulse 2s ease-in-out infinite;
 }
-
 
 .animated-border {
   position: relative;
@@ -204,11 +263,9 @@ body {
   animation: borderGlow 3s linear infinite;
 }
 
-
 .typing-dot {
   animation: typingPulse 1.4s infinite;
 }
-
 
 .glow-avatar {
   position: relative;
@@ -229,7 +286,6 @@ body {
   opacity: 0.5;
 }
 
-
 .cyber-grid {
   background-image: 
     linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
@@ -240,7 +296,6 @@ body {
 .float-animation {
   animation: float 3s ease-in-out infinite;
 }
-
 
 .spinning-border {
   position: relative;
@@ -257,7 +312,6 @@ body {
   z-index: -1;
 }
 
-
 .glass-input {
   background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(8px);
@@ -270,7 +324,6 @@ body {
   box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
   outline: none;
 }
-
 
 .neon-button {
   background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(128, 0, 255, 0.1));
@@ -285,7 +338,6 @@ body {
   transform: translateY(-1px);
 }
 
-
 .status-online {
   background-color: #22d3ee;
   box-shadow: 0 0 8px rgba(34, 211, 238, 0.8);
@@ -297,11 +349,9 @@ body {
   box-shadow: none;
 }
 
-
 .glow-text {
   text-shadow: 0 0 5px rgba(0, 255, 255, 0.5), 0 0 10px rgba(0, 255, 255, 0.3);
 }
-
 
 .modal-box {
   background: rgba(0, 0, 0, 0.8) !important;
@@ -310,11 +360,115 @@ body {
   border-radius: 1.5rem !important;
 }
 
-
 .toast {
   background: rgba(0, 0, 0, 0.8) !important;
   backdrop-filter: blur(12px) !important;
   border: 1px solid rgba(0, 255, 255, 0.2) !important;
   color: #00ffff !important;
   border-radius: 1rem !important;
+}
+
+/* ========== MOBILE SPECIFIC FIXES ========== */
+@media (max-width: 768px) {
+  /* Better touch targets */
+  button, 
+  [role="button"],
+  input,
+  textarea {
+    touch-action: manipulation;
+  }
+  
+  /* Ensure avatars are visible on mobile */
+  .flex-shrink-0 img {
+    display: block !important;
+    visibility: visible !important;
+  }
+  
+  /* Message container improvements */
+  .message-container {
+    gap: 8px;
+  }
+  
+  /* Prevent text zoom on input focus */
+  input, 
+  textarea, 
+  select {
+    font-size: 16px !important;
+  }
+  
+  /* Better scrolling on mobile */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}
+
+/* ========== IOS SAFARI FIXES ========== */
+@supports (padding: max(0px)) {
+  .pb-safe {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  
+  .pt-safe {
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+}
+
+/* ========== AVATAR ANIMATION ========== */
+@keyframes avatar-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 255, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(0, 255, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 255, 0);
+  }
+}
+
+.avatar-pulse {
+  animation: avatar-pulse 2s infinite;
+}
+
+/* App root styles */
+.app-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+/* For modern browsers with dynamic viewport */
+@supports (height: 100dvh) {
+  .app-root {
+    height: 100dvh !important;
+  }
+}
+
+/* For iOS Safari */
+@supports (height: -webkit-fill-available) {
+  .app-root {
+    height: -webkit-fill-available !important;
+  }
+}
+
+/* Ensure content takes full height */
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Fix for mobile keyboard */
+@media (max-width: 768px) {
+  .app-root {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+  }
 }

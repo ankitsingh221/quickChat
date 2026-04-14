@@ -160,10 +160,10 @@ const MessageInput = ({
 
   if (!canSend) {
     return (
-      <div className="p-4 border-t border-white/10 bg-black/40 backdrop-blur-sm">
-        <div className="max-w-3xl mx-auto flex items-center justify-center gap-2 py-3 px-4 bg-black/40 rounded-xl border border-cyan-500/20 text-white/40 text-sm italic">
-          <LockIcon size={14} className="text-cyan-400" /> Only admins can send
-          messages to this group.
+      <div className="flex-shrink-0 p-3 md:p-4 border-t border-white/10 bg-black/40 backdrop-blur-sm">
+        <div className="max-w-3xl mx-auto flex items-center justify-center gap-2 py-2 md:py-3 px-3 md:px-4 bg-black/40 rounded-xl border border-cyan-500/20 text-white/40 text-xs md:text-sm italic">
+          <LockIcon size={12} className="text-cyan-400 flex-shrink-0" />
+          <span>Only admins can send messages to this group.</span>
         </div>
       </div>
     );
@@ -172,52 +172,52 @@ const MessageInput = ({
   return (
     <form
       onSubmit={handleSendMessage}
-      className="p-4 border-t border-white/10 bg-black/40 backdrop-blur-sm relative"
+      className="flex-shrink-0 p-2 md:p-4 border-t border-white/10 bg-black/40 backdrop-blur-sm relative"
     >
-      {/* Emoji Picker Container */}
+      {/* Emoji Picker Container - Responsive */}
       {showEmojiPicker && (
         <div
-          className="absolute bottom-20 left-4 z-50 shadow-2xl animate-in fade-in slide-in-from-bottom-2"
+          className="absolute bottom-16 left-2 md:left-4 z-50 shadow-2xl animate-in fade-in slide-in-from-bottom-2"
           ref={emojiPickerRef}
         >
           <EmojiPicker
             theme="dark"
             onEmojiClick={onEmojiClick}
             autoFocusSearch={false}
-            width={320}
+            width={typeof window !== 'undefined' && window.innerWidth < 400 ? 280 : 320}
             height={400}
           />
         </div>
       )}
 
-      {/* Reply UI */}
+      {/* Reply UI - Responsive */}
       {replyTo && (
         <div className="max-w-3xl mx-auto mb-2 p-2 rounded-xl bg-cyan-500/10 border-l-4 border-cyan-500 flex justify-between items-start backdrop-blur-sm">
-          <div className="flex-1 text-sm overflow-hidden">
-            <p className="text-xs font-semibold text-cyan-400">
+          <div className="flex-1 text-xs md:text-sm overflow-hidden">
+            <p className="text-[10px] md:text-xs font-semibold text-cyan-400">
               Replying to {replyTo.senderId?.fullName?.split(" ")[0] || "User"}
             </p>
-            <p className="truncate text-white/60 text-xs italic">
+            <p className="truncate text-white/60 text-[10px] md:text-xs italic">
               "{replyTo.text?.substring(0, 50)}"
             </p>
           </div>
           <button
             type="button"
             onClick={() => setReplyTo(null)}
-            className="ml-2 p-1 rounded-lg hover:bg-white/10 transition-colors"
+            className="ml-2 p-1 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"
           >
             <XIcon className="w-3 h-3 text-white/40 hover:text-white" />
           </button>
         </div>
       )}
 
-      {/* Image Preview */}
+      {/* Image Preview - Responsive */}
       {imagePreview && (
-        <div className="max-w-3xl mx-auto mb-3 relative inline-block">
+        <div className="max-w-3xl mx-auto mb-2 relative inline-block">
           <img
             src={imagePreview}
             alt="Preview"
-            className="w-20 h-20 object-cover rounded-xl border border-cyan-500/30 shadow-lg"
+            className="w-14 h-14 md:w-16 md:h-16 object-cover rounded-xl border border-cyan-500/30 shadow-lg"
           />
           <button
             type="button"
@@ -229,73 +229,75 @@ const MessageInput = ({
         </div>
       )}
 
-      <div className="max-w-3xl mx-auto flex items-end space-x-2">
-        {/* Main Input Container */}
-        <div className="flex-1 relative flex items-center bg-black/40 backdrop-blur-sm border border-white/10 rounded-2xl focus-within:border-cyan-500/50 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-all">
-          {/* Attach Button (Plus) */}
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="p-2 ml-1 text-white/40 hover:text-cyan-400 transition-colors group"
-            title="Attach file"
-          >
-            <PlusIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
+      {/* Main Input Container - Fully Responsive */}
+      <div className="max-w-3xl mx-auto">
+        <div className="flex items-end gap-1 md:gap-2">
+          {/* Input Wrapper */}
+          <div className="flex-1 relative flex items-center bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl focus-within:border-cyan-500/50 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-all overflow-hidden">
+            {/* Attach Button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-1.5 md:p-2 text-white/40 hover:text-cyan-400 transition-colors flex-shrink-0"
+              title="Attach file"
+            >
+              <PlusIcon className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
 
-          {/* Emoji Toggle Button */}
-          <button
-            type="button"
-            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className={`p-2 transition-colors ${
-              showEmojiPicker
-                ? "text-cyan-400"
-                : "text-white/40 hover:text-cyan-400"
-            }`}
-            title="Add emoji"
-          >
-            <SmileIcon className="w-5 h-5" />
-          </button>
+            {/* Emoji Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className={`p-1.5 md:p-2 transition-colors flex-shrink-0 ${
+                showEmojiPicker
+                  ? "text-cyan-400"
+                  : "text-white/40 hover:text-cyan-400"
+              }`}
+              title="Add emoji"
+            >
+              <SmileIcon className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
 
-          {/* Text Input */}
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={handleTyping}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage(e);
-              }
-            }}
-            rows={1}
-            placeholder="Type a message..."
-            className="w-full resize-none bg-transparent py-3 px-2 focus:outline-none text-white/90 text-sm max-h-32 overflow-y-auto placeholder:text-white/30"
-          />
+            {/* Text Input */}
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={handleTyping}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage(e);
+                }
+              }}
+              rows={1}
+              placeholder="Message..."
+              className="flex-1 resize-none bg-transparent py-2 md:py-3 px-1 focus:outline-none text-white text-sm md:text-base max-h-28 overflow-y-auto placeholder:text-white/30"
+              style={{ fontSize: '16px' }}
+            />
+          </div>
+
+          {/* Send Button */}
+          <button
+            type="submit"
+            disabled={!text.trim() && !imagePreview}
+            className="bg-gradient-to-r from-cyan-500 to-cyan-400 text-black rounded-2xl p-2.5 md:p-3 font-bold hover:from-cyan-400 hover:to-cyan-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 flex-shrink-0"
+          >
+            <SendIcon className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
         </div>
-
-        {/* Send Button */}
-        <button
-          type="submit"
-          disabled={!text.trim() && !imagePreview}
-          className="bg-gradient-to-r from-cyan-500 to-cyan-400 text-black rounded-2xl p-3 font-bold hover:from-cyan-400 hover:to-cyan-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40"
-        >
-          <SendIcon className="w-5 h-5" />
-        </button>
       </div>
 
       {/* Hidden file input */}
       <input
         type="file"
-        accept="image/*, video/*, application/pdf"
+        accept="image/*"
         ref={fileInputRef}
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) {
-            if (file.type.startsWith("image/")) {
-              const reader = new FileReader();
-              reader.onloadend = () => setImagePreview(reader.result);
-              reader.readAsDataURL(file);
-            }
+          if (file && file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onloadend = () => setImagePreview(reader.result);
+            reader.readAsDataURL(file);
           }
         }}
         className="hidden"

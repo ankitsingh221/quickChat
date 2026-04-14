@@ -233,57 +233,62 @@ const ChatContainer = () => {
   if (!activeChatId) return null;
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full w-full overflow-hidden">
       <ChatHeader>
         <MessageSearch />
       </ChatHeader>
-      {/* transparent background with blur effect */}
-     <div
-        className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar relative"
+      
+      {/* Messages area - scrollable */}
+      <div
+        className="flex-1 overflow-y-auto custom-scrollbar"
         onClick={(e) =>
           e.target === e.currentTarget && messageActions.closeAllMenus()
         }
       >
-        {isLoading ? (
-          <MessagesLoadingSkeleton />
-        ) : filteredMessages.length > 0 ? (
-          <div className="w-full flex flex-col space-y-2">
-            <MessageList
-              messages={filteredMessages}
-              authUser={authUser}
-              selectedUser={selectedUser}
-              selectedGroup={selectedGroup}
-              messageActions={messageActions}
-              setSelectedImg={setSelectedImg}
+        <div className="p-4 md:p-6">
+          {isLoading ? (
+            <MessagesLoadingSkeleton />
+          ) : filteredMessages.length > 0 ? (
+            <div className="w-full flex flex-col space-y-2">
+              <MessageList
+                messages={filteredMessages}
+                authUser={authUser}
+                selectedUser={selectedUser}
+                selectedGroup={selectedGroup}
+                messageActions={messageActions}
+                setSelectedImg={setSelectedImg}
+              />
+              <div ref={messageEndRef} className="h-2" />
+            </div>
+          ) : searchTerm ? (
+            <div className="flex items-center justify-center h-full opacity-60 min-h-[200px]">
+              <p className="text-white/50">
+                No messages found matching "
+                <span className="text-cyan-400">{searchTerm}</span>"
+              </p>
+            </div>
+          ) : (
+            <NoChatHistoryPlaceholder
+              name={
+                isGroup
+                  ? selectedGroup?.groupName || "Group"
+                  : selectedUser?.fullName || "User"
+              }
             />
-            <div ref={messageEndRef} className="h-2" />
-          </div>
-        ) : searchTerm ? (
-          <div className="flex items-center justify-center h-full opacity-60">
-            <p className="text-white/50">
-              No messages found matching "
-              <span className="text-cyan-400">{searchTerm}</span>"
-            </p>
-          </div>
-        ) : (
-          <NoChatHistoryPlaceholder
-            name={
-              isGroup
-                ? selectedGroup?.groupName || "Group"
-                : selectedUser?.fullName || "User"
-            }
-          />
-        )}
+          )}
+        </div>
       </div>
+
       <ImageLightbox
         selectedImg={selectedImg}
         setSelectedImg={setSelectedImg}
       />
+      
+      {/* Typing indicator */}
       {isGroup && otherTypingUsers.length > 0 && (
-        <div className="px-4 py-2 border-t border-white/10 bg-black/20  backdrop-blur-sm flex items-center gap-2">
-          {/* Typing dots animation */}
+        <div className="flex-shrink-0 px-4 py-2 border-t border-white/10 bg-black/20 backdrop-blur-sm flex items-center gap-2">
           <div className="flex gap-1">
-           <span className="size-1.5 rounded-full bg-cyan-400 typing-dot" style={{ animationDelay: '0ms' }}></span>
+            <span className="size-1.5 rounded-full bg-cyan-400 typing-dot" style={{ animationDelay: '0ms' }}></span>
             <span className="size-1.5 rounded-full bg-cyan-400 typing-dot" style={{ animationDelay: '300ms' }}></span>
             <span className="size-1.5 rounded-full bg-cyan-400 typing-dot" style={{ animationDelay: '600ms' }}></span>
           </div>
@@ -292,19 +297,25 @@ const ChatContainer = () => {
           </p>
         </div>
       )}
-      {canSendMessage ? (
-        <MessageInput
-          replyTo={messageActions.replyTo}
-          setReplyTo={messageActions.setReplyTo}
-          isGroup={isGroup}
-        />
-      ) : (
-        <div className="p-4 text-center text-white/40 text-xs backdrop-blur-sm bg-black/50">
-          Only admins can send messages.
-        </div>
-      )}
+      
+      {/* Message Input - Fixed at bottom */}
+      <div className="flex-shrink-0">
+        {canSendMessage ? (
+          <MessageInput
+            replyTo={messageActions.replyTo}
+            setReplyTo={messageActions.setReplyTo}
+            isGroup={isGroup}
+          />
+        ) : (
+          <div className="p-4 text-center text-white/40 text-xs backdrop-blur-sm bg-black/50 border-t border-white/10">
+            Only admins can send messages.
+          </div>
+        )}
+      </div>
+      
       {forwardingMessages?.length > 0 && <ForwardModal />}
     </div>
   );
 };
+
 export default ChatContainer;

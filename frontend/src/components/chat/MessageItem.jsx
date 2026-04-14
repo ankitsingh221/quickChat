@@ -83,36 +83,41 @@ const MessageItem = ({
         isMe ? "justify-end" : "justify-start"
       } ${isSelectionMode ? "cursor-pointer" : ""} ${
         isSelected ? "bg-cyan-500/10" : ""
-      } mb-2 px-2 md:px-6 py-0.5 relative`}
+      } mb-2 md:mb-3 px-2 py-0.5 relative`}
     >
       <div
-        className={`flex items-end gap-2 max-w-[85%] md:max-w-[75%] group ${
+        className={`flex items-end gap-2 md:gap-3 max-w-[90%] md:max-w-[75%] group ${
           isMe ? "flex-row-reverse" : "flex-row"
         }`}
         onClick={(e) => !isSelectionMode && e.stopPropagation()}
       >
         {/* SELECTION CHECKBOX */}
         {isSelectionMode && (
-          <div className="self-center flex-shrink-0 px-2">
+          <div className="self-center flex-shrink-0 px-1 md:px-2">
             {isSelected ? (
               <CheckCircle2
-                size={22}
+                size={20}
                 className="text-cyan-500 fill-cyan-500/20 animate-in zoom-in duration-200"
               />
             ) : (
-              <div className="size-[22px] rounded-full border-2 border-white/30" />
+              <div className="size-5 rounded-full border-2 border-white/30" />
             )}
           </div>
         )}
 
-        {/* AVATAR */}
+        {/* AVATAR - Always visible on mobile now */}
         {!isSelectionMode && (
-          <div className="flex-shrink-0 mb-3 hidden sm:block">
-            <img
-              src={senderPic}
-              alt={senderName}
-              className="size-8 rounded-full object-cover border border-white/20 shadow-sm"
-            />
+          <div className="flex-shrink-0 self-end mb-3">
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-full overflow-hidden bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-white/20">
+              <img
+                src={senderPic}
+                alt={senderName}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.src = "/avatar.png";
+                }}
+              />
+            </div>
           </div>
         )}
 
@@ -120,11 +125,12 @@ const MessageItem = ({
         <div
           className={`flex flex-col ${
             isMe ? "items-end" : "items-start"
-          } min-w-0`}
+          } min-w-0 flex-1`}
         >
+          {/* Sender name for group chats - Always visible */}
           {!isMe && isGroup && (
             <span
-              className={`text-[11px] font-bold ml-3 mb-0.5 uppercase tracking-wide ${getSenderColor(
+              className={`text-[10px] md:text-[11px] font-bold ml-1 md:ml-2 mb-0.5 uppercase tracking-wide ${getSenderColor(
                 senderName
               )}`}
             >
@@ -132,7 +138,7 @@ const MessageItem = ({
             </span>
           )}
 
-          <div className="relative">
+          <div className="relative w-full">
             <MessageBubble
               msg={msg}
               isMe={isMe}
@@ -151,7 +157,7 @@ const MessageItem = ({
 
           {/* REACTIONS ROW */}
           {msgReactions.length > 0 && (
-            <div className={`-mt-3 z-10 ${isMe ? "mr-2" : "ml-2"}`}>
+            <div className={`-mt-3 z-10 ${isMe ? "mr-1" : "ml-1"}`}>
               <MessageReactions
                 msgReactions={msgReactions}
                 isMe={isMe}
@@ -168,10 +174,10 @@ const MessageItem = ({
         {/* ACTION BUTTONS (THREE DOTS) */}
         {!msg.isDeleted && !isSelectionMode && (
           <div
-            className={`relative self-center z-20 ${isMe ? "mr-1" : "ml-1"}`}
+            className={`relative self-center flex-shrink-0 z-20 ${isMe ? "mr-0" : "ml-0"}`}
           >
             <button
-              className={`p-2 rounded-full transition-all duration-200 
+              className={`p-1.5 md:p-2 rounded-full transition-all duration-200 
                 ${
                   activeMsgId === msg._id
                     ? "bg-white/10 opacity-100"
