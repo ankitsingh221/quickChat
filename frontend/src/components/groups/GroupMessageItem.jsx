@@ -32,8 +32,8 @@ function GroupMessageItem({ message, isOwnMessage, showAvatar }) {
         <div className="flex-shrink-0 w-8">
           {showAvatar ? (
             <div className="avatar">
-              <div className="size-8 rounded-full">
-                <img src={senderAvatar} alt={senderName} />
+              <div className="size-8 rounded-full border border-white/20 bg-white/5">
+                <img src={senderAvatar} alt={senderName} className="object-cover w-full h-full" />
               </div>
             </div>
           ) : (
@@ -50,7 +50,7 @@ function GroupMessageItem({ message, isOwnMessage, showAvatar }) {
       >
         {/* Sender Name (only for others' messages and if showing avatar) */}
         {!isOwnMessage && showAvatar && (
-          <span className="text-xs text-base-content/60 mb-1 ml-3">
+          <span className="text-xs text-white/40 mb-1 ml-3">
             {senderName}
           </span>
         )}
@@ -60,16 +60,16 @@ function GroupMessageItem({ message, isOwnMessage, showAvatar }) {
           <div
             className={`text-xs p-2 rounded-lg mb-1 border-l-4 ${
               isOwnMessage
-                ? "bg-primary/10 border-primary"
-                : "bg-base-200 border-base-300"
+                ? "bg-cyan-500/10 border-cyan-500/50"
+                : "bg-white/5 border-white/20"
             }`}
           >
-            <p className="font-semibold text-base-content/70">
+            <p className="font-semibold text-white/70">
               {message.replyTo.senderId === authUser._id
                 ? "You"
                 : "Group Member"}
             </p>
-            <p className="text-base-content/60 truncate">
+            <p className="text-white/40 truncate">
               {message.replyTo.text || "📷 Photo"}
             </p>
           </div>
@@ -78,13 +78,13 @@ function GroupMessageItem({ message, isOwnMessage, showAvatar }) {
         <div
           className={`relative px-4 py-2 rounded-2xl ${
             isOwnMessage
-              ? "bg-primary text-primary-content"
-              : "bg-base-200 text-base-content"
+              ? "bg-gradient-to-r from-cyan-500/20 to-cyan-400/10 text-white border border-cyan-500/30"
+              : "bg-white/5 text-white/90 border border-white/10"
           } ${message.isDeleted ? "italic opacity-60" : ""}`}
         >
           {/* Message Content */}
           {message.isDeleted ? (
-            <p className="text-sm">This message was deleted</p>
+            <p className="text-sm text-white/50">This message was deleted</p>
           ) : (
             <>
               {/* Image */}
@@ -99,19 +99,19 @@ function GroupMessageItem({ message, isOwnMessage, showAvatar }) {
 
               {/* Text */}
               {message.text && (
-                <p className="text-sm break-words whitespace-pre-wrap">
+                <p className="text-sm break-words whitespace-pre-wrap text-white/90">
                   {message.text}
                 </p>
               )}
 
               {/* Forwarded Label */}
               {message.isForwarded && (
-                <p className="text-xs opacity-70 mt-1">Forwarded</p>
+                <p className="text-xs text-white/40 mt-1">Forwarded</p>
               )}
 
               {/* Edited Label */}
               {message.isEdited && (
-                <p className="text-xs opacity-70 mt-1">Edited</p>
+                <p className="text-xs text-white/40 mt-1">Edited</p>
               )}
             </>
           )}
@@ -124,9 +124,9 @@ function GroupMessageItem({ message, isOwnMessage, showAvatar }) {
             {isOwnMessage && !message.isDeleted && (
               <span className="text-xs opacity-70">
                 {isSeenByOthers ? (
-                  <CheckCheck size={14} className="text-blue-400" />
+                  <CheckCheck size={14} className="text-cyan-400" />
                 ) : (
-                  <Check size={14} />
+                  <Check size={14} className="text-white/40" />
                 )}
               </span>
             )}

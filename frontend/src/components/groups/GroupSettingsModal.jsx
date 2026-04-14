@@ -13,7 +13,6 @@ function GroupSettingsModal({ group, isCreator, onClose }) {
   const { updateGroupInfo, isUpdatingGroup } = useChatStore();
 
   const handleSaveSettings = async () => {
-    // Only the Creator should be able to change these core settings
     if (!isCreator) {
       return toast.error("Only the group creator can modify these settings");
     }
@@ -26,76 +25,81 @@ function GroupSettingsModal({ group, isCreator, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col transition-all">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+      <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col transition-all">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-800">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-cyan-500/10 rounded-lg">
-                <Settings className="text-cyan-400 size-5" />
+            <div className="p-2 bg-cyan-500/20 rounded-lg">
+              <Settings className="text-cyan-400 size-5" />
             </div>
-            <h2 className="text-lg font-bold text-white">Group Settings</h2>
+            <h2 className="text-lg font-semibold text-white">Group Settings</h2>
           </div>
           <button 
             onClick={onClose} 
             disabled={isUpdatingGroup}
-            className="p-2 hover:bg-slate-800 rounded-full text-slate-400 transition-colors disabled:opacity-50"
+            className="p-2 hover:bg-white/10 rounded-full text-white/50 hover:text-white transition-colors disabled:opacity-50"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-6">
+        <div className="p-5 space-y-5">
           {/* Switch 1: Messaging */}
-          <div className="flex items-center justify-between group cursor-pointer" 
-               onClick={() => setSettings(p => ({...p, onlyAdminsCanSend: !p.onlyAdminsCanSend}))}>
+          <div 
+            className="flex items-center justify-between group cursor-pointer" 
+            onClick={() => setSettings(p => ({...p, onlyAdminsCanSend: !p.onlyAdminsCanSend}))}
+          >
             <div className="space-y-0.5">
-              <p className="text-sm font-semibold text-slate-200">Send Messages</p>
-              <p className="text-[11px] text-slate-500">Only admins can send messages</p>
+              <p className="text-sm font-medium text-white/80">Send Messages</p>
+              <p className="text-[11px] text-white/40">Only admins can send messages</p>
             </div>
             
-            <div className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out ${settings.onlyAdminsCanSend ? 'bg-cyan-500' : 'bg-slate-700'}`}>
-                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${settings.onlyAdminsCanSend ? 'translate-x-5' : 'translate-x-0'}`} />
+            <div className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out ${settings.onlyAdminsCanSend ? 'bg-cyan-500' : 'bg-white/20'}`}>
+              <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${settings.onlyAdminsCanSend ? 'translate-x-5' : 'translate-x-0'}`} />
             </div>
           </div>
 
           {/* Switch 2: Group Info */}
-          <div className="flex items-center justify-between group cursor-pointer"
-               onClick={() => setSettings(p => ({...p, onlyAdminsCanEditGroupInfo: !p.onlyAdminsCanEditGroupInfo}))}>
+          <div 
+            className="flex items-center justify-between group cursor-pointer"
+            onClick={() => setSettings(p => ({...p, onlyAdminsCanEditGroupInfo: !p.onlyAdminsCanEditGroupInfo}))}
+          >
             <div className="space-y-0.5">
-              <p className="text-sm font-semibold text-slate-200">Edit Group Info</p>
-              <p className="text-[11px] text-slate-500">Only admins can change name & pic</p>
+              <p className="text-sm font-medium text-white/80">Edit Group Info</p>
+              <p className="text-[11px] text-white/40">Only admins can change name & pic</p>
             </div>
             
-            <div className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out ${settings.onlyAdminsCanEditGroupInfo ? 'bg-cyan-500' : 'bg-slate-700'}`}>
-                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${settings.onlyAdminsCanEditGroupInfo ? 'translate-x-5' : 'translate-x-0'}`} />
+            <div className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out ${settings.onlyAdminsCanEditGroupInfo ? 'bg-cyan-500' : 'bg-white/20'}`}>
+              <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${settings.onlyAdminsCanEditGroupInfo ? 'translate-x-5' : 'translate-x-0'}`} />
             </div>
           </div>
 
-          <div className="bg-amber-500/5 border border-amber-500/10 p-3 rounded-2xl flex gap-3">
-             <ShieldAlert className="text-amber-500 shrink-0" size={18} />
-             <p className="text-[10px] text-amber-200/60 leading-relaxed">
-               As the <strong>Creator</strong>, you always bypass these restrictions even if you aren't an admin.
-             </p>
+          {/* Info Note */}
+          <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl flex gap-3">
+            <ShieldAlert className="text-amber-400 shrink-0" size={18} />
+            <p className="text-[10px] text-amber-300/70 leading-relaxed">
+              As the <strong className="text-amber-400">Creator</strong>, you always bypass these restrictions even if you aren't an admin.
+            </p>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-5 border-t border-slate-800 bg-slate-900/50 flex items-center gap-3">
+        <div className="px-5 py-4 border-t border-white/10 bg-white/5">
           <button 
             onClick={handleSaveSettings} 
             disabled={isUpdatingGroup || !isCreator} 
-            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-900 rounded-xl text-sm font-bold transition-all shadow-lg shadow-cyan-500/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl text-sm font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isUpdatingGroup ? (
-                <>
-                    <Loader2 size={18} className="animate-spin" />
-                    <span>Saving...</span>
-                </>
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                <span>Saving...</span>
+              </>
             ) : (
-                isCreator ? "Apply Changes" : "Creator Only"
+              isCreator ? "Apply Changes" : "Creator Only"
             )}
           </button>
         </div>

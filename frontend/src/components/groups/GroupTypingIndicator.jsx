@@ -23,12 +23,12 @@ function GroupTypingIndicator({ groupId }) {
   };
 
   return (
-    <div className="flex items-center gap-2 text-sm text-base-content/60 px-4 py-2">
+    <div className="flex items-center gap-2 text-sm text-cyan-400/80 px-4 py-2">
       <span>{getTypingText()}</span>
       <div className="flex gap-1">
-        <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
-        <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
-        <span className="animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
+        <span className="w-1 h-1 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+        <span className="w-1 h-1 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+        <span className="w-1 h-1 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
       </div>
     </div>
   );

@@ -30,7 +30,7 @@ const MessageTimestamp = ({ msg, isMe }) => {
         isMe ? "flex-row justify-end" : "flex-row-reverse justify-end"
       }`}
     >
-      <p className="text-[10px] font-semibold text-slate-500 lowercase ">
+      <p className="text-[10px] font-semibold text-white/40 lowercase">
         {timeString}
       </p>
 
@@ -45,7 +45,7 @@ const MessageTimestamp = ({ msg, isMe }) => {
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="3.5"
+                strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
@@ -55,13 +55,13 @@ const MessageTimestamp = ({ msg, isMe }) => {
             </span>
           ) : (
             /* SINGLE TICK (Grey) - Sent but no one has seen it yet */
-            <span className="text-slate-500">
+            <span className="text-white/30">
               <svg
                 className="w-3.5 h-3.5"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="3.5"
+                strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >

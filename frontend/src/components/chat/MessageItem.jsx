@@ -100,7 +100,7 @@ const MessageItem = ({
                 className="text-cyan-500 fill-cyan-500/20 animate-in zoom-in duration-200"
               />
             ) : (
-              <div className="size-[22px] rounded-full border-2 border-slate-700" />
+              <div className="size-[22px] rounded-full border-2 border-white/30" />
             )}
           </div>
         )}
@@ -111,7 +111,7 @@ const MessageItem = ({
             <img
               src={senderPic}
               alt={senderName}
-              className="size-8 rounded-full object-cover border border-slate-800 shadow-sm"
+              className="size-8 rounded-full object-cover border border-white/20 shadow-sm"
             />
           </div>
         )}
@@ -174,10 +174,10 @@ const MessageItem = ({
               className={`p-2 rounded-full transition-all duration-200 
                 ${
                   activeMsgId === msg._id
-                    ? "bg-slate-800 opacity-100"
-                    : "opacity-0 group-hover:opacity-100 hover:bg-slate-800/50"
+                    ? "bg-white/10 opacity-100"
+                    : "opacity-0 group-hover:opacity-100 hover:bg-white/10"
                 } 
-                text-slate-500 hover:text-white`}
+                text-white/40 hover:text-white`}
               onClick={(e) => handleThreeDotClick(msg._id, e)}
             >
               <MoreVertical size={16} />

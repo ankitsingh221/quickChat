@@ -28,7 +28,7 @@ function GroupMessageList() {
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center space-y-3">
           <div className="text-4xl">💬</div>
-          <p className="text-base-content/60">
+          <p className="text-white/40">
             No messages yet. Start the conversation!
           </p>
         </div>
@@ -71,12 +71,12 @@ function GroupMessageList() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-base-100">
+    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-transparent">
       {Object.entries(messageGroups).map(([date, messages]) => (
         <div key={date}>
-          {/* Date Separator */}
+          {/* Date Separator - Glassmorphic */}
           <div className="flex items-center justify-center my-4">
-            <div className="bg-base-200 text-base-content/60 text-xs px-3 py-1 rounded-full">
+            <div className="bg-white/10 backdrop-blur-sm text-white/50 text-xs px-3 py-1 rounded-full border border-white/20">
               {formatDateLabel(date)}
             </div>
           </div>

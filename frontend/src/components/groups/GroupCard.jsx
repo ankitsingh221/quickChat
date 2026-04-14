@@ -9,7 +9,6 @@ function GroupCard({ group, onClick, isActive }) {
   const gName = group.groupName || "Unnamed Group";
   const lastMessage = group.lastMessage;
 
- 
   const unreadCount = groupUnreadCounts[group._id] !== undefined 
     ? groupUnreadCounts[group._id] 
     : (group.unreadCount || 0);
@@ -35,21 +34,24 @@ function GroupCard({ group, onClick, isActive }) {
     <div
       onClick={onClick}
       className={`
-        flex items-center gap-4 px-4 py-3 rounded-2xl cursor-pointer
-        transition-all duration-300 relative
-        ${isActive ? "bg-slate-700/40" : "hover:bg-slate-800/40"}
+        flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer
+        transition-all duration-200 relative
+        ${isActive 
+          ? "bg-white/10 border border-cyan-500/30 shadow-[0_0_15px_rgba(0,255,255,0.1)]" 
+          : "hover:bg-white/5 border border-transparent"}
+        bg-transparent backdrop-blur-sm
         mb-1
       `}
     >
       <div className="relative">
-        <div className={`size-14 rounded-2xl overflow-hidden border transition-colors
-          ${isActive ? "border-[#5bc0de]" : "border-slate-700"} 
-          bg-slate-800 flex items-center justify-center`}
+        <div className={`size-12 rounded-xl overflow-hidden border transition-colors
+          ${isActive ? "border-cyan-500" : "border-white/20"} 
+          bg-white/5 flex items-center justify-center`}
         >
           {group.groupPic ? (
             <img src={group.groupPic} alt={gName} className="size-full object-cover" />
           ) : (
-            <span className="text-xl font-bold text-[#5bc0de]">
+            <span className="text-lg font-bold text-cyan-400">
               {gName.charAt(0).toUpperCase()}
             </span>
           )}
@@ -58,25 +60,25 @@ function GroupCard({ group, onClick, isActive }) {
 
       <div className="min-w-0 flex-1 flex flex-col justify-center">
         <div className="flex justify-between items-start">
-          <h4 className={`truncate text-[15px] font-semibold mb-1 ${isActive ? "text-white" : "text-slate-200"}`}>
+          <h4 className={`truncate text-sm font-medium mb-0.5 ${isActive ? "text-cyan-400" : "text-white/80"}`}>
             {gName}
           </h4>
           
           {time && (
-            <span className={`text-[12px] font-bold ${unreadCount > 0 ? "text-[#5bc0de]" : "text-slate-500"}`}>
+            <span className={`text-[10px] font-medium ${unreadCount > 0 ? "text-cyan-400" : "text-white/30"}`}>
               {time}
             </span>
           )}
         </div>
 
         <div className="flex justify-between items-center gap-2">
-          <p className={`text-sm truncate flex-1 ${unreadCount > 0 ? "text-slate-200 font-medium" : "text-slate-400"}`}>
+          <p className={`text-xs truncate flex-1 ${unreadCount > 0 ? "text-white/70 font-medium" : "text-white/40"}`}>
             {displayMessage}
           </p>
 
           {unreadCount > 0 && (
-            <div className="size-6 bg-[#5bc0de] text-[#0f172a] text-[12px] font-black rounded-full flex items-center justify-center shadow-lg transform translate-y-1">
-              {unreadCount}
+            <div className="min-w-[18px] h-[18px] bg-gradient-to-r from-cyan-500 to-cyan-400 text-black text-[10px] font-bold rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(0,255,255,0.5)]">
+              {unreadCount > 99 ? '99+' : unreadCount}
             </div>
           )}
         </div>

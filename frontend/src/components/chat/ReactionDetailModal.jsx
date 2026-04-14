@@ -30,12 +30,12 @@ const ReactionDetailModal = ({ reactions, onClose, authUser, handleReactionClick
   }, [reactions, authUser?._id]);
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-base-100 w-full max-w-sm rounded-2xl shadow-2xl border border-base-300 animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+      <div className="bg-black/80 backdrop-blur-xl w-full max-w-sm rounded-2xl shadow-2xl border border-white/20 animate-in fade-in zoom-in duration-200">
         
-        <div className="flex items-center justify-between p-4 border-b border-base-300">
-          <h3 className="font-bold text-lg text-base-content">Reactions</h3>
-          <button onClick={onClose} className="p-2 hover:bg-base-200 rounded-full transition-colors">
+        <div className="flex items-center justify-between p-4 border-b border-white/10">
+          <h3 className="font-bold text-lg text-white">Reactions</h3>
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/40 hover:text-white">
             <X size={20} />
           </button>
         </div>
@@ -54,12 +54,12 @@ const ReactionDetailModal = ({ reactions, onClose, authUser, handleReactionClick
               <div 
                 key={index} 
                 className={`flex items-center justify-between p-3 rounded-xl transition-all group ${
-                  isMe ? "cursor-pointer hover:bg-error/10 active:animate-shake"  : "hover:bg-base-200"
+                  isMe ? "cursor-pointer hover:bg-red-500/10 active:animate-shake" : "hover:bg-white/10"
                 }`}
                 onClick={(e) => {
                   if (isMe) {
                     e.stopPropagation();
-                    //  Pass the exact emoji to toggle it off
+                    // Pass the exact emoji to toggle it off
                     handleReactionClick(msgId, reaction.emoji, e);
                     onClose(); 
                   }
@@ -67,25 +67,25 @@ const ReactionDetailModal = ({ reactions, onClose, authUser, handleReactionClick
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center border ${
-                    isMe ? "bg-primary/20 border-primary shadow-sm" : "bg-base-300 border-transparent"
+                    isMe ? "bg-cyan-500/20 border-cyan-500/50 shadow-[0_0_10px_rgba(0,255,255,0.2)]" : "bg-white/10 border-white/20"
                   }`}>
                     {avatar ? (
                       <img src={avatar} alt="" className="w-full h-full rounded-full object-cover" />
                     ) : (
-                      <User size={20} className={isMe ? "text-primary" : "text-base-content/40"} />
+                      <User size={20} className={isMe ? "text-cyan-400" : "text-white/30"} />
                     )}
                   </div>
                   
                   <div className="flex flex-col text-left">
-                    <span className={`text-sm font-semibold ${isMe ? "text-primary font-bold" : "text-base-content"}`}>
+                    <span className={`text-sm font-semibold ${isMe ? "text-cyan-400 font-bold" : "text-white/80"}`}>
                       {isMe ? "You" : nameToDisplay}
                     </span>
-                    <span className="text-[10px] text-base-content/50 uppercase tracking-wider font-bold">
+                    <span className="text-[10px] text-white/30 uppercase tracking-wider font-bold">
                       {isMe ? "Tap to remove" : "Reacted"}
                     </span>
                   </div>
                 </div>
-                <span className="text-2xl transition-transform group-hover:scale-110 animate-emoji ">
+                <span className="text-2xl transition-transform group-hover:scale-110 animate-emoji">
                   {reaction.emoji}
                 </span>
               </div>

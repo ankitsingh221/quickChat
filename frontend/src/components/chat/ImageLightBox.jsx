@@ -5,10 +5,10 @@ const ImageLightbox = ({ selectedImg, setSelectedImg }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 md:p-10 transition-opacity"
+      className="fixed inset-0 z-[999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 md:p-10 transition-opacity"
       onClick={() => setSelectedImg(null)}
     >
-      <button className="absolute top-5 right-5 text-white hover:text-cyan-400 transition-colors">
+      <button className="absolute top-5 right-5 text-white/60 hover:text-cyan-400 transition-colors">
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
@@ -20,7 +20,7 @@ const ImageLightbox = ({ selectedImg, setSelectedImg }) => {
       </button>
       <img
         src={selectedImg}
-        className="max-w-full max-h-full rounded-lg shadow-2xl object-contain animate-in zoom-in-95 duration-200"
+        className="max-w-full max-h-full rounded-lg shadow-2xl object-contain animate-in zoom-in-95 duration-200 border border-white/10"
         alt="Zoomed"
       />
     </div>

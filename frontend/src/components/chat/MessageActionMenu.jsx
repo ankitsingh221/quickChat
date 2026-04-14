@@ -6,12 +6,12 @@ const MenuItem = ({ children, onClick, danger, icon: Icon }) => (
   <button
     onClick={onClick}
     className={`
-      flex w-full items-center gap-3 px-4 py-2 text-sm text-left
-      transition-colors duration-150
+      flex w-full items-center gap-3 px-4 py-2.5 text-sm text-left
+      transition-all duration-150
       ${
         danger
-          ? "text-error hover:bg-error/10"
-          : "text-base-content hover:bg-base-content/10"
+          ? "text-red-400 hover:bg-red-500/10"
+          : "text-white/80 hover:bg-white/10"
       }
     `}
   >
@@ -37,7 +37,7 @@ const MessageActionMenu = ({
     <div
       className={`
         action-menu absolute z-[100] min-w-[210px]
-        rounded-xl border border-base-300 bg-base-300 shadow-2xl
+        rounded-xl border border-white/20 bg-black/80 backdrop-blur-xl shadow-2xl
         bottom-full mb-2 ${isMe ? "right-0" : "left-0"}
         overflow-hidden animate-in fade-in zoom-in duration-100
       `}
@@ -53,15 +53,15 @@ const MessageActionMenu = ({
                 onInfoClick();
               }}
             >
-              Message info
+              Message Info
             </MenuItem>
-            <div className="border-t border-base-content/5 my-1" />
+            <div className="border-t border-white/10 my-1" />
           </>
         )}
 
         {/* Contextual Reply Label */}
         <MenuItem icon={Reply} onClick={() => handleReply(msg)}>
-          {isGroup ? "Reply to group" : "Reply"}
+          {isGroup ? "Reply to Group" : "Reply"}
         </MenuItem>
 
         <MenuItem 
@@ -73,11 +73,11 @@ const MessageActionMenu = ({
 
         {isMe && canEdit && (
           <MenuItem icon={Pencil} onClick={() => startEdit(msg)}>
-            Edit message
+            Edit Message
           </MenuItem>
         )}
 
-        <div className="border-t border-base-content/5 my-1" />
+        <div className="border-t border-white/10 my-1" />
 
         <MenuItem 
           icon={CheckSquare} 
@@ -86,17 +86,17 @@ const MessageActionMenu = ({
             toggleMessageSelection(msg._id);
           }}
         >
-          Select message
+          Select Message
         </MenuItem>
 
-        <div className="border-t border-base-content/5 my-1" />
+        <div className="border-t border-white/10 my-1" />
 
         <MenuItem 
           icon={Trash2} 
           danger 
           onClick={() => handleDelete(msg._id, "me")}
         >
-          Delete for me
+          Delete for Me
         </MenuItem>
 
         {isMe && canEdit && (
@@ -105,17 +105,17 @@ const MessageActionMenu = ({
             danger 
             onClick={() => handleDelete(msg._id, "everyone")}
           >
-            {isGroup ? "Delete for everyone in group" : "Delete for everyone"}
+            {isGroup ? "Delete for Everyone in Group" : "Delete for Everyone"}
           </MenuItem>
         )}
 
-        <div className="border-t border-base-content/5 my-1" />
+        <div className="border-t border-white/10 my-1" />
 
         <MenuItem
           icon={Smile}
           onClick={(e) => handleReactionButtonClick(msg._id, e)}
         >
-          Add reaction
+          Add Reaction
         </MenuItem>
       </div>
     </div>

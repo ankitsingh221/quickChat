@@ -83,23 +83,23 @@ const MessageList = ({
 
         return (
           <React.Fragment key={msg._id || index}>
-            {/*  DATE HEADER (Today, Yesterday, or Date) */}
+            {/*  DATE HEADER (Today, Yesterday, or Date) - Glassmorphic */}
             {curDate !== prevDate && (
-              <div className="flex items-center justify-center my-6 opacity-60">
-                <span className="text-[11px] font-bold text-slate-400 bg-slate-800/80 px-3 py-1 rounded-md border border-slate-700">
+              <div className="flex items-center justify-center my-6">
+                <span className="text-[11px] font-bold text-white/50 bg-white/10 backdrop-blur-sm px-3 py-1 rounded-md border border-white/20">
                   {curDate}
                 </span>
               </div>
             )}
 
-            {/*  THE RED "NEW MESSAGES" LINE */}
+            {/*  THE "NEW MESSAGES" LINE - Cyan themed */}
             {msg._id === initialUnreadId && (
               <div className="flex items-center justify-center my-4 animate-in fade-in zoom-in duration-500">
-                <div className="h-[1px] bg-error/30 flex-grow"></div>
-                <span className="mx-4 text-[10px] font-black uppercase tracking-widest text-error bg-error/10 px-3 py-1 rounded-full border border-error/20">
+                <div className="h-[1px] bg-cyan-500/30 flex-grow"></div>
+                <span className="mx-4 text-[10px] font-black uppercase tracking-widest text-cyan-400 bg-cyan-500/10 backdrop-blur-sm px-3 py-1 rounded-full border border-cyan-500/30">
                   New Messages Below
                 </span>
-                <div className="h-[1px] bg-error/30 flex-grow"></div>
+                <div className="h-[1px] bg-cyan-500/30 flex-grow"></div>
               </div>
             )}
 

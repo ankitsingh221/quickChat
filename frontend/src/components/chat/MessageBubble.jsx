@@ -35,7 +35,6 @@ const MessageBubble = ({
     if (!msg.isDeleted) setShowMenu(true);
   };
 
-  // Destructure isPressing and handlers from hook
   const { isPressing, handlers } = useLongPress(handleLongPress, () => {}, {
     delay: 500,
   });
@@ -44,7 +43,7 @@ const MessageBubble = ({
     setShowMenu(false);
     if (action === "reply") onReply(msg);
     if (action === "edit") setEditingId(msg._id);
-    if (action === "delete") onDelete(msg._id);
+    if (action === "delete") onDelete(msg._id, "me");
     if (action === "copy") navigator.clipboard.writeText(msg.text);
   };
 
@@ -57,7 +56,7 @@ const MessageBubble = ({
           part.toLowerCase() === highlight.toLowerCase() ? (
             <mark
               key={i}
-              className="bg-yellow-400 text-black px-0.5 rounded-sm font-medium"
+              className="bg-yellow-400/80 text-black px-0.5 rounded-sm font-medium"
             >
               {part}
             </mark>
@@ -91,23 +90,23 @@ const MessageBubble = ({
 
   return (
     <div className="relative group">
-      {/* CONTEXT MENU */}
+      {/* CONTEXT MENU - Glassmorphic */}
       {showMenu && (
         <div
           ref={menuRef}
-          className={`absolute z-[100] bottom-full mb-2 flex gap-1 bg-slate-900 border border-slate-700 p-1 rounded-xl shadow-2xl animate-in fade-in zoom-in duration-200 ${
+          className={`absolute z-[100] bottom-full mb-2 flex gap-1 bg-black/80 backdrop-blur-xl border border-white/20 p-1 rounded-xl shadow-2xl animate-in fade-in zoom-in duration-200 ${
             isMe ? "right-0" : "left-0"
           }`}
         >
           <button
             onClick={() => handleAction("reply")}
-            className="p-2 hover:bg-slate-800 rounded-lg text-cyan-400"
+            className="p-2 hover:bg-white/10 rounded-lg text-cyan-400 transition-all"
           >
             <Reply size={18} />
           </button>
           <button
             onClick={() => handleAction("copy")}
-            className="p-2 hover:bg-slate-800 rounded-lg text-slate-300"
+            className="p-2 hover:bg-white/10 rounded-lg text-white/60 transition-all"
           >
             <Copy size={18} />
           </button>
@@ -115,13 +114,13 @@ const MessageBubble = ({
             <>
               <button
                 onClick={() => handleAction("edit")}
-                className="p-2 hover:bg-slate-800 rounded-lg text-amber-400"
+                className="p-2 hover:bg-white/10 rounded-lg text-amber-400 transition-all"
               >
                 <Edit2 size={18} />
               </button>
               <button
                 onClick={() => handleAction("delete")}
-                className="p-2 hover:bg-slate-800 rounded-lg text-red-400"
+                className="p-2 hover:bg-white/10 rounded-lg text-red-400 transition-all"
               >
                 <Trash2 size={18} />
               </button>
@@ -134,17 +133,17 @@ const MessageBubble = ({
         id={`msg-${msg._id}`}
         {...handlers}
         className={`relative w-fit max-w-full px-4 py-2 shadow-lg transition-all duration-300 select-none cursor-pointer overflow-hidden ${
-          showMenu || isPressing ? "scale-[0.96] brightness-90" : "scale-100"
+          showMenu || isPressing ? "scale-[0.98] brightness-90" : "scale-100"
         } ${
           isMe
-            ? "bg-cyan-600 text-white rounded-2xl rounded-br-none shadow-cyan-900/20"
-            : "bg-slate-800 text-slate-100 rounded-2xl rounded-bl-none shadow-black/40"
+            ? "bg-gradient-to-r from-cyan-500/20 to-cyan-400/10 text-white rounded-2xl rounded-br-none border border-cyan-500/30"
+            : "bg-white/5 text-white/90 rounded-2xl rounded-bl-none border border-white/10"
         }`}
       >
-        {/* PROGRESS BAR - Only shows while pressing */}
+        {/* PROGRESS BAR */}
         {isPressing && (
           <div
-            className="absolute top-0 left-0 h-1 bg-white/40 z-10"
+            className="absolute top-0 left-0 h-1 bg-cyan-400/60 z-10"
             style={{
               animation: "progress-load 0.5s linear forwards",
               width: "0%",
@@ -155,7 +154,7 @@ const MessageBubble = ({
         {/* TAIL */}
         <div
           className={`absolute bottom-0 w-3 h-3 ${
-            isMe ? "-right-1 bg-cyan-600" : "-left-1 bg-slate-800"
+            isMe ? "-right-1 bg-cyan-500/20" : "-left-1 bg-white/5"
           }`}
           style={{
             clipPath: isMe
@@ -165,7 +164,7 @@ const MessageBubble = ({
         ></div>
 
         {msg.isDeleted ? (
-          <p className="italic opacity-60 text-sm flex items-center gap-2">
+          <p className="italic opacity-60 text-sm flex items-center gap-2 text-white/50">
             🚫 This message was deleted
           </p>
         ) : (
@@ -173,7 +172,7 @@ const MessageBubble = ({
             {msg.isForwarded && (
               <div
                 className={`flex items-center gap-1 mb-1 opacity-60 italic text-[11px] ${
-                  isMe ? "text-cyan-100" : "text-slate-400"
+                  isMe ? "text-cyan-300" : "text-white/40"
                 }`}
               >
                 <Forward size={12} strokeWidth={3} />
@@ -189,18 +188,18 @@ const MessageBubble = ({
                 }}
                 className={`mb-2 px-3 py-2 rounded-lg border-l-4 text-[13px] backdrop-blur-md cursor-pointer min-w-[120px] transition-all active:scale-[0.98] ${
                   isMe
-                    ? "border-white/50 bg-black/20"
-                    : "border-cyan-500 bg-slate-900/50"
+                    ? "border-cyan-400/50 bg-white/5"
+                    : "border-cyan-400/50 bg-white/5"
                 }`}
               >
                 <p
                   className={`font-bold text-[11px] uppercase tracking-wide ${
-                    isMe ? "text-cyan-100" : "text-cyan-400"
+                    isMe ? "text-cyan-400" : "text-cyan-400"
                   }`}
                 >
                   {getReplyDisplayName()}
                 </p>
-                <p className="truncate opacity-80 mt-0.5 italic text-xs">
+                <p className="truncate opacity-80 mt-0.5 italic text-xs text-white/60">
                   {msg.replyTo.image ? "📷 Photo" : msg.replyTo.text}
                 </p>
               </div>
@@ -212,7 +211,7 @@ const MessageBubble = ({
                 onClick={(e) => e.stopPropagation()}
               >
                 <textarea
-                  className="w-full p-2 rounded-lg bg-white/10 text-white text-sm outline-none border border-white/20"
+                  className="w-full p-2 rounded-lg bg-white/10 text-white text-sm outline-none border border-white/20 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 transition-all"
                   value={editText}
                   onChange={handleEditTextChange}
                   autoFocus
@@ -220,13 +219,13 @@ const MessageBubble = ({
                 />
                 <div className="flex justify-end gap-2">
                   <button
-                    className="text-xs font-medium"
+                    className="text-xs font-medium text-white/60 hover:text-white transition-colors"
                     onClick={() => setEditingId(null)}
                   >
                     Cancel
                   </button>
                   <button
-                    className="px-3 py-1 bg-white text-cyan-700 font-bold rounded-md text-xs"
+                    className="px-3 py-1 bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-bold rounded-md text-xs transition-all hover:scale-105"
                     onClick={() => submitEdit(msg._id, msg.createdAt)}
                   >
                     Save
@@ -243,20 +242,20 @@ const MessageBubble = ({
                         e.stopPropagation();
                         setSelectedImg(msg.image);
                       }}
-                      className="w-[180px] md:w-[220px] aspect-[4/5] object-cover"
+                      className="w-[180px] md:w-[220px] aspect-[4/5] object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                       alt="sent"
                     />
                   </div>
                 )}
                 {msg.text && (
-                  <p className="whitespace-pre-wrap break-words text-[15px]">
+                  <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
                     {highlightText(msg.text, searchTerm)}
                   </p>
                 )}
               </div>
             )}
             {msg.isEdited && !msg.isDeleted && (
-              <span className="text-[9px] font-bold uppercase opacity-50 block text-right mt-1">
+              <span className="text-[9px] font-bold uppercase opacity-40 block text-right mt-1 text-white/50">
                 Edited
               </span>
             )}

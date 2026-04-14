@@ -10,6 +10,11 @@ const ReactionPickerMenu = ({
 }) => {
   const quickEmojis = ["👍", "❤️", "😂", "😮", "👋", "🙏"];
 
+  // Reset full picker when component mounts or msgId changes
+  useEffect(() => {
+    setShowFullPicker(false);
+  }, [msgId, setShowFullPicker]);
+
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === "Escape") setShowFullPicker(false);
@@ -20,8 +25,8 @@ const ReactionPickerMenu = ({
 
   return (
     <div className="relative" onClick={(e) => e.stopPropagation()}>
-      {/* Quick Bar */}
-      <div className={`reactions-menu absolute z-[150] bg-slate-800 border border-slate-700 shadow-2xl rounded-full px-2 py-1 flex items-center gap-1 bottom-full mb-2 ${isMe ? "right-0" : "left-0"}`}>
+      {/* Quick Bar - Glassmorphic */}
+      <div className={`reactions-menu absolute z-[150] bg-black/80 backdrop-blur-xl border border-white/20 shadow-2xl rounded-full px-2 py-1 flex items-center gap-1 bottom-full mb-2 ${isMe ? "right-0" : "left-0"}`}>
         {quickEmojis.map((emoji) => (
           <button
             key={emoji}
@@ -30,14 +35,14 @@ const ReactionPickerMenu = ({
               e.stopPropagation();
               handleReactionClick(msgId, emoji);
             }}
-            className="p-2 text-xl hover:bg-slate-700 rounded-full transition-transform active:scale-125"
+            className="p-2 text-xl hover:bg-white/10 rounded-full transition-transform active:scale-125"
           >
             {emoji}
           </button>
         ))}
         <button
           type="button"
-          className="p-2 text-lg text-slate-300 hover:text-white font-bold"
+          className="p-2 text-lg text-white/40 hover:text-white font-bold hover:bg-white/10 rounded-full transition-all"
           onClick={(e) => {
             e.stopPropagation();
             setShowFullPicker(true);
@@ -47,16 +52,16 @@ const ReactionPickerMenu = ({
         </button>
       </div>
 
-      {/* Full Picker Modal */}
+      {/* Full Picker Modal - Glassmorphic */}
       {showFullPicker && (
         <div 
-          className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center"
+          className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-md flex items-end sm:items-center justify-center"
           onClick={(e) => {
             e.stopPropagation();
             setShowFullPicker(false);
           }}
         >
-          <div className="bg-slate-900 rounded-t-xl sm:rounded-xl w-full sm:w-[350px] overflow-hidden shadow-2xl border border-slate-700" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-black/80 backdrop-blur-xl rounded-t-xl sm:rounded-xl w-full sm:w-[350px] overflow-hidden shadow-2xl border border-white/20" onClick={(e) => e.stopPropagation()}>
             <EmojiPicker
               theme="dark"
               height="400px"
