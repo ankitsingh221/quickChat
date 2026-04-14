@@ -20,7 +20,22 @@ const App = () => {
   }
 
   return (
-    <div className="min-h-screen  bg-slate-900   flex items-center justify-center p-4 overflow-hidden">
+    // Background image applied at the ROOT level - affects ALL pages
+    <div
+      className="min-h-screen flex items-center justify-center p-4 overflow-hidden"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundImage: `url('/background_image.png')`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundAttachment: "fixed",
+      }}
+    >
       <Routes>
         <Route
           path="/"

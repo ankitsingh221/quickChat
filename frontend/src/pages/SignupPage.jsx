@@ -3,10 +3,10 @@ import { useAuthStore } from "../store/useAuthStore";
 import BorderAnimatedContainer from "../components/BorderAnimatedContainer";
 import {
   MessageCircleIcon,
-  LockIcon,
   MailIcon,
-  UserIcon,
   LoaderIcon,
+  LockIcon,
+  UserIcon,
 } from "lucide-react";
 import { Link } from "react-router";
 
@@ -24,107 +24,107 @@ function SignupPage() {
   };
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center p-2 bg-slate-900">
-      <div className="relative w-full max-w-[450px]">
-        <BorderAnimatedContainer>
-          <div className="w-full flex flex-col">
-            <div className="px-6 py-5 flex items-center justify-center">
-              <div className="w-full max-w-md">
-                {/* COMPACT HEADING */}
-                <div className="text-center mb-5">
-                  <div className="w-14 h-14 bg-blue-500/10 rounded-xl flex items-center justify-center mx-auto mb-3 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
-                    <MessageCircleIcon className="w-7 h-7 text-blue-400" />
-                  </div>
-                  <h2 className="text-xl font-bold text-blue-400">
-                    Join QuickChat
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Create your account to get started
-                  </p>
-                </div>
+    <div className="w-full min-h-screen flex items-center justify-center p-4">
+      <div className="relative w-full max-w-[420px]">
+        {/* Glassmorphic Card */}
+        <div className="relative rounded-2xl bg-black/30 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
+          <div className="relative z-10 px-6 py-8">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-cyan-500/30 shadow-[0_0_20px_rgba(0,255,255,0.1)]">
+                <MessageCircleIcon className="w-8 h-8 text-cyan-400" />
+              </div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent mb-2">
+                Create Account
+              </h2>
+              <p className="text-sm text-white/40">Sign up to start chatting</p>
+            </div>
 
-                <form onSubmit={handleSubmit} className="space-y-3">
-                  {/* FULL NAME */}
-                  <div>
-                    <label className="auth-input-label text-xs mb-1 block">
-                      Full Name
-                    </label>
-                    <div className="relative">
-                      <UserIcon className="auth-input-icon w-4 h-4" />
-                      <input
-                        type="text"
-                        value={formData.fullName}
-                        onChange={(e) =>
-                          setFormData({ ...formData, fullName: e.target.value })
-                        }
-                        className="input py-2 text-sm"
-                        placeholder="Ankit Singh"
-                      />
-                    </div>
-                  </div>
-
-                  {/* EMAIL INPUT */}
-                  <div>
-                    <label className="auth-input-label text-xs mb-1 block">
-                      Email
-                    </label>
-                    <div className="relative">
-                      <MailIcon className="auth-input-icon w-4 h-4" />
-                      <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) =>
-                          setFormData({ ...formData, email: e.target.value })
-                        }
-                        className="input py-2 text-sm"
-                        placeholder="ankitsingh@gmail.com"
-                      />
-                    </div>
-                  </div>
-
-                  {/* PASSWORD INPUT */}
-                  <div>
-                    <label className="auth-input-label text-xs mb-1 block">
-                      Password
-                    </label>
-                    <div className="relative">
-                      <LockIcon className="auth-input-icon w-4 h-4" />
-                      <input
-                        type="password"
-                        value={formData.password}
-                        onChange={(e) =>
-                          setFormData({ ...formData, password: e.target.value })
-                        }
-                        className="input py-2 text-sm"
-                        placeholder="••••••••"
-                      />
-                    </div>
-                  </div>
-
-                  {/* SUBMIT BUTTON */}
-                  <button
-                    className="auth-btn mt-2 py-2.5 text-sm"
-                    type="submit"
-                    disabled={isSigningUp}
-                  >
-                    {isSigningUp ? (
-                      <LoaderIcon className="w-full h-4 animate-spin text-center" />
-                    ) : (
-                      "Create Account"
-                    )}
-                  </button>
-                </form>
-
-                {/* COMPACT LINK */}
-                <div className="mt-4 text-center">
-                  <Link to="/login" className="auth-link text-xs">
-                    Already have an account? Login
-                  </Link>
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* FULL NAME INPUT */}
+              <div>
+                <label className="block text-sm font-medium text-white/60 mb-2">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 size-5" />
+                  <input
+                    type="text"
+                    value={formData.fullName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, fullName: e.target.value })
+                    }
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/30 transition-all"
+                    placeholder="Ankit singh"
+                  />
                 </div>
               </div>
+
+              {/* EMAIL INPUT */}
+              <div>
+                <label className="block text-sm font-medium text-white/60 mb-2">
+                  Email
+                </label>
+                <div className="relative">
+                  <MailIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 size-5" />
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/30 transition-all"
+                    placeholder="ankit@example.com"
+                  />
+                </div>
+              </div>
+
+              {/* PASSWORD INPUT */}
+              <div>
+                <label className="block text-sm font-medium text-white/60 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <LockIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 size-5" />
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/30 transition-all"
+                    placeholder="Create a password"
+                  />
+                </div>
+              </div>
+
+              {/* SUBMIT BUTTON */}
+              <button
+                className="w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-white font-semibold rounded-xl transition-all mt-4 shadow-lg shadow-cyan-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                type="submit"
+                disabled={isSigningUp}
+              >
+                {isSigningUp ? (
+                  <LoaderIcon className="w-5 h-5 animate-spin mx-auto" />
+                ) : (
+                  "Sign Up"
+                )}
+              </button>
+            </form>
+
+            {/* Login Link */}
+            <div className="mt-6 text-center">
+              <Link
+                to="/login"
+                className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
+              >
+                Already have an account?{" "}
+                <span className="font-semibold">Login</span>
+              </Link>
             </div>
           </div>
-        </BorderAnimatedContainer>
+        </div>
       </div>
     </div>
   );
