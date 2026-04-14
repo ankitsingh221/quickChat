@@ -19,14 +19,29 @@ const App = () => {
   // Handle mobile viewport height changes (keyboard opening/closing)
   useEffect(() => {
     const handleResize = () => {
-      setWindowHeight(window.innerHeight);
+      // Use visualViewport for more accurate mobile height
+      if (window.visualViewport) {
+        setWindowHeight(window.visualViewport.height);
+      } else {
+        setWindowHeight(window.innerHeight);
+      }
     };
     
+    // Initial call
+    handleResize();
+    
+    // Add event listeners
     window.addEventListener('resize', handleResize);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+    }
     window.addEventListener('orientationchange', handleResize);
     
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+      }
       window.removeEventListener('orientationchange', handleResize);
     };
   }, []);
@@ -37,13 +52,12 @@ const App = () => {
 
   return (
     <div
-      className="app-root"
       style={{
         position: "fixed",
         top: 0,
         left: 0,
         right: 0,
-        height: windowHeight,
+        bottom: 0,
         backgroundImage: `url('/background_image.png')`,
         backgroundSize: "cover",
         backgroundPosition: "center",

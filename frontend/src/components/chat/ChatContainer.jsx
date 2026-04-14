@@ -56,7 +56,7 @@ const ChatContainer = () => {
 
   const typingUsers = isGroup ? groupTypingUsers[activeChatId] || [] : [];
   const otherTypingUsers = typingUsers.filter(
-    (u) => u.userId !== authUser?._id
+    (u) => u.userId !== authUser?._id,
   );
 
   const messageActions = useMessageActions({
@@ -77,7 +77,7 @@ const ChatContainer = () => {
   const isAdmin =
     isGroup &&
     selectedGroup?.admins?.some(
-      (admin) => (admin._id || admin) === authUser?._id
+      (admin) => (admin._id || admin) === authUser?._id,
     );
   const onlyAdminsCanSend =
     isGroup && selectedGroup?.settings?.onlyAdminsCanSend;
@@ -108,12 +108,12 @@ const ChatContainer = () => {
     };
   }, [activeChatId, isGroup, socket, getMessagesByUserId, getGroupMessages]);
 
-  //  Read Receipts Hook 
+  //  Read Receipts Hook
   useReadReceipts(
     isGroup ? null : selectedUser,
     messages,
     markMessagesAsRead,
-    getMessagesByUserId
+    getMessagesByUserId,
   );
 
   //  Mark Read Logic
@@ -194,7 +194,7 @@ const ChatContainer = () => {
       const timeoutId = setTimeout(() => {
         if (firstUnreadIndex !== -1) {
           const element = document.getElementById(
-            `msg-${activeMessages[firstUnreadIndex]._id}`
+            `msg-${activeMessages[firstUnreadIndex]._id}`,
           );
           if (element)
             element.scrollIntoView({ behavior: "auto", block: "center" });
@@ -233,11 +233,19 @@ const ChatContainer = () => {
   if (!activeChatId) return null;
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden">
+    <div
+      className="chat-container"
+      style={{
+        height: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
       <ChatHeader>
         <MessageSearch />
       </ChatHeader>
-      
+
       {/* Messages area - scrollable */}
       <div
         className="flex-1 overflow-y-auto custom-scrollbar"
@@ -283,21 +291,30 @@ const ChatContainer = () => {
         selectedImg={selectedImg}
         setSelectedImg={setSelectedImg}
       />
-      
+
       {/* Typing indicator */}
       {isGroup && otherTypingUsers.length > 0 && (
         <div className="flex-shrink-0 px-4 py-2 border-t border-white/10 bg-black/20 backdrop-blur-sm flex items-center gap-2">
           <div className="flex gap-1">
-            <span className="size-1.5 rounded-full bg-cyan-400 typing-dot" style={{ animationDelay: '0ms' }}></span>
-            <span className="size-1.5 rounded-full bg-cyan-400 typing-dot" style={{ animationDelay: '300ms' }}></span>
-            <span className="size-1.5 rounded-full bg-cyan-400 typing-dot" style={{ animationDelay: '600ms' }}></span>
+            <span
+              className="size-1.5 rounded-full bg-cyan-400 typing-dot"
+              style={{ animationDelay: "0ms" }}
+            ></span>
+            <span
+              className="size-1.5 rounded-full bg-cyan-400 typing-dot"
+              style={{ animationDelay: "300ms" }}
+            ></span>
+            <span
+              className="size-1.5 rounded-full bg-cyan-400 typing-dot"
+              style={{ animationDelay: "600ms" }}
+            ></span>
           </div>
           <p className="text-xs text-cyan-400 font-medium italic">
             {otherTypingUsers.map((u) => u.userName).join(", ")} is typing...
           </p>
         </div>
       )}
-      
+
       {/* Message Input - Fixed at bottom */}
       <div className="flex-shrink-0">
         {canSendMessage ? (
@@ -312,7 +329,7 @@ const ChatContainer = () => {
           </div>
         )}
       </div>
-      
+
       {forwardingMessages?.length > 0 && <ForwardModal />}
     </div>
   );

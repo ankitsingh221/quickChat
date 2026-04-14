@@ -32,10 +32,46 @@ body {
   overflow-x: hidden;
 }
 
+/* ========== APP ROOT STYLES - IMPORTANT FOR MOBILE ========== */
+.app-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+/* For modern browsers with dynamic viewport */
+@supports (height: 100dvh) {
+  .app-root {
+    height: 100dvh !important;
+  }
+}
+
+/* For iOS Safari */
+@supports (height: -webkit-fill-available) {
+  .app-root {
+    height: -webkit-fill-available !important;
+  }
+}
+
+/* Ensure content takes full height */
 #root {
-  height: 100vh;
-  height: -webkit-fill-available;
-  height: 100dvh; /* Dynamic viewport for modern browsers */
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Fix for mobile keyboard */
+@media (max-width: 768px) {
+  .app-root {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+  }
 }
 
 /* ========== AVATAR STYLES - FIXED FOR MOBILE ========== */
@@ -429,46 +465,4 @@ img[alt*="profile"],
 
 .avatar-pulse {
   animation: avatar-pulse 2s infinite;
-}
-
-/* App root styles */
-.app-root {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  overflow: hidden;
-}
-
-/* For modern browsers with dynamic viewport */
-@supports (height: 100dvh) {
-  .app-root {
-    height: 100dvh !important;
-  }
-}
-
-/* For iOS Safari */
-@supports (height: -webkit-fill-available) {
-  .app-root {
-    height: -webkit-fill-available !important;
-  }
-}
-
-/* Ensure content takes full height */
-#root {
-  height: 100%;
-  overflow: hidden;
-}
-
-/* Fix for mobile keyboard */
-@media (max-width: 768px) {
-  .app-root {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    overflow: hidden;
-  }
 }
