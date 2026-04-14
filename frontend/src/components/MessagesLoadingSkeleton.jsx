@@ -4,12 +4,19 @@ function MessagesLoadingSkeleton() {
       {[...Array(6)].map((_, index) => (
         <div
           key={index}
-          className={`chat ${index % 2 === 0 ? "chat-start" : "chat-end"} animate-pulse`}
+          className={`flex ${index % 2 === 0 ? "justify-start" : "justify-end"} animate-pulse`}
         >
-          <div className={`chat-bubble bg-slate-800 text-white w-32`}></div>
+          <div 
+            className={`w-32 h-10 rounded-xl ${
+              index % 2 === 0 
+                ? "bg-white/10 rounded-bl-none" 
+                : "bg-white/10 rounded-br-none"
+            }`}
+          />
         </div>
       ))}
     </div>
   );
 }
+
 export default MessagesLoadingSkeleton;
