@@ -12,6 +12,7 @@ import {
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import toast from "react-hot-toast";
+import ImageCropper from "./ImageCropper"; // Import the cropper
 
 const mouseClickSound = new Audio("/sounds/mouse-click.mp3");
 
@@ -21,6 +22,8 @@ function ProfileHeader() {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const [formData, setFormData] = useState({
     fullName: authUser?.fullName || "",
@@ -66,27 +69,56 @@ function ProfileHeader() {
     };
   }, [isSettingsOpen]);
 
-  const handleImageUpload = async (e) => {
+  // Handle image selection - Open cropper instead of uploading directly
+  const handleImageSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     playClickSound();
 
-    const previewUrl = URL.createObjectURL(file);
-    const originalUser = { ...authUser };
-    useAuthStore.setState({
-      authUser: { ...authUser, profilePic: previewUrl },
-    });
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size should be less than 5MB");
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
 
     const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onloadend = async () => {
-      try {
-        await updateProfile({ profilePic: reader.result });
-      } catch (error) {
-        useAuthStore.setState({ authUser: originalUser });
-        toast.error("Failed to upload image", error);
-      }
+    reader.onload = () => {
+      setSelectedImage(reader.result);
+      setShowCropper(true);
     };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle cropped image upload
+  const handleCropComplete = async (croppedImage) => {
+    setShowCropper(false);
+    
+    // Show preview immediately
+    const originalUser = { ...authUser };
+    useAuthStore.setState({
+      authUser: { ...authUser, profilePic: croppedImage },
+    });
+
+    try {
+      await updateProfile({ profilePic: croppedImage });
+      toast.success("Profile picture updated successfully!");
+    } catch (error) {
+      useAuthStore.setState({ authUser: originalUser });
+      toast.error("Failed to upload image");
+      console.error("Upload error:", error);
+    } finally {
+      setSelectedImage(null);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
   const handleSaveInfo = async () => {
@@ -94,6 +126,7 @@ function ProfileHeader() {
     if (!formData.fullName.trim()) return toast.error("Name cannot be empty");
     await updateProfile(formData);
     setIsSettingsOpen(false);
+    toast.success("Profile updated successfully!");
   };
 
   return (
@@ -116,7 +149,6 @@ function ProfileHeader() {
               <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-cyan-500 rounded-full ring-1 ring-black shadow-[0_0_5px_#00ffff]"></div>
             </div>
             <div>
-              {/* CHANGED: Show full name instead of just first name */}
               <h3 className="text-white font-semibold text-sm">
                 {authUser?.fullName || "User"}
               </h3>
@@ -196,11 +228,16 @@ function ProfileHeader() {
                       className={`object-cover w-full h-full transition-all ${isUpdatingProfile ? "blur-sm opacity-50" : ""}`}
                       alt="Profile"
                     />
+                    {isUpdatingProfile && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                        <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
                   </div>
                   <button
-                    onClick={() => fileInputRef.current.click()}
+                    onClick={() => fileInputRef.current?.click()}
                     disabled={isUpdatingProfile}
-                    className="absolute bottom-1 right-1 p-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg hover:scale-110 transition-transform duration-300"
+                    className="absolute bottom-1 right-1 p-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg hover:scale-110 transition-transform duration-300 disabled:opacity-50"
                   >
                     <Camera size="16" />
                   </button>
@@ -209,14 +246,12 @@ function ProfileHeader() {
                     ref={fileInputRef}
                     className="hidden"
                     accept="image/*"
-                    onChange={handleImageUpload}
+                    onChange={handleImageSelect}
                   />
                 </div>
-                {isUpdatingProfile && (
-                  <div className="mt-3 text-xs text-cyan-400 animate-pulse">
-                    Uploading...
-                  </div>
-                )}
+                <p className="text-white/40 text-xs mt-3">
+                  Click camera icon to change profile picture
+                </p>
               </div>
 
               {/* Form Fields */}
@@ -281,6 +316,21 @@ function ProfileHeader() {
             </div>
           </div>
         </>
+      )}
+
+      {/* IMAGE CROPPER MODAL */}
+      {showCropper && selectedImage && (
+        <ImageCropper
+          image={selectedImage}
+          onCropComplete={handleCropComplete}
+          onClose={() => {
+            setShowCropper(false);
+            setSelectedImage(null);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = "";
+            }
+          }}
+        />
       )}
 
       {/* LOGOUT MODAL */}

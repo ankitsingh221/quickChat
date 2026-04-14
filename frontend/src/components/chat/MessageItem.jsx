@@ -7,6 +7,7 @@ import ReactionPickerMenu from "./ReactionPickerMenu";
 import { MoreVertical, CheckCircle2 } from "lucide-react";
 import { useChatStore } from "../../store/useChatStore";
 import MessageInfoDrawer from "../groups/MessageInfoDrawer";
+import AvatarModal from "../AvatarModal"; // Import AvatarModal
 
 const MessageItem = ({
   msg,
@@ -20,6 +21,7 @@ const MessageItem = ({
   const { isSelectionMode, selectedMessages, toggleMessageSelection } =
     useChatStore();
   const isSelected = selectedMessages.includes(msg._id);
+  const [showAvatarModal, setShowAvatarModal] = useState(false); // Add state for avatar modal
 
   const {
     canModify,
@@ -76,177 +78,199 @@ const MessageItem = ({
     }
   };
 
+  // Add avatar click handler
+  const handleAvatarClick = () => {
+    if (senderPic && senderPic !== "/avatar.png") {
+      setShowAvatarModal(true);
+    }
+  };
+
   return (
-    <div
-      onClick={handleItemClick}
-      className={`w-full flex transition-colors duration-200 ${
-        isMe ? "justify-end" : "justify-start"
-      } ${isSelectionMode ? "cursor-pointer" : ""} ${
-        isSelected ? "bg-cyan-500/10" : ""
-      } mb-2 md:mb-3 px-2 py-0.5 relative`}
-    >
+    <>
       <div
-        className={`flex items-end gap-2 md:gap-3 max-w-[90%] md:max-w-[75%] group ${
-          isMe ? "flex-row-reverse" : "flex-row"
-        }`}
-        onClick={(e) => !isSelectionMode && e.stopPropagation()}
+        onClick={handleItemClick}
+        className={`w-full flex transition-colors duration-200 ${
+          isMe ? "justify-end" : "justify-start"
+        } ${isSelectionMode ? "cursor-pointer" : ""} ${
+          isSelected ? "bg-cyan-500/10" : ""
+        } mb-2 md:mb-3 px-2 py-0.5 relative`}
       >
-        {/* SELECTION CHECKBOX */}
-        {isSelectionMode && (
-          <div className="self-center flex-shrink-0 px-1 md:px-2">
-            {isSelected ? (
-              <CheckCircle2
-                size={20}
-                className="text-cyan-500 fill-cyan-500/20 animate-in zoom-in duration-200"
-              />
-            ) : (
-              <div className="size-5 rounded-full border-2 border-white/30" />
-            )}
-          </div>
-        )}
-
-        {/* AVATAR - Always visible on mobile now */}
-        {!isSelectionMode && (
-          <div className="flex-shrink-0 self-end mb-3">
-            <div className="w-8 h-8 md:w-9 md:h-9 rounded-full overflow-hidden bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-white/20">
-              <img
-                src={senderPic}
-                alt={senderName}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = "/avatar.png";
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* BUBBLE CONTENT */}
         <div
-          className={`flex flex-col ${
-            isMe ? "items-end" : "items-start"
-          } min-w-0 flex-1`}
+          className={`flex items-end gap-2 md:gap-3 max-w-[90%] md:max-w-[75%] group ${
+            isMe ? "flex-row-reverse" : "flex-row"
+          }`}
+          onClick={(e) => !isSelectionMode && e.stopPropagation()}
         >
-          {/* Sender name for group chats - Always visible */}
-          {!isMe && isGroup && (
-            <span
-              className={`text-[10px] md:text-[11px] font-bold ml-1 md:ml-2 mb-0.5 uppercase tracking-wide ${getSenderColor(
-                senderName
-              )}`}
-            >
-              {senderName}
-            </span>
-          )}
-
-          <div className="relative w-full">
-            <MessageBubble
-              msg={msg}
-              isMe={isMe}
-              authUser={authUser}
-              selectedUser={selectedUser}
-              editingId={editingId}
-              editText={editText}
-              handleEditTextChange={handleEditTextChange}
-              submitEdit={submitEdit}
-              setEditingId={setEditingId}
-              setSelectedImg={setSelectedImg}
-              onDelete={handleDelete}
-              onReply={handleReply}
-            />
-          </div>
-
-          {/* REACTIONS ROW */}
-          {msgReactions.length > 0 && (
-            <div className={`-mt-3 z-10 ${isMe ? "mr-1" : "ml-1"}`}>
-              <MessageReactions
-                msgReactions={msgReactions}
-                isMe={isMe}
-                authUser={authUser}
-                handleExistingReactionClick={handleExistingReactionClick}
-                msgId={msg._id}
-              />
+          {/* SELECTION CHECKBOX */}
+          {isSelectionMode && (
+            <div className="self-center flex-shrink-0 px-1 md:px-2">
+              {isSelected ? (
+                <CheckCircle2
+                  size={20}
+                  className="text-cyan-500 fill-cyan-500/20 animate-in zoom-in duration-200"
+                />
+              ) : (
+                <div className="size-5 rounded-full border-2 border-white/30" />
+              )}
             </div>
           )}
 
-          <MessageTimestamp msg={msg} isMe={isMe} />
-        </div>
-
-        {/* ACTION BUTTONS (THREE DOTS) */}
-        {!msg.isDeleted && !isSelectionMode && (
-          <div
-            className={`relative self-center flex-shrink-0 z-20 ${isMe ? "mr-0" : "ml-0"}`}
-          >
-            <button
-              className={`p-1.5 md:p-2 rounded-full transition-all duration-200 
-                ${
-                  activeMsgId === msg._id
-                    ? "bg-white/10 opacity-100"
-                    : "opacity-0 group-hover:opacity-100 hover:bg-white/10"
-                } 
-                text-white/40 hover:text-white`}
-              onClick={(e) => handleThreeDotClick(msg._id, e)}
-            >
-              <MoreVertical size={16} />
-            </button>
-
-            {/* ACTION MENU */}
-            {activeMsgId === msg._id && (
-              <div
-                className={`absolute bottom-full mb-2 z-[100] ${
-                  isMe ? "right-0" : "left-0"
-                }`}
-                onClick={(e) => e.stopPropagation()}
+          {/* AVATAR - Clickable to view full image */}
+          {!isSelectionMode && (
+            <div className="flex-shrink-0 self-end mb-3">
+              <div 
+                className="w-8 h-8 md:w-9 md:h-9 rounded-full overflow-hidden bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-white/20 cursor-pointer transition-transform hover:scale-105 active:scale-95"
+                onClick={handleAvatarClick}
+                title="Click to view profile picture"
               >
-                <MessageActionMenu
-                  msg={msg}
-                  isMe={isMe}
-                  canEdit={canEdit}
-                  handleReply={handleReply}
-                  startEdit={startEdit}
-                  isGroup={isGroup}
-                  handleDelete={(id, type) =>
-                    handleDelete(id, type, msg.createdAt)
-                  }
-                  handleReactionButtonClick={handleReactionButtonClick}
-                  enterSelectionMode={() => toggleMessageSelection(msg._id)}
-                  onInfoClick={() => {
-                    setShowInfoDrawer(true);
-                    handleThreeDotClick(null);
+                <img
+                  src={senderPic}
+                  alt={senderName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.src = "/avatar.png";
                   }}
                 />
               </div>
+            </div>
+          )}
+
+          {/* BUBBLE CONTENT */}
+          <div
+            className={`flex flex-col ${
+              isMe ? "items-end" : "items-start"
+            } min-w-0 flex-1`}
+          >
+            {/* Sender name for group chats - Always visible */}
+            {!isMe && isGroup && (
+              <span
+                className={`text-[10px] md:text-[11px] font-bold ml-1 md:ml-2 mb-0.5 uppercase tracking-wide ${getSenderColor(
+                  senderName
+                )}`}
+              >
+                {senderName}
+              </span>
             )}
 
-            {showReactionsMenu === msg._id && (
-              <div
-                className={`absolute bottom-full mb-2 z-[150] pointer-events-auto ${
-                  isMe ? "right-0" : "left-0"
-                }`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <ReactionPickerMenu
-                  msgId={msg._id}
+            <div className="relative w-full">
+              <MessageBubble
+                msg={msg}
+                isMe={isMe}
+                authUser={authUser}
+                selectedUser={selectedUser}
+                editingId={editingId}
+                editText={editText}
+                handleEditTextChange={handleEditTextChange}
+                submitEdit={submitEdit}
+                setEditingId={setEditingId}
+                setSelectedImg={setSelectedImg}
+                onDelete={handleDelete}
+                onReply={handleReply}
+              />
+            </div>
+
+            {/* REACTIONS ROW */}
+            {msgReactions.length > 0 && (
+              <div className={`-mt-3 z-10 ${isMe ? "mr-1" : "ml-1"}`}>
+                <MessageReactions
+                  msgReactions={msgReactions}
                   isMe={isMe}
-                  handleReactionClick={handleReactionClick}
-                  showFullPicker={showFullPicker}
-                  setShowFullPicker={setShowFullPicker}
+                  authUser={authUser}
+                  handleExistingReactionClick={handleExistingReactionClick}
+                  msgId={msg._id}
                 />
               </div>
             )}
+
+            <MessageTimestamp msg={msg} isMe={isMe} />
           </div>
+
+          {/* ACTION BUTTONS (THREE DOTS) */}
+          {!msg.isDeleted && !isSelectionMode && (
+            <div
+              className={`relative self-center flex-shrink-0 z-20 ${isMe ? "mr-0" : "ml-0"}`}
+            >
+              <button
+                className={`p-1.5 md:p-2 rounded-full transition-all duration-200 
+                  ${
+                    activeMsgId === msg._id
+                      ? "bg-white/10 opacity-100"
+                      : "opacity-0 group-hover:opacity-100 hover:bg-white/10"
+                  } 
+                  text-white/40 hover:text-white`}
+                onClick={(e) => handleThreeDotClick(msg._id, e)}
+              >
+                <MoreVertical size={16} />
+              </button>
+
+              {/* ACTION MENU */}
+              {activeMsgId === msg._id && (
+                <div
+                  className={`absolute bottom-full mb-2 z-[100] ${
+                    isMe ? "right-0" : "left-0"
+                  }`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MessageActionMenu
+                    msg={msg}
+                    isMe={isMe}
+                    canEdit={canEdit}
+                    handleReply={handleReply}
+                    startEdit={startEdit}
+                    isGroup={isGroup}
+                    handleDelete={(id, type) =>
+                      handleDelete(id, type, msg.createdAt)
+                    }
+                    handleReactionButtonClick={handleReactionButtonClick}
+                    enterSelectionMode={() => toggleMessageSelection(msg._id)}
+                    onInfoClick={() => {
+                      setShowInfoDrawer(true);
+                      handleThreeDotClick(null);
+                    }}
+                  />
+                </div>
+              )}
+
+              {showReactionsMenu === msg._id && (
+                <div
+                  className={`absolute bottom-full mb-2 z-[150] pointer-events-auto ${
+                    isMe ? "right-0" : "left-0"
+                  }`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ReactionPickerMenu
+                    msgId={msg._id}
+                    isMe={isMe}
+                    handleReactionClick={handleReactionClick}
+                    showFullPicker={showFullPicker}
+                    setShowFullPicker={setShowFullPicker}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* GROUP MESSAGE INFO DRAWER */}
+        {showInfoDrawer && (
+          <MessageInfoDrawer
+            msg={msg}
+            onClose={() => setShowInfoDrawer(false)}
+            isGroup={isGroup}
+            selectedGroup={selectedGroup}
+          />
         )}
       </div>
 
-      {/* GROUP MESSAGE INFO DRAWER */}
-      {showInfoDrawer && (
-        <MessageInfoDrawer
-          msg={msg}
-          onClose={() => setShowInfoDrawer(false)}
-          isGroup={isGroup}
-          selectedGroup={selectedGroup}
+      {/* AVATAR MODAL */}
+      {showAvatarModal && (
+        <AvatarModal
+          image={senderPic}
+          name={senderName}
+          onClose={() => setShowAvatarModal(false)}
         />
       )}
-    </div>
+    </>
   );
 };
 

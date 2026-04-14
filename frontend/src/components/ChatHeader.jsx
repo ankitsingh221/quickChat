@@ -13,6 +13,7 @@ import {
 import { useAuthStore } from "../store/useAuthStore";
 import GroupInfoModal from "./groups/GroupInfoModal";
 import toast from "react-hot-toast";
+import AvatarModal from "./AvatarModal";
 
 function ChatHeader({ children }) {
   const selectedUser = useChatStore((state) => state.selectedUser);
@@ -24,6 +25,8 @@ function ChatHeader({ children }) {
   const groupTypingUsers = useChatStore((state) => state.groupTypingUsers);
   const messages = useChatStore((state) => state.messages);
   const isSelectionMode = useChatStore((state) => state.isSelectionMode);
+
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
   const toggleSelectionMode = useChatStore(
     (state) => state.toggleSelectionMode,
   );
@@ -169,6 +172,10 @@ function ChatHeader({ children }) {
     toggleSelectionMode(true);
   };
 
+    const handleAvatarClick = () => {
+    setShowAvatarModal(true);
+  };
+
   if (isSelectionMode) {
     return (
       <div className="flex justify-between items-center bg-black/40 backdrop-blur-xl border-b border-white/10 min-h-[70px] px-6 animate-in slide-in-from-top duration-300 z-10">
@@ -215,40 +222,38 @@ function ChatHeader({ children }) {
 
   return (
     <>
-      <div className="flex justify-between items-center bg-black/30 backdrop-blur-md border-b border-white/10 min-h-[70px] px-4 md:px-6">
-        <div className="flex items-center gap-3">
-          {/* AVATAR SECTION */}
-          <div
-            className={`avatar ${
-              !isGroup && isOnline ? "online" : ""
-            } cursor-pointer active:scale-95 transition-transform`}
-            onClick={() => {
-              if (isGroup) setShowGroupInfo(true);
-            }}
-            title={isGroup ? "Group info" : selectedUser?.fullName}
-          >
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-white/20 overflow-hidden bg-white/5 flex items-center justify-center">
-              {isGroup ? (
-                selectedGroup.groupPic ? (
-                  <img
-                    src={selectedGroup.groupPic}
-                    alt="group"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-white/10 flex items-center justify-center">
-                    <Users className="w-5 h-5 md:w-6 md:h-6 text-white/40" />
-                  </div>
-                )
-              ) : (
+       <div className="flex justify-between items-center bg-black/30 backdrop-blur-md border-b border-white/10 min-h-[70px] px-4 md:px-6">
+      <div className="flex items-center gap-3">
+        {/* AVATAR SECTION - UPDATED */}
+        <div
+          className={`avatar ${
+            !isGroup && isOnline ? "online" : ""
+          } cursor-pointer active:scale-95 transition-transform`}
+          onClick={handleAvatarClick}  // ← Changed from setShowGroupInfo to handleAvatarClick
+          title={isGroup ? "Click to view group image" : "Click to view profile picture"}
+        >
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-white/20 overflow-hidden bg-white/5 flex items-center justify-center">
+            {isGroup ? (
+              selectedGroup.groupPic ? (
                 <img
-                  src={selectedUser?.profilePic || "/avatar.png"}
-                  alt="user"
+                  src={selectedGroup.groupPic}
+                  alt="group"
                   className="w-full h-full object-cover"
                 />
-              )}
-            </div>
+              ) : (
+                <div className="w-full h-full bg-white/10 flex items-center justify-center">
+                  <Users className="w-5 h-5 md:w-6 md:h-6 text-white/40" />
+                </div>
+              )
+            ) : (
+              <img
+                src={selectedUser?.profilePic || "/avatar.png"}
+                alt="user"
+                className="w-full h-full object-cover"
+              />
+            )}
           </div>
+        </div>
 
           {/* NAME AND STATUS SECTION */}
           <div
@@ -412,6 +417,14 @@ function ChatHeader({ children }) {
           onClose={() => setShowGroupInfo(false)}
         />
       )}
+
+      {showAvatarModal && (
+      <AvatarModal
+        image={isGroup ? selectedGroup?.groupPic : selectedUser?.profilePic}
+        name={isGroup ? selectedGroup?.groupName : selectedUser?.fullName}
+        onClose={() => setShowAvatarModal(false)}
+      />
+    )}
     </>
   );
 }
