@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import MessageBubble from "./MessageBubble";
 import MessageReactions from "./MessageReactions";
 import MessageTimestamp from "./MessageTimestamp";
@@ -7,7 +7,7 @@ import ReactionPickerMenu from "./ReactionPickerMenu";
 import { MoreVertical, CheckCircle2 } from "lucide-react";
 import { useChatStore } from "../../store/useChatStore";
 import MessageInfoDrawer from "../groups/MessageInfoDrawer";
-import AvatarModal from "../AvatarModal"; // Import AvatarModal
+import AvatarModal from "../AvatarModal";
 
 const MessageItem = ({
   msg,
@@ -21,7 +21,10 @@ const MessageItem = ({
   const { isSelectionMode, selectedMessages, toggleMessageSelection } =
     useChatStore();
   const isSelected = selectedMessages.includes(msg._id);
-  const [showAvatarModal, setShowAvatarModal] = useState(false); // Add state for avatar modal
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+
+  // Ref for the three-dot trigger button — passed to the portal menu for positioning
+  const triggerButtonRef = useRef(null);
 
   const {
     canModify,
@@ -78,7 +81,6 @@ const MessageItem = ({
     }
   };
 
-  // Add avatar click handler
   const handleAvatarClick = () => {
     if (senderPic && senderPic !== "/avatar.png") {
       setShowAvatarModal(true);
@@ -115,10 +117,10 @@ const MessageItem = ({
             </div>
           )}
 
-          {/* AVATAR - Clickable to view full image */}
+          {/* AVATAR */}
           {!isSelectionMode && (
             <div className="flex-shrink-0 self-end mb-3">
-              <div 
+              <div
                 className="w-8 h-8 md:w-9 md:h-9 rounded-full overflow-hidden bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-white/20 cursor-pointer transition-transform hover:scale-105 active:scale-95"
                 onClick={handleAvatarClick}
                 title="Click to view profile picture"
@@ -141,7 +143,6 @@ const MessageItem = ({
               isMe ? "items-end" : "items-start"
             } min-w-0 flex-1`}
           >
-            {/* Sender name for group chats - Always visible */}
             {!isMe && isGroup && (
               <span
                 className={`text-[10px] md:text-[11px] font-bold ml-1 md:ml-2 mb-0.5 uppercase tracking-wide ${getSenderColor(
@@ -185,12 +186,12 @@ const MessageItem = ({
             <MessageTimestamp msg={msg} isMe={isMe} />
           </div>
 
-          {/* ACTION BUTTONS (THREE DOTS) */}
+          {/* ACTION BUTTON (THREE DOTS) */}
           {!msg.isDeleted && !isSelectionMode && (
-            <div
-              className={`relative self-center flex-shrink-0 z-20 ${isMe ? "mr-0" : "ml-0"}`}
-            >
+            <div className="relative self-center flex-shrink-0 z-20">
+              {/* The ref is attached here so the portal menu knows where to anchor */}
               <button
+                ref={triggerButtonRef}
                 className={`p-1.5 md:p-2 rounded-full transition-all duration-200 
                   ${
                     activeMsgId === msg._id
@@ -203,34 +204,29 @@ const MessageItem = ({
                 <MoreVertical size={16} />
               </button>
 
-              {/* ACTION MENU */}
+              {/* ACTION MENU — now a portal, positioned via triggerRef */}
               {activeMsgId === msg._id && (
-                <div
-                  className={`absolute bottom-full mb-2 z-[100] ${
-                    isMe ? "right-0" : "left-0"
-                  }`}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MessageActionMenu
-                    msg={msg}
-                    isMe={isMe}
-                    canEdit={canEdit}
-                    handleReply={handleReply}
-                    startEdit={startEdit}
-                    isGroup={isGroup}
-                    handleDelete={(id, type) =>
-                      handleDelete(id, type, msg.createdAt)
-                    }
-                    handleReactionButtonClick={handleReactionButtonClick}
-                    enterSelectionMode={() => toggleMessageSelection(msg._id)}
-                    onInfoClick={() => {
-                      setShowInfoDrawer(true);
-                      handleThreeDotClick(null);
-                    }}
-                  />
-                </div>
+                <MessageActionMenu
+                  msg={msg}
+                  isMe={isMe}
+                  canEdit={canEdit}
+                  handleReply={handleReply}
+                  startEdit={startEdit}
+                  isGroup={isGroup}
+                  handleDelete={(id, type) =>
+                    handleDelete(id, type, msg.createdAt)
+                  }
+                  handleReactionButtonClick={handleReactionButtonClick}
+                  enterSelectionMode={() => toggleMessageSelection(msg._id)}
+                  onInfoClick={() => {
+                    setShowInfoDrawer(true);
+                    handleThreeDotClick(null);
+                  }}
+                  triggerRef={triggerButtonRef}
+                />
               )}
 
+              {/* REACTION PICKER — also portaled for safety */}
               {showReactionsMenu === msg._id && (
                 <div
                   className={`absolute bottom-full mb-2 z-[150] pointer-events-auto ${
