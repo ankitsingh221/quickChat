@@ -39,7 +39,7 @@ const MessageActionMenu = ({
   handleReactionButtonClick,
   isGroup,
   onInfoClick,
-  triggerRef, // Pass a ref to the trigger button from MessageItem
+  triggerRef, // Passing  a ref to the trigger button from MessageItem
 }) => {
   const { setForwardingMessages, toggleMessageSelection, toggleSelectionMode } =
     useChatStore();

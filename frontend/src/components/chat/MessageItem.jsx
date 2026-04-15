@@ -226,7 +226,7 @@ const MessageItem = ({
                 />
               )}
 
-              {/* REACTION PICKER — also portaled for safety */}
+              {/* REACTION PICKER  */}
               {showReactionsMenu === msg._id && (
                 <div
                   className={`absolute bottom-full mb-2 z-[150] pointer-events-auto ${
