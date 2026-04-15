@@ -172,10 +172,11 @@ function ChatHeader({ children }) {
     toggleSelectionMode(true);
   };
 
-    const handleAvatarClick = () => {
-    setShowAvatarModal(true);
-  };
 
+  const handleAvatarClick = () => {
+  const image = isGroup ? selectedGroup?.groupPic : selectedUser?.profilePic;
+  if (image) setShowAvatarModal(true); // only open if image exists
+};
   if (isSelectionMode) {
     return (
       <div className="flex justify-between items-center bg-black/40 backdrop-blur-xl border-b border-white/10 min-h-[70px] px-6 animate-in slide-in-from-top duration-300 z-10">

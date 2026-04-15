@@ -57,34 +57,39 @@ const MessageActionMenu = ({
   useEffect(() => {
     if (!triggerRef?.current || !menuRef?.current) return;
 
-    const MENU_WIDTH = 220;
-    const MENU_HEIGHT = menuRef.current.offsetHeight || 300; // estimated
+    const MENU_WIDTH = Math.min(220, window.innerWidth - 16); // shrink on small screens
+    const MENU_HEIGHT = menuRef.current.offsetHeight || 300;
     const PADDING = 8;
+    const HEADER_HEIGHT = 70; 
 
     const triggerRect = triggerRef.current.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
 
-    // Vertical: prefer above the trigger, fall back to below
+    // Prefer above, fall back to below
     let top = triggerRect.top - MENU_HEIGHT - PADDING;
-    if (top < PADDING) {
+    if (top < HEADER_HEIGHT + PADDING) {
+      // Not enough space above — try below
       top = triggerRect.bottom + PADDING;
     }
-    // Clamp to viewport
+    // If below also overflows bottom, force it above the trigger clamped to header
+    if (top + MENU_HEIGHT > viewportHeight - PADDING) {
+      top = triggerRect.top - MENU_HEIGHT - PADDING;
+    }
+    // Final hard clamp — never go behind header or off bottom
     top = Math.max(
-      PADDING,
+      HEADER_HEIGHT + PADDING,
       Math.min(top, viewportHeight - MENU_HEIGHT - PADDING),
     );
 
-    // Horizontal: align to trigger side, clamp to viewport
+    // Horizontal alignment
     let left;
     if (isMe) {
-      // Right-align to trigger
       left = triggerRect.right - MENU_WIDTH;
     } else {
-      // Left-align to trigger
       left = triggerRect.left;
     }
+    // Hard clamp to screen edges
     left = Math.max(
       PADDING,
       Math.min(left, viewportWidth - MENU_WIDTH - PADDING),
