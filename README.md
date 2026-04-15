@@ -1,182 +1,194 @@
 # 🚀 QuickChat
 
-A full-stack real-time chat application built using the **MERN stack** that supports one-to-one and group communication with advanced messaging controls, real-time updates, and rich user interactions.
+A full-stack real-time chat application built using the **MERN stack** that enables seamless one-to-one and group communication with advanced messaging controls and real-time updates.
 
 ---
 
 ## 📌 Overview
 
-**QuickChat** replicates modern messaging platforms with production-level features like real-time communication, group permissions, message control, and interactive UI elements.
+**QuickChat** replicates modern messaging platforms with production-level features like real-time communication, group permissions, and interactive UI.
 
-It goes beyond a basic chat app by implementing **fine-grained control over messages, users, and groups**, making it closer to real-world systems like **WhatsApp**
+It goes beyond a basic chat app by implementing **fine-grained control over messages, users, and groups**, making it closer to real-world systems like **WhatsApp**.
 
 ---
+
 ## 🔗 Live Demo
 
-Check out the live version of **QuickChat** here: [Live Demo](https://quickchat-2gsw.onrender.com/)
+👉 https://quickchat-2gsw.onrender.com/
+
+---
 
 ## ✨ Features
 
 ### 💬 Messaging System
-- ⚡ Real-time messaging using **WebSockets (Socket.IO)**
-- ✏️ Edit messages (with time restriction for everyone)
-- ❌ Delete messages:
-  - For yourself
-  - For everyone (within 5 minutes)
-- 🔁 Forward messages:
-  - To individual users
-  - To groups
-  - Bulk forwarding support
-- 🔍 Message search functionality
-- 🧹 Clear chat / bulk message deletion
 
----
-## 👁️ Message Read Receipts (Planned Feature)
-- Real-time message read status for both **one-to-one** and **group chats**
+* ⚡ Real-time messaging using **Socket.IO**
+* ✏️ Edit messages (time-restricted)
+* ❌ Delete messages (for self / for everyone within 5 minutes)
+* 🔁 Forward messages (users & groups, bulk supported)
+* 🔍 Message search
+* 🧹 Clear chat / bulk delete
+* Message read receipts (single tick / double tick / seen count)
 
-### 💬 One-to-One Chat
-- When a message is delivered → single tick
-- When the receiver reads the message → double blue tick
-
-### 👥 Group Chat
-- Shows how many members have seen the message
-- Displays remaining users who haven’t seen it yet
-- Real-time updates as users read the message
 ---
 
 ### 🟢 Real-Time Indicators
-- 👀 Online/offline user status
-- ⌨️ Typing indicator (one-to-one & group)
-- 🔊 Typing sound feedback
-- 🕒 Last seen (date & time)
+
+* 👀 Online/offline status
+* ⌨️ Typing indicator
+* 🔊 Typing sound feedback
+* 🕒 Last seen timestamps
 
 ---
 
 ### 😀 Interaction Features
-- ❤️ Emoji reactions on messages
-- 🖼️ Image sharing (1-to-1 & group chats)
-- 🔔 Toast notifications for actions (group updates, profile changes, etc.)
+
+* ❤️ Emoji reactions
+* 🖼️ Image sharing
+* 🔔 Toast notifications
 
 ---
 
 ### 👥 Group Chat System
-- ➕ Add/remove members
-- 🛡️ Admin role management
-- 👑 Creator privileges (always override restrictions)
-- 🗑️ Delete group
+
+* ➕ Add/remove members
+* 🛡️ Admin roles
+* 👑 Creator privileges
+* 🗑️ Delete group
 
 #### ⚙️ Group Controls
-- Only admins can send messages
-- Only admins can edit group info (name & image)
-- Settings can be toggled by admin/creator
+
+* Only admins can send messages
+* Only admins can edit group info
+* Configurable permissions
 
 ---
 
 ### 👤 User Features
-- 🖼️ Update profile image
-- ✏️ Update username & about section
+
+* 🖼️ Profile image update
+* ✏️ Username & bio editing
 
 ---
 
 ### 📊 Chat Management
-- 📩 Unread message count
-- 🧾 Last message preview in chat list
-- 🗂️ Chat removal on clear (moves to contacts)
-- 📅 Messages grouped by date (like WhatsApp)
+
+* 📩 Unread message count
+* 🧾 Last message preview
+* 🗂️ Chat cleanup
+* 📅 Messages grouped by date
 
 ---
 
 ## 🧱 Tech Stack
 
 ### Frontend
-- React (Vite)
-- Zustand (state management)
-- Tailwind CSS + DaisyUI
-- Socket.IO Client
-- Axios
-- Day.js
-- React Hot Toast
+
+* React (Vite)
+* Zustand
+* Tailwind CSS + DaisyUI
+* Socket.IO Client
+* Axios
+* Day.js
+* React Hot Toast
 
 ### Backend
-- Node.js + Express
-- MongoDB + Mongoose
-- Socket.IO
-- JWT Authentication
-- Cloudinary (image uploads)
-- Bcrypt (password hashing)
-- Express Rate Limiting
+
+* Node.js + Express
+* MongoDB + Mongoose
+* Socket.IO
+* JWT Authentication
+* Cloudinary
+* Bcrypt
+* Express Rate Limiting
+
+---
 
 ## 🔐 Authentication
-- JWT-based authentication  
-- Password hashing using **bcrypt**  
-- Secure API handling using middleware  
+
+* JWT-based authentication
+* Secure password hashing (bcrypt)
+* Protected routes using middleware
 
 ---
 
 ## 🚀 Key Highlights
-- Real-time bidirectional communication (**Socket.IO**)  
-- Advanced message lifecycle management  
-- Scalable group permission system  
-- Clean and modular architecture  
-- Modern, responsive UI  
+
+* Real-time bidirectional communication
+* Advanced message lifecycle handling
+* Scalable group permission system
+* Clean modular architecture
+* Responsive modern UI
 
 ---
+
 ## 🖼️ Screenshots
 
-### Main Interface
-*Main dashboard showing chat selection view*
-![Main Dashboard](https://github.com/ankitsingh221/quickChat/blob/3d80bcf59955d397e31c97e03e0074382c2dd15c/UI_image/Screenshot%202026-04-12%20235759.png)
+### 🔐 Authentication
 
-### Contact List
-*Contact list with online status indicators*
-![Contacts View](https://github.com/ankitsingh221/quickChat/blob/3d80bcf59955d397e31c97e03e0074382c2dd15c/UI_image/Screenshot%202026-04-12%20235831.png)
+| Signup                                                                                                                                            | Login                                                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ![Signup](https://github.com/ankitsingh221/quickChat/blob/c6eed7b16b60469fe50189432e7f0099de5ce414/UI_image/Screenshot%202026-04-15%20225223.png) | ![Login](https://github.com/ankitsingh221/quickChat/blob/c6eed7b16b60469fe50189432e7f0099de5ce414/UI_image/Screenshot%202026-04-15%20225213.png) |
 
-### Group Chat
-*Group conversation interface with member list*
-![Group Chat](https://github.com/ankitsingh221/quickChat/blob/3d80bcf59955d397e31c97e03e0074382c2dd15c/UI_image/Screenshot%202026-04-12%20235813.png).
+---
 
+### 💬 Chat Dashboard
 
-###  One to One Chat Interface
-![Chat Window](https://github.com/ankitsingh221/quickChat/blob/ec94d663fbcc37fd8bbde223c84c4ee6ec767a49/UI_image/Screenshot%202026-04-13%20004014.png)
+| Empty                                                                                                                                            | Active                                                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Empty](https://github.com/ankitsingh221/quickChat/blob/c6eed7b16b60469fe50189432e7f0099de5ce414/UI_image/Screenshot%202026-04-15%20225809.png) | ![Active](https://github.com/ankitsingh221/quickChat/blob/c6eed7b16b60469fe50189432e7f0099de5ce414/UI_image/Screenshot%202026-04-15%20225853.png) |
 
+---
 
-###  Group Chat Interface
-![Chat Window](https://github.com/ankitsingh221/quickChat/blob/1870fe6090cd20a32659f08c17c5a37e369a664f/UI_image/Screenshot%202026-04-13%20004359.png)
+### 🧑‍🤝‍🧑 One-to-One Chat
 
+![Chat](https://github.com/ankitsingh221/quickChat/blob/7c5c4ead4efa6a32062ce8da14bf3b9f7a224e5b/UI_image/Screenshot%202026-04-15%20232228.png)
 
-### Message Actions
-*Context menu for message operations (Reply, Forward, Edit, Delete)*
-![Message Actions](https://github.com/ankitsingh221/quickChat/blob/3d80bcf59955d397e31c97e03e0074382c2dd15c/UI_image/Screenshot%202026-04-13%20000357.png)
+---
 
-### Unread Message Count
-![Message Actions](https://github.com/ankitsingh221/quickChat/blob/ecd20a4b98b21331e4a634b167308f843177463f/UI_image/Screenshot%202026-04-13%20005930.png)
+### ⚡ Message Features
 
+| Actions                                                                                                                                            | Forward                                                                                                                                            | Info                                                                                                                                            |
+| -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Actions](https://github.com/ankitsingh221/quickChat/blob/c6eed7b16b60469fe50189432e7f0099de5ce414/UI_image/Screenshot%202026-04-15%20225902.png) | ![Forward](https://github.com/ankitsingh221/quickChat/blob/c6eed7b16b60469fe50189432e7f0099de5ce414/UI_image/Screenshot%202026-04-15%20230245.png) | ![Info](https://github.com/ankitsingh221/quickChat/blob/c6eed7b16b60469fe50189432e7f0099de5ce414/UI_image/Screenshot%202026-04-15%20230444.png) |
 
-### Message Info
-*Context menu for message operations (Reply, Forward, Edit, Delete)*
-![Message Actions](https://github.com/ankitsingh221/quickChat/blob/4105ec997edd6fc6d28fa8ab5d71522e6a2c39d5/UI_image/Screenshot%202026-04-13%20004708.png)
+---
 
+### 👥 Group Features
 
-### Profile Management
-*User profile editing interface*
-![Profile Section](https://github.com/ankitsingh221/quickChat/blob/3d80bcf59955d397e31c97e03e0074382c2dd15c/UI_image/Screenshot%202026-04-13%20000522.png)
+| Create                                                                                                                                            | Chat                                                                                                                                             | Info                                                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Create](https://github.com/ankitsingh221/quickChat/blob/7c5c4ead4efa6a32062ce8da14bf3b9f7a224e5b/UI_image/Screenshot%202026-04-15%20225915.png) | ![Group](https://github.com/ankitsingh221/quickChat/blob/c6eed7b16b60469fe50189432e7f0099de5ce414/UI_image/Screenshot%202026-04-15%20230228.png) | ![Info](https://github.com/ankitsingh221/quickChat/blob/c6eed7b16b60469fe50189432e7f0099de5ce414/UI_image/Screenshot%202026-04-15%20225947.png) |
 
+---
 
-### Group Management
-*Group information and settings panel*
-![Group Info](https://github.com/ankitsingh221/quickChat/blob/3d80bcf59955d397e31c97e03e0074382c2dd15c/UI_image/Screenshot%202026-04-13%20000506.png)
+### ⚙️ Group Management
+
+| Settings                                                                                                                                            | Add Members                                                                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Settings](https://github.com/ankitsingh221/quickChat/blob/c6eed7b16b60469fe50189432e7f0099de5ce414/UI_image/Screenshot%202026-04-15%20230001.png) | ![Members](https://github.com/ankitsingh221/quickChat/blob/c6eed7b16b60469fe50189432e7f0099de5ce414/UI_image/Screenshot%202026-04-15%20230025.png) |
+
+---
+
+### 🔍 Extras
+
+| Unread                                                                                                                                            | Search                                                                                                                                            | Profile                                                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Unread](https://github.com/ankitsingh221/quickChat/blob/7c5c4ead4efa6a32062ce8da14bf3b9f7a224e5b/UI_image/Screenshot%202026-04-15%20232124.png) | ![Search](https://github.com/ankitsingh221/quickChat/blob/7c5c4ead4efa6a32062ce8da14bf3b9f7a224e5b/UI_image/Screenshot%202026-04-15%20230331.png) | ![Profile](https://github.com/ankitsingh221/quickChat/blob/7c5c4ead4efa6a32062ce8da14bf3b9f7a224e5b/UI_image/Screenshot%202026-04-15%20232040.png) |
 
 ---
 
 ## 🔮 Future Improvements
-- Voice & video calling  
-- End-to-End message encryption (E2E)  
-- Push notifications  
-- File sharing (documents, videos)  
-- Admin Features 
+
+* 🎥 Voice & video calling
+* 🔐 End-to-End Encryption
+* 📲 Push notifications
+* 📎 File sharing
+* 🛠️ Advanced admin tools
+
 ---
+
 ## 👨‍💻 Author
 
-**Ankit kumar**  
-
-GitHub: [https://github.com/ankitsingh221](https://github.com/ankitsingh221)
+**Ankit Kumar**
+🔗 https://github.com/ankitsingh221
