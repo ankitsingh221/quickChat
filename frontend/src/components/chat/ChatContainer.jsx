@@ -246,7 +246,7 @@ const ChatContainer = () => {
         <MessageSearch />
       </ChatHeader>
 
-      {/* Messages area - scrollable */}
+      {/* Messages area*/}
       <div
         className="flex-1 overflow-y-auto custom-scrollbar"
         onClick={(e) =>

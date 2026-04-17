@@ -175,7 +175,7 @@ function ChatHeader({ children }) {
 
   const handleAvatarClick = () => {
   const image = isGroup ? selectedGroup?.groupPic : selectedUser?.profilePic;
-  if (image) setShowAvatarModal(true); // only open if image exists
+  if (image) setShowAvatarModal(true);
 };
   if (isSelectionMode) {
     return (
@@ -230,7 +230,7 @@ function ChatHeader({ children }) {
           className={`avatar ${
             !isGroup && isOnline ? "online" : ""
           } cursor-pointer active:scale-95 transition-transform`}
-          onClick={handleAvatarClick}  // ← Changed from setShowGroupInfo to handleAvatarClick
+          onClick={handleAvatarClick} 
           title={isGroup ? "Click to view group image" : "Click to view profile picture"}
         >
           <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-white/20 overflow-hidden bg-white/5 flex items-center justify-center">

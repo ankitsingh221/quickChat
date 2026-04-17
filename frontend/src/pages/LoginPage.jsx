@@ -21,7 +21,6 @@ function LoginPage() {
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4">
       <div className="relative w-full max-w-[420px]">
-        {/* Glassmorphic Card */}
         <div className="relative rounded-2xl bg-black/30 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
           
           {/* Animated gradient border */}

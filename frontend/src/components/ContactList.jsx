@@ -3,7 +3,7 @@ import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import UsersLoadingSkeleton from "./UsersLoadingSkeleton";
 import UserCard from "./UserCard";
-import { Users, UserPlus } from "lucide-react";
+import { Users } from "lucide-react";
 
 function ContactList() {
   const {

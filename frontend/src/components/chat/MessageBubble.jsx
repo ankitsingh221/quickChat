@@ -90,7 +90,7 @@ const MessageBubble = ({
 
   return (
     <div className="relative group">
-      {/* CONTEXT MENU - Glassmorphic */}
+      {/* CONTEXT MENU */}
       {showMenu && (
         <div
           ref={menuRef}

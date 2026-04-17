@@ -8,7 +8,7 @@ import ContactList from "./ContactList";
 import GroupList from "./groups/GroupList";
 import { Lock } from "lucide-react";
 
-function Sidebar({ onOpenCreateGroup }) {  // Receive prop from parent
+function Sidebar({ onOpenCreateGroup }) { 
   const {
     activeTab,
     subscribeToMessages,

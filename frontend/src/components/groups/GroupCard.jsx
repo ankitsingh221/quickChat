@@ -4,24 +4,36 @@ import { useChatStore } from "../../store/useChatStore";
 
 function GroupCard({ group, onClick, isActive }) {
   const { authUser } = useAuthStore();
-  const { groupUnreadCounts } = useChatStore(); 
+  const { groupUnreadCounts } = useChatStore();
   
-  const gName = group.groupName || "Unnamed Group";
-  const lastMessage = group.lastMessage;
+  // return for missing group
+  if (!group) {
+    return (
+      <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5">
+        <div className="text-white/40 text-sm">Invalid group data</div>
+      </div>
+    );
+  }
+  
 
-  const unreadCount = groupUnreadCounts[group._id] !== undefined 
+  const gName = group?.groupName || "Unnamed Group";
+  const lastMessage = group?.lastMessage; 
+  
+  const unreadCount = groupUnreadCounts?.[group._id] !== undefined 
     ? groupUnreadCounts[group._id] 
-    : (group.unreadCount || 0);
+    : (group?.unreadCount || 0);
   
   const senderId = lastMessage?.senderId?._id || lastMessage?.senderId;
   const isSentByMe = senderId === authUser?._id;
   
   const senderName = isSentByMe 
     ? "You" 
-    : (lastMessage?.senderId?.fullName?.split(' ')[0] || lastMessage?.senderName?.split(' ')[0] || "Member");
+    : (lastMessage?.senderId?.fullName?.split(' ')[0] || 
+       lastMessage?.senderName?.split(' ')[0] || 
+       "Member");
 
   const displayMessage = lastMessage 
-    ? `${senderName}: ${lastMessage.text || (lastMessage.image ? "📷 Photo" : "sent a message")}`
+    ? `${senderName}: ${lastMessage?.text || (lastMessage?.image ? "📷 Photo" : "sent a message")}`
     : "No messages yet";
 
   const time = lastMessage?.createdAt 
@@ -44,11 +56,11 @@ function GroupCard({ group, onClick, isActive }) {
       `}
     >
       <div className="relative">
-        <div className={`size-12 rounded-xl overflow-hidden border transition-colors
+        <div className={`size-12 rounded-full overflow-hidden border transition-colors
           ${isActive ? "border-cyan-500" : "border-white/20"} 
           bg-white/5 flex items-center justify-center`}
         >
-          {group.groupPic ? (
+          {group?.groupPic ? (
             <img src={group.groupPic} alt={gName} className="size-full object-cover" />
           ) : (
             <span className="text-lg font-bold text-cyan-400">

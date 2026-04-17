@@ -186,7 +186,7 @@ const MessageItem = ({
             <MessageTimestamp msg={msg} isMe={isMe} />
           </div>
 
-          {/* ACTION BUTTON (THREE DOTS) */}
+          {/* ACTION BUTTON (three dots) */}
           {!msg.isDeleted && !isSelectionMode && (
             <div className="relative self-center flex-shrink-0 z-20">
               {/* The ref is attached here so the portal menu knows where to anchor */}

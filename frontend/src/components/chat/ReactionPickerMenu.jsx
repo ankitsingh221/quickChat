@@ -10,7 +10,6 @@ const ReactionPickerMenu = ({
 }) => {
   const quickEmojis = ["👍", "❤️", "😂", "😮", "👋", "🙏"];
 
-  // Reset full picker when component mounts or msgId changes
   useEffect(() => {
     setShowFullPicker(false);
   }, [msgId, setShowFullPicker]);
@@ -25,7 +24,7 @@ const ReactionPickerMenu = ({
 
   return (
     <div className="relative" onClick={(e) => e.stopPropagation()}>
-      {/* Quick Bar - Glassmorphic */}
+      {/* Quick Bar  */}
       <div className={`reactions-menu absolute z-[150] bg-black/80 backdrop-blur-xl border border-white/20 shadow-2xl rounded-full px-2 py-1 flex items-center gap-1 bottom-full mb-2 ${isMe ? "right-0" : "left-0"}`}>
         {quickEmojis.map((emoji) => (
           <button
@@ -52,7 +51,7 @@ const ReactionPickerMenu = ({
         </button>
       </div>
 
-      {/* Full Picker Modal - Glassmorphic */}
+      {/* Full Picker Modal */}
       {showFullPicker && (
         <div 
           className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-md flex items-end sm:items-center justify-center"

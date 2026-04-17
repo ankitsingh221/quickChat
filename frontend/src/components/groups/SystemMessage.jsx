@@ -8,7 +8,7 @@ const SystemMessage = ({ text, createdAt }) => {
           {text}
         </p>
         
-        {/* Optional: Only show time if createdAt is provided */}
+        {/* Only show time if createdAt is provided */}
         {createdAt && (
           <p className="text-[9px] text-white/30 text-center mt-0.5 opacity-70">
             {new Date(createdAt).toLocaleTimeString([], {

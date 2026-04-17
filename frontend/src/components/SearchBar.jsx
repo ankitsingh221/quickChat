@@ -27,7 +27,7 @@ function SearchBar() {
           className="w-full pl-9 pr-16 py-2.5 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 text-white/90 placeholder:text-white/30 text-sm backdrop-blur-sm transition-all duration-200"
         />
         
-        {/* Voice search button (futuristic touch) */}
+        {/* Voice search button */}
         <button
           className="absolute right-3 top-1/2 transform -translate-y-1/2 hover:bg-white/10 p-1 rounded-lg transition-all duration-200 group/voice"
           title="Voice search"

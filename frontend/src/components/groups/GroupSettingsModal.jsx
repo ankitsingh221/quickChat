@@ -62,7 +62,7 @@ function GroupSettingsModal({ group, isCreator, onClose }) {
             </div>
           </div>
 
-          {/* Switch 2: Group Info */}
+          {/*  Group Info */}
           <div 
             className="flex items-center justify-between group cursor-pointer"
             onClick={() => setSettings(p => ({...p, onlyAdminsCanEditGroupInfo: !p.onlyAdminsCanEditGroupInfo}))}

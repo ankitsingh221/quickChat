@@ -83,7 +83,7 @@ const MessageList = ({
 
         return (
           <React.Fragment key={msg._id || index}>
-            {/* DATE HEADER - Responsive */}
+            {/* DATE HEADER  */}
             {curDate !== prevDate && (
               <div className="flex items-center justify-center my-4 md:my-6">
                 <span className="text-[10px] md:text-[11px] font-bold text-white/50 bg-white/10 backdrop-blur-sm px-2 md:px-3 py-1 rounded-md border border-white/20">
@@ -92,7 +92,7 @@ const MessageList = ({
               </div>
             )}
 
-            {/* THE "NEW MESSAGES" LINE - Responsive */}
+            {/* THE "NEW MESSAGES" LINE  */}
             {msg._id === initialUnreadId && (
               <div className="flex items-center justify-center my-3 md:my-4 animate-in fade-in zoom-in duration-500">
                 <div className="h-[1px] bg-cyan-500/30 flex-grow"></div>
@@ -103,7 +103,7 @@ const MessageList = ({
               </div>
             )}
 
-            {/* CONDITIONAL RENDERING: System Notification vs Regular Message Item */}
+            {/* conditional rendering: System Notification vs Regular Message Item */}
             {msg.isSystemMessage ? (
               <SystemMessage text={msg.text} />
             ) : (

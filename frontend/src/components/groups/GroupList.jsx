@@ -72,8 +72,9 @@ function GroupList() {
       {filteredGroups.map((group) => (
         <GroupCard
           key={group._id}
+
           group={group}
-          // Safe check: Use optional chaining to prevent crash if selectedGroup is null
+
           isActive={selectedGroup?._id === group._id}
           onClick={() => {
             // Logic to switch context from Private to Group safely

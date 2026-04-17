@@ -8,7 +8,7 @@
   syntax: "<angle>";
 }
 
-/* ========== BASE STYLES ========== */
+/* base styles */
 html, body, #root {
   height: 100%;
   margin: 0;
@@ -32,7 +32,7 @@ body {
   overflow-x: hidden;
 }
 
-/* ========== APP ROOT STYLES - IMPORTANT FOR MOBILE ========== */
+/* app root styles */
 .app-root {
   position: fixed;
   top: 0;
@@ -49,7 +49,6 @@ body {
   }
 }
 
-/* For iOS Safari */
 @supports (height: -webkit-fill-available) {
   .app-root {
     height: -webkit-fill-available !important;
@@ -74,7 +73,7 @@ body {
   }
 }
 
-/* ========== AVATAR STYLES - FIXED FOR MOBILE ========== */
+/* avataar styles */
 /* Ensure avatars are always visible */
 img[alt*="avatar"],
 img[alt*="profile"],
@@ -93,7 +92,7 @@ img[alt*="profile"],
   flex-shrink: 0 !important;
 }
 
-/* Message avatar sizes - Responsive */
+/* Message avatar sizes  */
 .message-avatar {
   width: 32px;
   height: 32px;
@@ -110,7 +109,7 @@ img[alt*="profile"],
   }
 }
 
-/* ========== INPUT STYLES ========== */
+/* Input styles*/
 .input {
   @apply w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-white placeholder-white/30 focus:ring-2 focus:ring-cyan-500 focus:border-transparent;
 }
@@ -135,7 +134,7 @@ img[alt*="profile"],
   @apply px-4 py-2 inline-block bg-cyan-500/10 rounded-lg text-cyan-400 hover:text-cyan-500 text-sm transition-colors;
 }
 
-/* ========== ANIMATIONS ========== */
+/* animations */
 @keyframes emoji-pop {
   0% {
     transform: scale(0);
@@ -213,7 +212,7 @@ img[alt*="profile"],
   100% { width: 100%; }
 }
 
-/* ========== SCROLLBAR STYLES ========== */
+/* scrollbar styles*/
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
@@ -250,14 +249,14 @@ img[alt*="profile"],
   background: rgba(0, 255, 255, 0.5);
 }
 
-/* ========== UTILITY CLASSES ========== */
+/* utility classes  */
 .select-none {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   user-select: none;
 }
 
-/* ========== COMPONENT STYLES ========== */
+/* component styles*/
 .avatar.online:before {
   background-color: #22d3ee !important;
   box-shadow: 0 0 5px rgba(34, 211, 238, 0.6);
@@ -404,7 +403,7 @@ img[alt*="profile"],
   border-radius: 1rem !important;
 }
 
-/* ========== MOBILE SPECIFIC FIXES ========== */
+/* mobile specific fixes*/
 @media (max-width: 768px) {
   /* Better touch targets */
   button, 
@@ -439,7 +438,7 @@ img[alt*="profile"],
   }
 }
 
-/* ========== IOS SAFARI FIXES ========== */
+/*Ios safari fixes */
 @supports (padding: max(0px)) {
   .pb-safe {
     padding-bottom: max(12px, env(safe-area-inset-bottom));
@@ -450,7 +449,7 @@ img[alt*="profile"],
   }
 }
 
-/* ========== AVATAR ANIMATION ========== */
+/* avatar pulse animation */
 @keyframes avatar-pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(0, 255, 255, 0.4);
@@ -467,7 +466,6 @@ img[alt*="profile"],
   animation: avatar-pulse 2s infinite;
 }
 
-/* Add to your index.css */
 .reactEasyCrop_Container {
   position: absolute;
   top: 0;

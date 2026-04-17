@@ -23,7 +23,7 @@ function ProfileHeader() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [tempImage, setTempImage] = useState(null);
   const [isEditingExisting, setIsEditingExisting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -76,9 +76,9 @@ function ProfileHeader() {
     if (!file) return;
     playClickSound();
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image size should be less than 5MB");
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image size should be less than 10MB");
       return;
     }
 
@@ -90,7 +90,7 @@ function ProfileHeader() {
 
     const reader = new FileReader();
     reader.onload = () => {
-      setSelectedImage(reader.result);
+      setTempImage(reader.result);
       setIsEditingExisting(false);
       setShowCropper(true);
     };
@@ -101,7 +101,7 @@ function ProfileHeader() {
   const handleEditExistingImage = () => {
     playClickSound();
     if (authUser?.profilePic && authUser.profilePic !== "/avatar.png") {
-      setSelectedImage(authUser.profilePic);
+      setTempImage(authUser.profilePic);
       setIsEditingExisting(true);
       setShowCropper(true);
     } else {
@@ -114,21 +114,25 @@ function ProfileHeader() {
   const handleCropComplete = async (croppedImage) => {
     setShowCropper(false);
     
-    // Show preview immediately
+    // Store the cropped image temporarily for preview
+    const croppedImageData = croppedImage;
+    
+    // Show preview immediately with optimistic update
     const originalUser = { ...authUser };
     useAuthStore.setState({
-      authUser: { ...authUser, profilePic: croppedImage },
+      authUser: { ...authUser, profilePic: croppedImageData },
     });
 
     try {
-      await updateProfile({ profilePic: croppedImage });
-      toast.success("Profile picture updated successfully!");
+      await updateProfile({ profilePic: croppedImageData });
     } catch (error) {
+      // Rollback on error
       useAuthStore.setState({ authUser: originalUser });
-      toast.error("Failed to upload image");
+      toast.error(error?.message || "Failed to upload image");
       console.error("Upload error:", error);
     } finally {
-      setSelectedImage(null);
+      // Clean up
+      setTempImage(null);
       setIsEditingExisting(false);
       // Reset file input
       if (fileInputRef.current) {
@@ -140,9 +144,14 @@ function ProfileHeader() {
   const handleSaveInfo = async () => {
     playClickSound();
     if (!formData.fullName.trim()) return toast.error("Name cannot be empty");
-    await updateProfile(formData);
-    setIsSettingsOpen(false);
-    toast.success("Profile updated successfully!");
+    
+    try {
+      await updateProfile(formData);
+      setIsSettingsOpen(false);
+      toast.success("Profile updated successfully!");
+    } catch (error) {
+      toast.error(error?.message || "Failed to update profile");
+    }
   };
 
   return (
@@ -287,7 +296,7 @@ function ProfileHeader() {
                 <p className="text-white/40 text-xs mt-6">
                   Click camera to upload new • Click crop to edit current
                 </p>
-              </div>
+              </div >
 
               {/* Form Fields */}
               <div className="px-6 space-y-6 pb-10">
@@ -354,14 +363,15 @@ function ProfileHeader() {
       )}
 
       {/* IMAGE CROPPER MODAL */}
-      {showCropper && selectedImage && (
+      {showCropper && tempImage && (
         <ImageCropper
-          image={selectedImage}
+          image={tempImage}
           onCropComplete={handleCropComplete}
           onClose={() => {
             setShowCropper(false);
-            setSelectedImage(null);
+            setTempImage(null);
             setIsEditingExisting(false);
+            // Reset file input when cancelling
             if (fileInputRef.current) {
               fileInputRef.current.value = "";
             }

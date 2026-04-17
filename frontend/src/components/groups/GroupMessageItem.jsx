@@ -55,7 +55,7 @@ function GroupMessageItem({ message, isOwnMessage, showAvatar }) {
           </span>
         )}
 
-        {/* Reply Preview (if replying to a message) */}
+        {/* Reply Preview  */}
         {message.replyTo && (
           <div
             className={`text-xs p-2 rounded-lg mb-1 border-l-4 ${

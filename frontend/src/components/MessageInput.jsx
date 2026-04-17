@@ -174,7 +174,7 @@ const MessageInput = ({
       onSubmit={handleSendMessage}
       className="flex-shrink-0 p-2 md:p-4 border-t border-white/10 bg-black/40 backdrop-blur-sm relative"
     >
-      {/* Emoji Picker Container - Responsive */}
+      {/* Emoji Picker Container */}
       {showEmojiPicker && (
         <div
           className="absolute bottom-16 left-2 md:left-4 z-50 shadow-2xl animate-in fade-in slide-in-from-bottom-2"
@@ -190,7 +190,7 @@ const MessageInput = ({
         </div>
       )}
 
-      {/* Reply UI - Responsive */}
+      {/* Reply UI  */}
       {replyTo && (
         <div className="max-w-3xl mx-auto mb-2 p-2 rounded-xl bg-cyan-500/10 border-l-4 border-cyan-500 flex justify-between items-start backdrop-blur-sm">
           <div className="flex-1 text-xs md:text-sm overflow-hidden">
@@ -211,7 +211,7 @@ const MessageInput = ({
         </div>
       )}
 
-      {/* Image Preview - Responsive */}
+      {/* Image Preview */}
       {imagePreview && (
         <div className="max-w-3xl mx-auto mb-2 relative inline-block">
           <img
@@ -229,7 +229,7 @@ const MessageInput = ({
         </div>
       )}
 
-      {/* Main Input Container - Fully Responsive */}
+      {/* Main Input Container  */}
       <div className="max-w-3xl mx-auto">
         <div className="flex items-end gap-1 md:gap-2">
           {/* Input Wrapper */}

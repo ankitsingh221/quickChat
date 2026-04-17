@@ -35,7 +35,7 @@ const AvatarModal = ({ image, name, onClose }) => {
             {name}
           </h3>
         )}
-        <div className="w-10" /> {/* Spacer for alignment */}
+        <div className="w-10" />
       </div>
 
       {/* Centered Image */}

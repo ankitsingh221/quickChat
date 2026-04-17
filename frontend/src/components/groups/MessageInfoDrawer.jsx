@@ -30,10 +30,10 @@ const MessageInfoDrawer = ({ msg, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[200] flex justify-end">
-      {/* Backdrop - Glassmorphic */}
+      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" onClick={onClose} />
       
-      {/* Drawer Content - Glassmorphic */}
+      {/* Drawer Content  */}
       <div className="relative w-full max-w-[400px] bg-black/80 backdrop-blur-xl h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-white/20">
         
         {/* Header */}

@@ -43,7 +43,7 @@ function GroupMembersModal({ group, isAdmin, onClose }) {
           toast.error("Failed to remove member");
         }
       } catch (error) {
-        console.error("Remove member error:", error);
+        console.error("error  while removing  member :", error);
       }
     }
   };

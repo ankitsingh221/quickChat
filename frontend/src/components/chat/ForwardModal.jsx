@@ -126,10 +126,9 @@ const ForwardModal = () => {
           toast.error(`Failed to forward to ${target.name}`);
         }
       } catch (error) {
-        console.error("Forward failed:", error);
         failCount++;
         newFailedIds.push(target.id);
-        toast.error(`Error forwarding to ${target.name}`);
+        toast.error(`Error forwarding to ${target.name}`,error);
       }
       
       // Small delay between sends to prevent overwhelming the server
@@ -143,18 +142,18 @@ const ForwardModal = () => {
     // Show final summary
     if (successCount > 0 && failCount === 0) {
       toast.success(
-        `✅ Successfully forwarded to ${successCount} ${successCount === 1 ? "target" : "targets"}!`
+        `Successfully forwarded to ${successCount} ${successCount === 1 ? "target" : "targets"}!`
       );
       setTimeout(() => {
         closeForwardModal();
       }, 1500);
     } else if (successCount > 0 && failCount > 0) {
       toast.success(
-        `⚠️ Forwarded to ${successCount} targets, failed for ${failCount}`
+        ` Forwarded to ${successCount} targets, failed for ${failCount}`
       );
     } else if (failCount > 0 && successCount === 0) {
       toast.error(
-        `❌ Failed to forward to ${failCount} ${failCount === 1 ? "target" : "targets"}`
+        ` Failed to forward to ${failCount} ${failCount === 1 ? "target" : "targets"}`
       );
     }
 
