@@ -4,7 +4,7 @@ A full-stack real-time chat application built using the **MERN stack** that enab
 
 ---
 
-## 📌 Overview
+##  Overview
 
 **QuickChat** replicates modern messaging platforms with production-level features like real-time communication, group permissions, and interactive UI.
 
@@ -22,39 +22,39 @@ It goes beyond a basic chat app by implementing **fine-grained control over mess
 
 ### 💬 Messaging System
 
-* ⚡ Real-time messaging using **Socket.IO**
-* ✏️ Edit messages (time-restricted)
-* ❌ Delete messages (for self / for everyone within 5 minutes)
-* 🔁 Forward messages (users & groups, bulk supported)
-* 🔍 Message search
-* 🧹 Clear chat / bulk delete
+*  Real-time messaging using **Socket.IO**
+*  Edit messages (time-restricted)
+*  Delete messages (for self / for everyone within 5 minutes)
+*  Forward messages (users & groups, bulk supported)
+*  Message search
+*  Clear chat / bulk delete
 * Message read receipts (single tick / double tick / seen count)
 
 ---
 
 ### 🟢 Real-Time Indicators
 
-* 👀 Online/offline status
-* ⌨️ Typing indicator
-* 🔊 Typing sound feedback
-* 🕒 Last seen timestamps
+*  Online/offline status
+*  Typing indicator
+*  Typing sound feedback
+*  Last seen timestamps
 
 ---
 
 ### 😀 Interaction Features
 
-* ❤️ Emoji reactions
-* 🖼️ Image sharing
-* 🔔 Toast notifications
+*  Emoji reactions
+*  Image sharing
+*  Toast notifications
 
 ---
 
 ### 👥 Group Chat System
 
-* ➕ Add/remove members
-* 🛡️ Admin roles
-* 👑 Creator privileges
-* 🗑️ Delete group
+*  Add/remove members
+*  Admin roles
+*  Creator privileges
+*  Delete group
 
 #### ⚙️ Group Controls
 
@@ -66,17 +66,17 @@ It goes beyond a basic chat app by implementing **fine-grained control over mess
 
 ### 👤 User Features
 
-* 🖼️ Profile image update
-* ✏️ Username & bio editing
+*  Profile image update
+*  Username & bio editing
 
 ---
 
 ### 📊 Chat Management
 
-* 📩 Unread message count
-* 🧾 Last message preview
-* 🗂️ Chat cleanup
-* 📅 Messages grouped by date
+*  Unread message count
+*  Last message preview
+*  Chat cleanup
+*  Messages grouped by date
 
 ---
 
@@ -178,13 +178,13 @@ It goes beyond a basic chat app by implementing **fine-grained control over mess
 
 ---
 
-## 🔮 Future Improvements
+##  Future Improvements
 
-* 🎥 Voice & video calling
-* 🔐 End-to-End Encryption
-* 📲 Push notifications
-* 📎 File sharing
-* 🛠️ Advanced admin tools
+*  Voice & video calling
+*  End-to-End Encryption
+*  Push notifications
+*  File sharing
+*  Advanced admin tools
 
 ---
 
